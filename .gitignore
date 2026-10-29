@@ -1,0 +1,15 @@
+# runtime data and logs
+backend/data/
+*.log
+__pycache__/
+*.pyc
+
+# site settings: password hashes, PLC address, IoT access key / token secret (recreated with defaults on first run)
+backend/config/settings*.json
+
+# local backups
+backend/config/*.before-*.json
+design-backup/
+
+# local tool config
+.claude/
