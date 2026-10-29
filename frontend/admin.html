@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard Admin Configuration</title>
+  <link rel="icon" href="img/medge-logo.png">
+  <link rel="stylesheet" href="css/app.css">
+  <style>
+    .tag-table td, .tag-table th { padding: 6px 8px; font-size: 12.5px; }
+    .tag-table tr:hover td { background: var(--surface-2); }
+    .warn-txt { color: var(--warn-ink); font-size: 11.5px; }
+    .err-txt { color: var(--crit-ink); font-size: 12px; }
+    .mapbox { border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface-2); }
+    .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); margin: 18px 0 8px; font-weight: 650; }
+    .login { max-width: 380px; margin: 12vh auto; }
+    pre.res { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; white-space: pre-wrap; margin: 6px 0 0; }
+    /* editable Modbus address cells in the tags table */
+    .tag-table .ie { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 3px 6px; font-size: 12px; color: var(--ink); }
+    .tag-table .ie:hover { border-color: var(--brand); }
+    .tag-table .ie:focus { outline: 2px solid color-mix(in srgb, var(--brand) 40%, transparent); border-color: var(--brand); }
+    .tag-table .ie:disabled { opacity: .45; }
+    .tag-table tr.is-custom td { background: color-mix(in srgb, var(--warn) 9%, transparent); }
+    .ov-off { opacity: .45; }
+    /* simple communication form: numbered steps, advanced settings folded */
+    .step { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; color: var(--ink); margin: 18px 0 8px; }
+    .step:first-of-type { margin-top: 4px; }
+    .step-n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--brand); color: #fff; font-size: 12px; }
+    .key-row { display: flex; gap: 8px; align-items: stretch; }
+    .key-row .grow { flex: 1; }
+    .key-row .grow input { font-size: 14px; padding: 9px 12px; }
+    details.adv { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 12px; }
+    details.adv > summary { cursor: pointer; font-weight: 650; font-size: 13px; color: var(--ink-2); list-style: none; display: flex; align-items: center; gap: 6px; }
+    details.adv > summary::-webkit-details-marker { display: none; }
+    details.adv > summary::before { content: "▸"; transition: transform .15s; }
+    details.adv[open] > summary::before { transform: rotate(90deg); }
+  </style>
+</head>
+<body>
+<div id="adminView" class="app hidden">
+  <aside class="side">
+    <img class="logo" src="img/medge-logo.png" alt="Medge Controls">
+    <nav class="nav" id="nav">
+      <a href="#comm" data-view="comm">Communication</a>
+      <a href="#tags" data-view="tags">Tags</a>
+      <a href="#equipment" data-view="equipment">Equipment</a>
+      <a href="#log" data-view="log">Activity log</a>
+      <a href="#account" data-view="account">Accounts</a>
+    </nav>
+    <div class="side-foot"><button class="btn sm" id="logoutBtn">Sign out</button></div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div><h1>Admin configuration</h1><div class="sub">Communication settings &amp; tag mapping - Delta AH500 via Modbus TCP (read-only)</div></div>
+      <div class="spacer"></div><div class="conn" id="connStrip"></div>
+      <div class="brand-pair"><img class="b-client" src="img/ankur-logo.png" alt="Ankur Scientific"><span class="b-x"></span><img class="b-medge" src="img/medge-logo.png" alt="Medge Controls"></div>
+    </header>
+    <div id="pwBanner"></div>
+
+    <!-- COMMUNICATION -->
+    <section data-section="comm">
+      <div class="grid cols-2">
+        <div class="panel">
+          <h2>PLC connection</h2>
+          <form id="commForm">
+            <!-- simple view: how to connect, the key (or IP), demo or live -->
+            <div class="step"><span class="step-n">1</span>Connect through</div>
+            <div class="seg" id="viaSeg">
+              <button type="button" data-via="iot">IoT access key</button>
+              <button type="button" data-via="ip">Direct IP / VPN</button>
+            </div>
+            <input type="checkbox" name="iot.enabled" id="iotEnabled" hidden>
+
+            <div class="step"><span class="step-n">2</span><span id="step2Label">Access key</span></div>
+            <div id="viaIot">
+              <div class="key-row">
+                <label class="field grow"><input name="iot.access_key" id="iotKey" placeholder="e.g. abc123.rs485.in" autocomplete="off" spellcheck="false" aria-label="Access key"></label>
+                <button class="btn" type="button" id="iotCheckBtn">Check key</button>
+              </div>
+              <div class="hint muted" style="font-size:12px;margin-top:4px">The cloud host name your IoT gateway gives for this PLC.</div>
+              <pre class="res hidden" id="iotCheckRes"></pre>
+            </div>
+            <div id="viaIp" class="form-grid hidden">
+              <label class="field">PLC / gateway IP<input name="plc.host"></label>
+              <label class="field">TCP port<input name="plc.port" type="number" min="1" max="65535"><span class="hint">Modbus TCP = 502</span></label>
+            </div>
+
+            <div class="step"><span class="step-n">3</span>Show on dashboard</div>
+            <div class="seg" id="modeSeg">
+              <button type="button" data-mode="simulation">Demo data</button>
+              <button type="button" data-mode="modbus">Live from PLC</button>
+            </div>
+            <select name="source.mode" id="modeSel" hidden><option value="simulation">Simulation</option><option value="modbus">Modbus TCP</option></select>
+
+            <div class="row" style="margin-top:18px">
+              <button class="btn primary" type="submit">Save</button>
+              <button class="btn" type="button" id="testConnBtn">Test connection</button>
+              <span id="commMsg" class="muted"></span>
+            </div>
+            <pre class="res hidden" id="testConnRes"></pre>
+
+            <!-- everything else, folded away -->
+            <details class="adv">
+              <summary>Advanced settings</summary>
+              <div class="section-title">PLC</div>
+              <div class="form-grid">
+                <label class="field">PLC model<input name="plc.model" readonly><span class="hint">From ISPSoft project HWCONFIG</span></label>
+                <label class="field">Unit ID (station)<input name="plc.unit_id" type="number" min="0" max="255"><span class="hint">AH CPU station address (project: 1)</span></label>
+                <label class="field">Timeout (ms)<input name="plc.timeout_ms" type="number" min="100" max="60000"></label>
+                <label class="field">Retries<input name="plc.retries" type="number" min="0" max="5"></label>
+                <label class="field">Reconnect delay (s)<input name="plc.reconnect_s" type="number" min="1" max="600"></label>
+                <label class="field">Default 32-bit word order
+                  <select name="plc.default_word_order"><option value="low_first">Low word first (Delta native, CDAB)</option><option value="high_first">High word first (ABCD)</option></select></label>
+                <label class="field">Max registers / read<input name="plc.max_regs_per_read" type="number" min="1" max="125"></label>
+                <label class="field">Max bits / read<input name="plc.max_bits_per_read" type="number" min="1" max="2000"></label>
+                <label class="field">Max gap to merge<input name="plc.max_gap" type="number" min="0" max="50"><span class="hint">registers (×16 for bits)</span></label>
+              </div>
+              <div class="section-title">IoT link</div>
+              <div class="form-grid">
+                <label class="field">Local port<input name="iot.local_port" type="number" min="1024" max="65535"><span class="hint">Backend reads Modbus from 127.0.0.1:this port</span></label>
+                <label class="field" style="grid-column:span 2">comlink.exe path<input name="iot.comlink_path" placeholder="C:\...\comlink.exe" spellcheck="false"><span class="hint">Blank = backend\bin\comlink.exe or cloudflared on PATH</span></label>
+                <label class="field">Access token ID <span class="muted">(optional)</span><input name="iot.service_token_id" autocomplete="off" spellcheck="false"><span class="hint">Only for keys protected by a Cloudflare Access service token</span></label>
+                <label class="field" style="grid-column:span 2">Access token secret <span class="muted">(optional)</span><input name="iot.service_token_secret" id="iotSecret" type="password" autocomplete="new-password"><span class="hint" id="iotSecretHint">Never shown again. Leave blank to keep the stored secret.</span></label>
+              </div>
+              <div class="section-title">Network path</div>
+              <div class="form-grid">
+                <label class="field" style="grid-column:1/-1">Path description<input name="gateway.path"></label>
+                <label class="field" style="grid-column:1/-1">Gateway notes<textarea name="gateway.notes" rows="2"></textarea></label>
+              </div>
+              <div class="section-title">History</div>
+              <div class="form-grid">
+                <label class="field">Log interval (s)<input name="historian.log_interval_s" type="number" min="1"></label>
+                <label class="field">Retention (days)<input name="historian.retention_days" type="number" min="1"></label>
+              </div>
+              <div class="section-title">Site sign-off</div>
+              <div class="mapbox">
+                <label class="check"><input type="checkbox" name="source.comm_verified"> PLC communication verified on site</label>
+                <div class="form-grid" style="margin-top:8px">
+                  <label class="field">Verified by<input name="source.verified_by"></label>
+                  <label class="field" style="grid-column:span 2">Verification note<input name="source.verified_note" placeholder="e.g. CT-01..CT-13 compared with HMI on 12-10-2026"></label>
+                </div>
+                <div class="hint muted" id="verifiedAt" style="font-size:12px;margin-top:6px"></div>
+                <div class="hint muted" style="font-size:12px;margin-top:4px">Until this is ticked (and each tag is marked verified) the client dashboard labels values UNVERIFIED.</div>
+              </div>
+              <div class="row" style="margin-top:14px"><button class="btn primary" type="submit">Save</button></div>
+            </details>
+          </form>
+        </div>
+        <div class="grid" style="align-content:start">
+          <div class="panel">
+            <h2>Live connection</h2>
+            <dl class="kv" id="connDetail"></dl>
+          </div>
+          <div class="panel">
+            <h2>Delta AH500 → Modbus address map</h2>
+            <p class="muted" style="margin-top:0;font-size:12.5px">Source: Delta <i>AH500 Operation Manual</i>, Appendix B.1 "Device Addresses".
+              Hex = <b>zero-based</b> protocol address on the wire. Reference = <b>one-based</b> 6-digit address (table digit + address + 1).
+              The PLC device number is <b>not</b> the Modbus address for X, Y, SM, SR, S, T, C, HC, E.</p>
+            <div class="table-wrap"><table>
+              <tr><th>Device</th><th>Type</th><th>Range</th><th>FC (read)</th><th>Zero-based hex</th><th>One-based ref</th></tr>
+              <tr><td>X</td><td>Bit</td><td>X0.0~X511.15</td><td>02</td><td class="code">6000~7FFF</td><td class="code">124577~132768</td></tr>
+              <tr><td>X</td><td>Word</td><td>X0~X511</td><td>04</td><td class="code">8000~81FF</td><td class="code">332769~333280</td></tr>
+              <tr><td>Y</td><td>Bit</td><td>Y0.0~Y511.15</td><td>01</td><td class="code">A000~BFFF</td><td class="code">040961~049152</td></tr>
+              <tr><td>Y</td><td>Word</td><td>Y0~Y511</td><td>03</td><td class="code">A000~A1FF</td><td class="code">440961~441472</td></tr>
+              <tr><td>M</td><td>Bit</td><td>M0~M8191</td><td>01</td><td class="code">0000~1FFF</td><td class="code">000001~008192</td></tr>
+              <tr><td>SM</td><td>Bit</td><td>SM0~SM2047</td><td>01</td><td class="code">4000~47FF</td><td class="code">016385~018432</td></tr>
+              <tr><td>SR</td><td>Word</td><td>SR0~SR2047</td><td>03</td><td class="code">C000~C7FF</td><td class="code">449153~451200</td></tr>
+              <tr><td>D</td><td>Word</td><td>D0~D32767</td><td>03</td><td class="code">0000~7FFF</td><td class="code">400001~432768</td></tr>
+              <tr><td>S</td><td>Bit</td><td>S0~S2047</td><td>01</td><td class="code">5000~57FF</td><td class="code">020481~022528</td></tr>
+              <tr><td>T / C</td><td>Bit / Word</td><td>0~2047</td><td>01 / 03</td><td class="code">E000~ / F000~</td><td class="code">057345~ / 457345~</td></tr>
+            </table></div>
+            <p class="muted" style="font-size:12px">X/Y bit address = base + word×16 + bit (X1.0 = 6010h). A bit inside a word (D15000.3) is read as holding register D15000 and bit 3 is extracted.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAGS -->
+    <section data-section="tags" class="hidden">
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;margin-bottom:12px">
+          <div class="row">
+            <input class="field" id="tagSearch" placeholder="Search name, id, device…" style="border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--surface-2);min-width:220px">
+            <select class="inline" id="tagGroup"></select>
+            <select class="inline" id="tagVer"><option value="">All</option><option value="no">Not verified</option><option value="yes">Verified</option><option value="warn">With warnings</option></select>
+          </div>
+          <div class="row">
+            <label class="btn amber" title="Upload the PLC address list (ISPSoft symbol export or the template) - addresses are matched to tags automatically">⇪ Import addresses (Excel)<input type="file" id="importXlsx" accept=".xlsx,.csv" hidden></label>
+            <a class="btn" id="tplXlsx" href="/api/admin/tags/template.xlsx" title="Download all tags with their current addresses as an Excel sheet to fill in">Excel template</a>
+            <button class="btn" id="addTag">+ Add tag</button>
+            <button class="btn" id="exportTags">Export JSON</button>
+            <label class="btn">Import JSON<input type="file" id="importTags" accept=".json" hidden></label>
+            <button class="btn primary" id="saveTags">Save tags</button>
+          </div>
+        </div>
+        <div id="dirtyNote" class="banner warn hidden" style="margin-bottom:10px">Unsaved tag changes - click <b>&nbsp;Save tags&nbsp;</b> to apply them to the poller.</div>
+        <div class="lm-bar" id="lmBar">
+          <button class="lm-toggle on" id="lmToggle" title="Pause / resume the live values in the table"><span class="dot"></span><b>LIVE MONITOR</b><span id="lmState">every 1 s</span></button>
+          <span class="lm-item" id="lmConn"></span>
+          <span class="lm-item" id="lmLast"></span>
+          <span class="lm-item" id="lmCounts"></span>
+          <label class="lm-filter">Show
+            <select class="inline" id="tagLive">
+              <option value="">all tags</option><option value="on">ON / non-zero only</option>
+              <option value="chg">changed in last 30 s</option><option value="bad">read errors / no data</option>
+            </select></label>
+        </div>
+        <div class="table-wrap"><table class="tag-table" id="tagTable"></table></div>
+      </div>
+    </section>
+
+    <!-- EQUIPMENT -->
+    <section data-section="equipment" class="hidden">
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;margin-bottom:12px">
+          <h2 style="margin:0">Equipment (status derived from tags)</h2>
+          <div class="row"><button class="btn danger" id="resetAllRh" title="Set run hours and starts of every motor back to 0">Reset all run hours</button>
+            <button class="btn" id="addEq">+ Add equipment</button><button class="btn primary" id="saveEq">Save equipment</button></div>
+        </div>
+        <p class="muted" style="font-size:12.5px;margin-top:0">Motor: TRIPPED if the trip input is ON → RUNNING if the run feedback or the start command (DO) is ON → otherwise STOPPED.
+          Valve: OPEN if the open limit switch is ON, otherwise CLOSED. Run hours count while RUNNING; Starts count each change to RUNNING.</p>
+        <div class="table-wrap"><table class="tag-table" id="eqTable"></table></div>
+      </div>
+    </section>
+
+    <!-- LOG -->
+    <section data-section="log" class="hidden">
+      <div class="panel"><h2>Activity log</h2><div class="table-wrap"><table id="logTable"></table></div></div>
+    </section>
+
+    <!-- ACCOUNT -->
+    <section data-section="account" class="hidden">
+      <div class="grid cols-2" style="align-items:start">
+        <div class="panel">
+          <h2>Admin login (you - tag configuration)</h2>
+          <p class="muted" style="margin-top:0;font-size:12.5px">Username <b class="code" id="adminUser">admin</b>. Opens this configuration page only.</p>
+          <form id="pwForm" class="grid">
+            <label class="field">Current password<input type="password" name="old" autocomplete="current-password" required></label>
+            <label class="field">New password (min 8 chars)<input type="password" name="new" autocomplete="new-password" minlength="8" required></label>
+            <button class="btn primary" type="submit">Change admin password</button>
+          </form>
+        </div>
+        <div class="panel">
+          <h2>Client login (Ankur Scientific - view only)</h2>
+          <p class="muted" style="margin-top:0;font-size:12.5px">One shared login for the client. It opens only the view-only dashboard and cannot see this page.
+            Changing it signs the client out everywhere.</p>
+          <div id="clientWarn"></div>
+          <form id="clientForm" class="grid">
+            <label class="field">Client username<input name="username" id="clientUser" autocomplete="off"></label>
+            <label class="field">New client password (min 8 chars, leave empty to keep)<input type="password" name="password" autocomplete="new-password" minlength="8"></label>
+            <button class="btn primary" type="submit">Save client login</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="drawerBg" class="drawer-bg hidden"></div>
+<aside id="drawer" class="drawer hidden" role="dialog" aria-modal="true"></aside>
+
+<script src="js/common.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

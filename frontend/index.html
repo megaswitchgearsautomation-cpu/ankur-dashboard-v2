@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plant Monitoring Dashboard</title>
+  <link rel="icon" href="img/ankur-mark.png">
+  <link rel="stylesheet" href="css/app.css">
+  <!-- v2: same layout as v1, re-skinned with the Ankur SCADA design (colours, frame, tiles, buttons) -->
+  <link rel="stylesheet" href="css/ankur-theme.css">
+</head>
+<body class="client ankur">
+<div class="shell">
+  <!-- icon rail -->
+  <aside class="rail">
+    <a class="rail-logo" href="#overview" title="Ankur Scientific"><img src="img/ankur-mark.png" alt="Ankur Scientific"></a>
+    <nav class="rail-nav" id="nav">
+      <a href="#overview" data-view="overview" title="Dashboard" aria-label="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg></a>
+      <a href="#equipment" data-view="equipment" title="Equipment" aria-label="Equipment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></a>
+      <a href="#trends" data-view="trends" title="Trends" aria-label="Trends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg></a>
+      <a href="#alarms" data-view="alarms" title="Alarms" aria-label="Alarms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span id="navAlarmCount" class="rail-badge hidden"></span></a>
+    </nav>
+    <div class="rail-foot">
+      <button class="rail-btn" id="themeBtn" title="Toggle light / dark" aria-label="Toggle theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+      <button class="rail-btn" id="logoutBtn" title="Sign out" aria-label="Sign out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg></button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <!-- header -->
+    <header class="head">
+      <span class="head-ic" id="headIcon" aria-hidden="true"></span>
+      <div class="head-title">
+        <h1 id="pageTitle">Plant dashboard</h1>
+        <div class="sub"><svg class="pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span id="siteName">FSTP-200 Muttathara, Trivandrum</span>
+          <span class="dot-sep">·</span><span class="clock num" id="headClock"></span></div>
+      </div>
+      <nav class="head-nav" id="segNav" role="tablist" aria-label="Pages">
+        <a href="#overview" data-view="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>Overview</a>
+        <a href="#equipment" data-view="equipment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Equipment</a>
+        <a href="#trends" data-view="trends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg>Trends</a>
+        <a href="#alarms" data-view="alarms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>Alarms<span class="nav-badge hidden" id="segAlarmCount"></span></a>
+      </nav>
+      <div class="head-right">
+        <div class="conn" id="connStrip"></div>
+        <div class="brand-pair" title="Client: Ankur Scientific · Automation &amp; IoT: Medge Controls">
+          <img class="b-client" src="img/ankur-logo.png" alt="Ankur Scientific">
+          <span class="b-x"></span>
+          <img class="b-medge" src="img/medge-logo.png" alt="Medge Controls">
+        </div>
+      </div>
+    </header>
+
+    <div id="banner"></div>
+
+    <!-- OVERVIEW -->
+    <section data-section="overview">
+      <div class="ps-strip" aria-label="Panel and safety">
+        <div class="ps" id="panelStatus"></div>
+        <span class="ps-chip" id="psChip" hidden></span>
+      </div>
+      <div class="ov-grid">
+        <div class="ov-left">
+          <div class="hero" id="hero"></div>
+          <div class="mini-grid" id="miniStats"></div>
+        </div>
+        <div class="card chart-card">
+          <div class="card-head ov-th">
+            <h2>Process trend <span class="muted" id="trendUnit"></span> <span class="tr-live sm" title="Updates automatically"><span class="dot"></span>Live</span></h2>
+            <div class="seg sm" id="ovTrendSeg"></div>
+            <div class="seg sm ov-rng" id="ovRangeSeg" role="group" aria-label="Time range">
+              <button data-m="30">30m</button><button data-m="60" class="active">1h</button><button data-m="480">8h</button><button data-m="1440">24h</button>
+            </div>
+            <select id="ovRange" hidden aria-hidden="true">
+              <option value="30">30</option><option value="60" selected>60</option><option value="480">480</option><option value="1440">1440</option>
+            </select>
+          </div>
+          <div class="ov-chips" id="ovLegend"></div>
+          <div class="chart" id="ovChart"></div>
+          <div class="ov-foot" id="ovFoot"></div>
+        </div>
+        <div class="ov-side">
+          <div class="card gauge-card" id="availCard"></div>
+          <div class="card gauge-card" id="levelCard"></div>
+        </div>
+      </div>
+
+      <div class="ov-grid2">
+        <div class="card">
+          <div class="card-head">
+            <h2>Process values <span class="count" id="pvCount"></span></h2>
+            <div class="seg sm" id="pvSeg"></div>
+          </div>
+          <div class="pv-list" id="pvList"></div>
+        </div>
+        <div class="stack">
+          <div class="card">
+            <div class="card-head"><h2>Active alarms <span class="count" id="alarmCount"></span></h2><a class="link" href="#alarms">View all</a></div>
+            <div id="alarmMini"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Run hours</h2>
+              <div class="seg sm" id="rhSeg"><button class="active" data-n="8">Top 8</button><button data-n="all">All</button></div></div>
+            <div class="rh-sum" id="rhSum"></div>
+            <div id="runBars" class="rh-list"></div>
+            <div class="rh-foot muted" id="rhNote"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-head">
+          <h2>Equipment</h2>
+          <div class="eq-sum" id="eqSummary"></div>
+          <a class="link" href="#equipment">All equipment →</a>
+        </div>
+        <div class="eq-wrap" id="eqCards"></div>
+      </div>
+    </section>
+
+    <!-- EQUIPMENT -->
+    <section data-section="equipment" class="hidden">
+      <div class="eq-kpis" id="eqKpis"></div>
+      <div class="eq-legend" aria-label="What the states mean">
+        <b>States:</b>
+        <span><i class="run"></i><b>Running</b> run feedback ON or start command (DO) ON</span>
+        <span><i class="stop"></i><b>Stopped</b> both OFF</span>
+        <span><i class="trip"></i><b>Tripped</b> trip input ON</span>
+        <span><i class="run"></i><b>Open</b> valve open limit switch ON</span>
+        <span><i class="stop"></i><b>Closed</b> valve not open</span>
+        <span class="muted">Run hours count up while a motor is running · Starts = number of times it started</span>
+      </div>
+      <div class="card">
+        <div class="card-head eq-head">
+          <div class="seg sm" id="eqTabs"></div>
+          <div class="eq-tools">
+            <div class="seg sm" id="eqViewSeg" role="group" aria-label="Layout"><button data-v="cards" class="active">▦ Cards</button><button data-v="list">☰ List</button></div>
+            <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="eqSearch" placeholder="Search name or tag no…"></div>
+          </div>
+        </div>
+        <div class="eq-wrap" id="eqGrid"></div>
+      </div>
+    </section>
+
+    <!-- TRENDS -->
+    <section data-section="trends" class="hidden">
+      <div class="card tr-ctl">
+        <div class="tr-top">
+          <div>
+            <h2>Trends</h2>
+            <div class="muted small" id="trCount">Pick up to 6 values</div>
+          </div>
+          <div class="tr-tools">
+            <span class="tr-live" id="trLive" title="Charts refresh automatically"><span class="dot"></span>Live</span>
+            <div class="seg sm" id="trRangeSeg" role="group" aria-label="Time range">
+              <button data-m="15">15 min</button><button data-m="60" class="active">1 hour</button><button data-m="480">8 hours</button>
+              <button data-m="1440">24 hours</button><button data-m="10080">7 days</button>
+            </div>
+            <div class="seg sm" id="trViewSeg" role="group" aria-label="Layout">
+              <button data-v="grid" class="active" title="One chart per value">Separate</button><button data-v="combined" title="Values with the same unit on one chart">Combined</button>
+            </div>
+            <button class="btn sm" id="trCsv" title="Download the selected values for this time range">⭳ CSV</button>
+            <select id="trendRange" hidden aria-hidden="true">
+              <option value="15">15</option><option value="60" selected>60</option><option value="480">480</option><option value="1440">1440</option><option value="10080">10080</option>
+            </select>
+          </div>
+        </div>
+        <div class="tr-picker" id="tagPicker"></div>
+      </div>
+      <div class="charts" id="charts"></div>
+    </section>
+
+    <!-- ALARMS -->
+    <section data-section="alarms" class="hidden">
+      <div class="card">
+        <div class="card-head"><h2>Active alarms <span class="count" id="alarmCount2"></span></h2></div>
+        <div class="al-active" id="activeTable"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-head al-hhead">
+          <h2>Alarm history</h2>
+          <div class="seg sm" id="histRangeSeg" role="group" aria-label="History range">
+            <button data-h="24">24 hours</button><button data-h="72" class="active">3 days</button><button data-h="168">7 days</button><button data-h="720">30 days</button>
+          </div>
+          <select id="histRange" hidden aria-hidden="true"><option value="24">24</option><option value="72" selected>72</option><option value="168">168</option><option value="720">720</option></select>
+        </div>
+        <div class="table-wrap"><table id="histTable" class="al-table"></table></div>
+      </div>
+    </section>
+
+    <footer class="foot">Plant monitoring for <b>Ankur Scientific</b> · Powered by <b>Medge Controls</b></footer>
+  </main>
+</div>
+
+<!-- alarm pop-up: opens when a new alarm is detected, closes when acknowledged -->
+<div id="alarmPopBg" class="pop-bg hidden"></div>
+<div id="alarmPop" class="alarm-pop hidden" role="alertdialog" aria-modal="true" aria-labelledby="alarmPopTitle">
+  <div class="ap-head" id="alarmPopHead">
+    <span class="ap-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></span>
+    <div><h2 id="alarmPopTitle">Alarm</h2><div class="ap-sub" id="alarmPopSub"></div></div>
+  </div>
+  <div class="ap-list" id="alarmPopList"></div>
+  <div class="ap-foot">
+    <span class="muted" id="alarmPopNote"></span>
+    <button class="btn primary" id="alarmPopAck" type="button">Acknowledge</button>
+  </div>
+</div>
+
+<div id="drawerBg" class="drawer-bg hidden"></div>
+<aside id="drawer" class="drawer hidden" aria-modal="true" role="dialog"></aside>
+
+<script src="js/common.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ankur SCADA Login</title>
+  <link rel="icon" href="img/ankur-mark.png">
+  <link rel="stylesheet" href="css/ankur.css">
+</head>
+<body style="margin:0">
+<!-- Interim login in the Ankur style - will be replaced 1:1 when the client's login design is supplied -->
+<div class="lg">
+  <section class="art" aria-hidden="true">
+    <h1>ANKUR SCIENTIFIC<br>ENERGY TECH.<br>PVT. LTD.</h1>
+    <div class="rule"></div>
+    <div class="proj">FSTP 200<br>(Op Panel - Muttathara)</div>
+  </section>
+  <section class="side">
+    <div class="card">
+      <div class="top"><img src="img/ankur-mark.png" alt=""><div><b>FSTP 200</b><span>By Ankur Scientific</span></div></div>
+      <h2>Sign in</h2>
+      <div class="sub">Enter your username and password</div>
+      <form id="loginForm" autocomplete="on">
+        <label>Username<input id="user" name="username" autocomplete="username" required autofocus></label>
+        <label>Password<span class="pw-row"><input id="pass" name="password" type="password" autocomplete="current-password" required>
+          <button type="button" id="showPw" aria-label="Show password">Show</button></span></label>
+        <div class="err" id="err" role="alert"></div>
+        <button class="submit" type="submit" id="go">SIGN IN</button>
+      </form>
+      <div class="note" id="note"></div>
+    </div>
+    <div class="pw">Powered by <img src="img/medge-logo.png" alt="Medge Controls"></div>
+  </section>
+</div>
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    if (q.get("expired")) document.getElementById("note").textContent = "Your session ended. Please sign in again.";
+    if (q.get("bye")) document.getElementById("note").textContent = "You have been signed out.";
+    document.getElementById("showPw").onclick = function () {
+      var p = document.getElementById("pass");
+      p.type = p.type === "password" ? "text" : "password";
+      this.textContent = p.type === "password" ? "Show" : "Hide";
+    };
+    document.getElementById("loginForm").onsubmit = async function (ev) {
+      ev.preventDefault();
+      var btn = document.getElementById("go"), err = document.getElementById("err");
+      btn.disabled = true; err.textContent = "";
+      try {
+        var r = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin",
+          body: JSON.stringify({ username: document.getElementById("user").value, password: document.getElementById("pass").value }) });
+        var d = await r.json();
+        if (!r.ok) throw new Error(d.error || "Sign in failed");
+        location.replace(d.home);
+      } catch (e) {
+        err.textContent = e.message;
+        document.getElementById("pass").select();
+      } finally { btn.disabled = false; }
+    };
+  })();
+</script>
+</body>
+</html>

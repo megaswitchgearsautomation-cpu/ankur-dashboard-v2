@@ -1,0 +1,7399 @@
+[
+  {
+    "id": "T_01",
+    "name": "T-01 Dryer to Radiator Temp",
+    "group": "Temperature",
+    "area": "Process",
+    "description": "T-01 · AI channel AI 0.0 · 0-200⁰C 4-20 mA",
+    "plc_tag": "AI_Dryer_To_Radiator_01",
+    "device": "D11008",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "°C",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 200,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": true,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": "T_01_ALM_SP",
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 4; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D0, 4-20mA D11004, min D11000, max D11002, sim value D11006, sim bit M2000."
+  },
+  {
+    "id": "T_01_ALM_SP",
+    "name": "T-01 Dryer to Radiator Temp - alarm set point",
+    "group": "Temperature",
+    "area": "Process",
+    "description": "T-01 alarm set point (HMI)",
+    "plc_tag": "",
+    "device": "D13000",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "°C",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 200,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 4; client R1 + motor list for tag/range",
+    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13002, actual delay D13004."
+  },
+  {
+    "id": "T_01_ALM",
+    "name": "T-01 Dryer to Radiator Temp - PLC alarm",
+    "group": "PLC alarms",
+    "area": "Process",
+    "description": "T-01 alarm indication bit from PLC",
+    "plc_tag": "FB_AI_Dryer_To_Radiator_01_High",
+    "device": "D15000.0",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Normal",
+      "true": "ALARM"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "T-01 Dryer to Radiator Temp: PLC alarm (above set point)",
+      "delay_s": 0
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 4; client R1 + motor list for tag/range",
+    "notes": "Bit of word device (read via FC03)."
+  },
+  {
+    "id": "T_02",
+    "name": "T-02 Hot Water Tank to Sludge Dryer Temp",
+    "group": "Temperature",
+    "area": "Process",
+    "description": "T-02 · AI channel AI 0.1 · 0-200⁰C 4-20 mA",
+    "plc_tag": "AI_Hot_Water_Tank_To_Sludge_Dryer_01",
+    "device": "D11018",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "°C",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 200,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": true,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": "T_02_ALM_SP",
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 5; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D2, 4-20mA D11014, min D11010, max D11012, sim value D11016, sim bit M2001."
+  },
+  {
+    "id": "T_02_ALM_SP",
+    "name": "T-02 Hot Water Tank to Sludge Dryer Temp - alarm set point",
+    "group": "Temperature",
+    "area": "Process",
+    "description": "T-02 alarm set point (HMI)",
+    "plc_tag": "",
+    "device": "D13006",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "°C",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 200,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 5; client R1 + motor list for tag/range",
+    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13008, actual delay D13010."
+  },
+  {
+    "id": "T_02_ALM",
+    "name": "T-02 Hot Water Tank to Sludge Dryer Temp - PLC alarm",
+    "group": "PLC alarms",
+    "area": "Process",
+    "description": "T-02 alarm indication bit from PLC",
+    "plc_tag": "FB_AI_Hot_Water_Tank_To_Sludge_Dryer_01_High",
+    "device": "D15000.1",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Normal",
+      "true": "ALARM"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "T-02 Hot Water Tank to Sludge Dryer Temp: PLC alarm (above set point)",
+      "delay_s": 0
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 5; client R1 + motor list for tag/range",
+    "notes": "Bit of word device (read via FC03)."
+  },
+  {
+    "id": "T_03",
+    "name": "T-03 Radiator to Surface Condenser Temp",
+    "group": "Temperature",
+    "area": "Process",
+    "description": "T-03 · AI channel AI 0.2 · 0-200⁰C 4-20 mA",
+    "plc_tag": "AI_Radiator_To_Surface_Condenser_01",
+    "device": "D11028",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "°C",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 200,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": true,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": "T_03_ALM_SP",
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 6; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D4, 4-20mA D11024, min D11020, max D11022, sim value D11026, sim bit M2002."
+  },
+  {
+    "id": "T_03_ALM_SP",
+    "name": "T-03 Radiator to Surface Condenser Temp - alarm set point",
+    "group": "Temperature",
+    "area": "Process",
+    "description": "T-03 alarm set point (HMI)",
+    "plc_tag": "",
+    "device": "D13012",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "°C",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 200,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 6; client R1 + motor list for tag/range",
+    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13014, actual delay D13016."
+  },
+  {
+    "id": "T_03_ALM",
+    "name": "T-03 Radiator to Surface Condenser Temp - PLC alarm",
+    "group": "PLC alarms",
+    "area": "Process",
+    "description": "T-03 alarm indication bit from PLC",
+    "plc_tag": "FB_AI_Radiator_To_Surface_Condenser_01_High",
+    "device": "D15000.2",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Normal",
+      "true": "ALARM"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "T-03 Radiator to Surface Condenser Temp: PLC alarm (above set point)",
+      "delay_s": 0
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 6; client R1 + motor list for tag/range",
+    "notes": "Bit of word device (read via FC03)."
+  },
+  {
+    "id": "T_04",
+    "name": "T-04 PHE-1 to Degasifier Temp",
+    "group": "Temperature",
+    "area": "Process",
+    "description": "T-04 · AI channel AI 0.3 · 0-200⁰C 4-20 mA",
+    "plc_tag": "AI_Phe_1_To_Degasifier",
+    "device": "D11038",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "°C",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 200,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": true,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": "T_04_ALM_SP",
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 7; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D6, 4-20mA D11034, min D11030, max D11032, sim value D11036, sim bit M2003."
+  },
+  {
+    "id": "T_04_ALM_SP",
+    "name": "T-04 PHE-1 to Degasifier Temp - alarm set point",
+    "group": "Temperature",
+    "area": "Process",
+    "description": "T-04 alarm set point (HMI)",
+    "plc_tag": "",
+    "device": "D13018",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "°C",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 200,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 7; client R1 + motor list for tag/range",
+    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13020, actual delay D13022."
+  },
+  {
+    "id": "T_04_ALM",
+    "name": "T-04 PHE-1 to Degasifier Temp - PLC alarm",
+    "group": "PLC alarms",
+    "area": "Process",
+    "description": "T-04 alarm indication bit from PLC",
+    "plc_tag": "FB_AI_Phe_1_To_Degasifier_High",
+    "device": "D15000.3",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Normal",
+      "true": "ALARM"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "T-04 PHE-1 to Degasifier Temp: PLC alarm (above set point)",
+      "delay_s": 0
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 7; client R1 + motor list for tag/range",
+    "notes": "Bit of word device (read via FC03)."
+  },
+  {
+    "id": "AI_SPARE_0_4",
+    "name": "Spare - 1",
+    "group": "Spare",
+    "area": "Process",
+    "description": "T-05 · AI channel AI 0.4 · 0-200⁰C 4-20 mA",
+    "plc_tag": "AI_Spare_1",
+    "device": "D11048",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "°C",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 200,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 8; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D8, 4-20mA D11044, min D11040, max D11042, sim value D11046, sim bit M2004."
+  },
+  {
+    "id": "AI_SPARE_0_5",
+    "name": "Spare - 2",
+    "group": "Spare",
+    "area": "Process",
+    "description": "T-06 · AI channel AI 0.5 · 0-200⁰C 4-20 mA",
+    "plc_tag": "AI_Spare_2",
+    "device": "D11058",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "°C",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 200,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 9; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D10, 4-20mA D11054, min D11050, max D11052, sim value D11056, sim bit M2005."
+  },
+  {
+    "id": "LT_01",
+    "name": "LT-01 Sludge Water Tank Level",
+    "group": "Level",
+    "area": "Process",
+    "description": "LT-01 · AI channel AI 0.6 · 0-3600MM 4-20 mA",
+    "plc_tag": "AI_Sludge_Water_Tank",
+    "device": "D11068",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "mm",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 3600,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": true,
+    "log": true,
+    "kpi": true,
+    "setpoint_tag": "LT_01_ALM_SP",
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 10; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D12, 4-20mA D11064, min D11060, max D11062, sim value D11066, sim bit M2006."
+  },
+  {
+    "id": "LT_01_ALM_SP",
+    "name": "LT-01 Sludge Water Tank Level - alarm set point",
+    "group": "Level",
+    "area": "Process",
+    "description": "LT-01 alarm set point (HMI)",
+    "plc_tag": "",
+    "device": "D13036",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "mm",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 3600,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 10; client R1 + motor list for tag/range",
+    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13038, actual delay D13040."
+  },
+  {
+    "id": "LT_01_ALM",
+    "name": "LT-01 Sludge Water Tank Level - PLC alarm",
+    "group": "PLC alarms",
+    "area": "Process",
+    "description": "LT-01 alarm indication bit from PLC",
+    "plc_tag": "FB_AI_Sludge_Water_Tank_High",
+    "device": "D15000.6",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Normal",
+      "true": "ALARM"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "LT-01 Sludge Water Tank Level: PLC alarm (above set point)",
+      "delay_s": 0
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 10; client R1 + motor list for tag/range",
+    "notes": "Bit of word device (read via FC03)."
+  },
+  {
+    "id": "LT_02",
+    "name": "LT-02 Filtrate Tank Level",
+    "group": "Level",
+    "area": "Process",
+    "description": "LT-02 · AI channel AI 0.7 · 0-3600MM 4-20 mA",
+    "plc_tag": "AI_Filtrate_Tank",
+    "device": "D11078",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "mm",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 3600,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": true,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": "LT_02_ALM_SP",
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 11; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D14, 4-20mA D11074, min D11070, max D11072, sim value D11076, sim bit M2007."
+  },
+  {
+    "id": "LT_02_ALM_SP",
+    "name": "LT-02 Filtrate Tank Level - alarm set point",
+    "group": "Level",
+    "area": "Process",
+    "description": "LT-02 alarm set point (HMI)",
+    "plc_tag": "",
+    "device": "D13042",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "mm",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 3600,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 11; client R1 + motor list for tag/range",
+    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13044, actual delay D13046."
+  },
+  {
+    "id": "LT_02_ALM",
+    "name": "LT-02 Filtrate Tank Level - PLC alarm",
+    "group": "PLC alarms",
+    "area": "Process",
+    "description": "LT-02 alarm indication bit from PLC",
+    "plc_tag": "FB_AI_Filtrate_Tank_High",
+    "device": "D15000.7",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Normal",
+      "true": "ALARM"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "LT-02 Filtrate Tank Level: PLC alarm (above set point)",
+      "delay_s": 0
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 11; client R1 + motor list for tag/range",
+    "notes": "Bit of word device (read via FC03)."
+  },
+  {
+    "id": "PH_01",
+    "name": "PH-01 Process Water pH",
+    "group": "Analysis",
+    "area": "Process",
+    "description": "PH-01 · AI channel AI 1.0 · 0-14pH 4-20 mA",
+    "plc_tag": "AI_Ph_Sensor_For_Process_Water",
+    "device": "D11088",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "pH",
+    "decimals": 2,
+    "eng_min": 0,
+    "eng_max": 14,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": true,
+    "log": true,
+    "kpi": true,
+    "setpoint_tag": "PH_01_ALM_SP",
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 12; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D16, 4-20mA D11084, min D11080, max D11082, sim value D11086, sim bit M2008."
+  },
+  {
+    "id": "PH_01_ALM_SP",
+    "name": "PH-01 Process Water pH - alarm set point",
+    "group": "Analysis",
+    "area": "Process",
+    "description": "PH-01 alarm set point (HMI)",
+    "plc_tag": "",
+    "device": "D13048",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "pH",
+    "decimals": 2,
+    "eng_min": 0,
+    "eng_max": 14,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 12; client R1 + motor list for tag/range",
+    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13050, actual delay D13052."
+  },
+  {
+    "id": "PH_01_ALM",
+    "name": "PH-01 Process Water pH - PLC alarm",
+    "group": "PLC alarms",
+    "area": "Process",
+    "description": "PH-01 alarm indication bit from PLC",
+    "plc_tag": "FB_AI_Ph_Sensor_For_Process_Water_High",
+    "device": "D15000.8",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Normal",
+      "true": "ALARM"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "PH-01 Process Water pH: PLC alarm (above set point)",
+      "delay_s": 0
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 12; client R1 + motor list for tag/range",
+    "notes": "Bit of word device (read via FC03)."
+  },
+  {
+    "id": "PT_01",
+    "name": "PT-01 Raw Water Tank Distribution Line Pressure",
+    "group": "Pressure",
+    "area": "Process",
+    "description": "PT-01 · AI channel AI 1.1 · 0-10 BARG 4-20 mA",
+    "plc_tag": "AI_Raw_Water_Tank_Distribution_Line",
+    "device": "D11098",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "barg",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 10,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": true,
+    "log": true,
+    "kpi": true,
+    "setpoint_tag": "PT_01_ALM_SP",
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 13; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D18, 4-20mA D11094, min D11090, max D11092, sim value D11096, sim bit M2009."
+  },
+  {
+    "id": "PT_01_ALM_SP",
+    "name": "PT-01 Raw Water Tank Distribution Line Pressure - alarm set point",
+    "group": "Pressure",
+    "area": "Process",
+    "description": "PT-01 alarm set point (HMI)",
+    "plc_tag": "",
+    "device": "D13054",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "barg",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 10,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 13; client R1 + motor list for tag/range",
+    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13056, actual delay D13058."
+  },
+  {
+    "id": "PT_01_ALM",
+    "name": "PT-01 Raw Water Tank Distribution Line Pressure - PLC alarm",
+    "group": "PLC alarms",
+    "area": "Process",
+    "description": "PT-01 alarm indication bit from PLC",
+    "plc_tag": "FB_AI_Raw_Water_Tank_Distribution_Line_High",
+    "device": "D15000.9",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Normal",
+      "true": "ALARM"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "PT-01 Raw Water Tank Distribution Line Pressure: PLC alarm (above set point)",
+      "delay_s": 0
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 13; client R1 + motor list for tag/range",
+    "notes": "Bit of word device (read via FC03)."
+  },
+  {
+    "id": "PT_02",
+    "name": "PT-02 Dryer to Radiator Pressure",
+    "group": "Pressure",
+    "area": "Process",
+    "description": "PT-02 · AI channel AI 1.2 · 0-10 BARG 4-20 mA",
+    "plc_tag": "AI_Dryer_To_Radiator_02",
+    "device": "D11108",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "barg",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 10,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": true,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": "PT_02_ALM_SP",
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 14; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D20, 4-20mA D11104, min D11100, max D11102, sim value D11106, sim bit M2010."
+  },
+  {
+    "id": "PT_02_ALM_SP",
+    "name": "PT-02 Dryer to Radiator Pressure - alarm set point",
+    "group": "Pressure",
+    "area": "Process",
+    "description": "PT-02 alarm set point (HMI)",
+    "plc_tag": "",
+    "device": "D13060",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "barg",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 10,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 14; client R1 + motor list for tag/range",
+    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13062, actual delay D13064."
+  },
+  {
+    "id": "PT_02_ALM",
+    "name": "PT-02 Dryer to Radiator Pressure - PLC alarm",
+    "group": "PLC alarms",
+    "area": "Process",
+    "description": "PT-02 alarm indication bit from PLC",
+    "plc_tag": "FB_AI_Dryer_To_Radiator_02_High",
+    "device": "D15000.10",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Normal",
+      "true": "ALARM"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "PT-02 Dryer to Radiator Pressure: PLC alarm (above set point)",
+      "delay_s": 0
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 14; client R1 + motor list for tag/range",
+    "notes": "Bit of word device (read via FC03)."
+  },
+  {
+    "id": "PT_03",
+    "name": "PT-03 Hot Water Tank to Sludge Dryer Pressure",
+    "group": "Pressure",
+    "area": "Process",
+    "description": "PT-03 · AI channel AI 1.3 · 0-10 BARG 4-20 mA",
+    "plc_tag": "AI_Hot_Water_Tank_To_Sludge_Dryer_02",
+    "device": "D11118",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "barg",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 10,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": true,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": "PT_03_ALM_SP",
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 15; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D22, 4-20mA D11114, min D11110, max D11112, sim value D11116, sim bit M2011."
+  },
+  {
+    "id": "PT_03_ALM_SP",
+    "name": "PT-03 Hot Water Tank to Sludge Dryer Pressure - alarm set point",
+    "group": "Pressure",
+    "area": "Process",
+    "description": "PT-03 alarm set point (HMI)",
+    "plc_tag": "",
+    "device": "D13066",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "barg",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 10,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 15; client R1 + motor list for tag/range",
+    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13068, actual delay D13070."
+  },
+  {
+    "id": "PT_03_ALM",
+    "name": "PT-03 Hot Water Tank to Sludge Dryer Pressure - PLC alarm",
+    "group": "PLC alarms",
+    "area": "Process",
+    "description": "PT-03 alarm indication bit from PLC",
+    "plc_tag": "FB_AI_Hot_Water_Tank_To_Sludge_Dryer_02_High",
+    "device": "D15000.11",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Normal",
+      "true": "ALARM"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "PT-03 Hot Water Tank to Sludge Dryer Pressure: PLC alarm (above set point)",
+      "delay_s": 0
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 15; client R1 + motor list for tag/range",
+    "notes": "Bit of word device (read via FC03)."
+  },
+  {
+    "id": "PT_04",
+    "name": "PT-04 Radiator to Surface Condenser Pressure",
+    "group": "Pressure",
+    "area": "Process",
+    "description": "PT-04 · AI channel AI 1.4 · 0-10 BARG 4-20 mA",
+    "plc_tag": "AI_Radiator_To_Surface_Condenser_02",
+    "device": "D11128",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "barg",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 10,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": true,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": "PT_04_ALM_SP",
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 16; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D24, 4-20mA D11124, min D11120, max D11122, sim value D11126, sim bit M2012."
+  },
+  {
+    "id": "PT_04_ALM_SP",
+    "name": "PT-04 Radiator to Surface Condenser Pressure - alarm set point",
+    "group": "Pressure",
+    "area": "Process",
+    "description": "PT-04 alarm set point (HMI)",
+    "plc_tag": "",
+    "device": "D13072",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "barg",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 10,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 16; client R1 + motor list for tag/range",
+    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13074, actual delay D13076."
+  },
+  {
+    "id": "PT_04_ALM",
+    "name": "PT-04 Radiator to Surface Condenser Pressure - PLC alarm",
+    "group": "PLC alarms",
+    "area": "Process",
+    "description": "PT-04 alarm indication bit from PLC",
+    "plc_tag": "FB_AI_Radiator_To_Surface_Condenser_02_High",
+    "device": "D15000.12",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Normal",
+      "true": "ALARM"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "PT-04 Radiator to Surface Condenser Pressure: PLC alarm (above set point)",
+      "delay_s": 0
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 16; client R1 + motor list for tag/range",
+    "notes": "Bit of word device (read via FC03)."
+  },
+  {
+    "id": "AI_SPARE_1_5",
+    "name": "Spare Analog - 3",
+    "group": "Spare",
+    "area": "Process",
+    "description": "CT-14 · AI channel AI 1.5 · spare 4-20 mA",
+    "plc_tag": "AI_Spare_Analog_3",
+    "device": "D11138",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 100,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 17; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D26, 4-20mA D11134, min D11130, max D11132, sim value D11136, sim bit M2013."
+  },
+  {
+    "id": "AI_SPARE_1_6",
+    "name": "Spare Analog - 4",
+    "group": "Spare",
+    "area": "Process",
+    "description": "CT-15 · AI channel AI 1.6 · spare 4-20 mA",
+    "plc_tag": "AI_Spare_Analog_4",
+    "device": "D11148",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 100,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 18; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D28, 4-20mA D11144, min D11140, max D11142, sim value D11146, sim bit M2014."
+  },
+  {
+    "id": "AI_SPARE_1_7",
+    "name": "Spare Analog - 5",
+    "group": "Spare",
+    "area": "Process",
+    "description": "CT-16 · AI channel AI 1.7 · spare 4-20 mA",
+    "plc_tag": "AI_Spare_Analog_5",
+    "device": "D11158",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 100,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 19; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D30, 4-20mA D11154, min D11150, max D11152, sim value D11156, sim bit M2015."
+  },
+  {
+    "id": "AI_SPARE_2_0",
+    "name": "Spare Analog - 6",
+    "group": "Spare",
+    "area": "Process",
+    "description": "A-AT-01 · AI channel AI 2.0 · spare 4-20 mA",
+    "plc_tag": "AI_Spare_Analog_6",
+    "device": "D11168",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 100,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 20; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D32, 4-20mA D11164, min D11160, max D11162, sim value D11166, sim bit M2016."
+  },
+  {
+    "id": "AI_SPARE_2_1",
+    "name": "Spare Analog - 7",
+    "group": "Spare",
+    "area": "Process",
+    "description": "A-AT-02 · AI channel AI 2.1 · spare 4-20 mA",
+    "plc_tag": "AI_Spare_Analog_7",
+    "device": "D11178",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 100,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 21; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D34, 4-20mA D11174, min D11170, max D11172, sim value D11176, sim bit M2017."
+  },
+  {
+    "id": "AI_SPARE_2_2",
+    "name": "Spare Analog - 8",
+    "group": "Spare",
+    "area": "Process",
+    "description": "A-AT-03 · AI channel AI 2.2 · spare 4-20 mA",
+    "plc_tag": "AI_Spare_Analog_8",
+    "device": "D11188",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 100,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 22; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D36, 4-20mA D11184, min D11180, max D11182, sim value D11186, sim bit M2018."
+  },
+  {
+    "id": "AI_SPARE_2_3",
+    "name": "Spare Analog - 9",
+    "group": "Spare",
+    "area": "Process",
+    "description": "A-AT-04 · AI channel AI 2.3 · spare 4-20 mA",
+    "plc_tag": "AI_Spare_Analog_9",
+    "device": "D11198",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 100,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 23; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D38, 4-20mA D11194, min D11190, max D11192, sim value D11196, sim bit M2019."
+  },
+  {
+    "id": "AI_SPARE_2_4",
+    "name": "Spare Analog - 10",
+    "group": "Spare",
+    "area": "Process",
+    "description": "A-AT-05 · AI channel AI 2.4 · spare 4-20 mA",
+    "plc_tag": "AI_Spare_Analog_10",
+    "device": "D11208",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 100,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 24; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D40, 4-20mA D11204, min D11200, max D11202, sim value D11206, sim bit M2020."
+  },
+  {
+    "id": "AI_SPARE_2_5",
+    "name": "Spare Analog - 11",
+    "group": "Spare",
+    "area": "Process",
+    "description": "A-AT-06 · AI channel AI 2.5 · spare 4-20 mA",
+    "plc_tag": "AI_Spare_Analog_11",
+    "device": "D11218",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 100,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 25; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D42, 4-20mA D11214, min D11210, max D11212, sim value D11216, sim bit M2021."
+  },
+  {
+    "id": "AI_SPARE_2_6",
+    "name": "Spare Analog - 12",
+    "group": "Spare",
+    "area": "Process",
+    "description": "A-AT-07 · AI channel AI 2.6 · spare 4-20 mA",
+    "plc_tag": "AI_Spare_Analog_12",
+    "device": "D11228",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 100,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 26; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D44, 4-20mA D11224, min D11220, max D11222, sim value D11226, sim bit M2022."
+  },
+  {
+    "id": "AI_SPARE_2_7",
+    "name": "Spare Analog - 13",
+    "group": "Spare",
+    "area": "Process",
+    "description": "A-AT-08 · AI channel AI 2.7 · spare 4-20 mA",
+    "plc_tag": "AI_Spare_Analog_13",
+    "device": "D11238",
+    "data_type": "REAL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 100,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "setpoint_tag": null,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 27; client R1 + motor list for tag/range",
+    "notes": "PLC final scaled value (REAL, confirmed). Raw count D46, 4-20mA D11234, min D11230, max D11232, sim value D11236, sim bit M2023."
+  },
+  {
+    "id": "DI_Emergency_Sp_Pb",
+    "name": "Emergency Stop P.B.",
+    "group": "Safety",
+    "area": "Panel",
+    "description": "X0.0 · NC",
+    "plc_tag": "DI_Emergency_Sp_Pb",
+    "device": "X0.0",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "PRESSED"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Emergency Stop P.B. pressed",
+      "delay_s": 0
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 4",
+    "notes": "Contact type (client R1): NC. NC push button: input ON = healthy, value inverted (TRUE = pressed). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Stm_Am_Ss",
+    "name": "System Auto/manual Selector Switch",
+    "group": "Panel controls",
+    "area": "Panel",
+    "description": "X0.1 · NC",
+    "plc_tag": "DI_Stm_Am_Ss",
+    "device": "X0.1",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 5",
+    "notes": "Contact type (client R1): NC."
+  },
+  {
+    "id": "DI_Stm_Auto_St_Pb",
+    "name": "System Auto Start P.B.",
+    "group": "Panel controls",
+    "area": "Panel",
+    "description": "X0.2 · NO",
+    "plc_tag": "DI_Stm_Auto_St_Pb",
+    "device": "X0.2",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 6",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Squen_Stwn",
+    "name": "Sequential Shutdown Start P.B.",
+    "group": "Panel controls",
+    "area": "Panel",
+    "description": "X0.3 · NO",
+    "plc_tag": "DI_Squen_Stwn",
+    "device": "X0.3",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 7",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Htr_Acpt_Pb_With_lamp",
+    "name": "Hooter Accept P.B. With Lamp",
+    "group": "Panel controls",
+    "area": "Panel",
+    "description": "X0.4 · NO",
+    "plc_tag": "DI_Htr_Acpt_Pb_With_lamp",
+    "device": "X0.4",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 8",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_DI_Spp_Ov_Uv_Rly",
+    "name": "SPP/OV/UV Relay",
+    "group": "Safety",
+    "area": "Panel",
+    "description": "X0.5 · NC",
+    "plc_tag": "DI_DI_Spp_Ov_Uv_Rly",
+    "device": "X0.5",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "OPERATED"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "SPP/OV/UV Relay operated",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 9",
+    "notes": "Contact type (client R1): NC. NC relay contact: input ON = healthy, value inverted (TRUE = operated). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Earth_Fault_Rly",
+    "name": "Earth Fault Relay",
+    "group": "Safety",
+    "area": "Panel",
+    "description": "X0.6 · NC",
+    "plc_tag": "DI_Earth_Fault_Rly",
+    "device": "X0.6",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "OPERATED"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Earth Fault Relay operated",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 10",
+    "notes": "Contact type (client R1): NC. NC relay contact: input ON = healthy, value inverted (TRUE = operated). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Rmt_Eme_St_Pb",
+    "name": "Remote Emergency Stop P.B",
+    "group": "Safety",
+    "area": "Panel",
+    "description": "X0.7 · NC",
+    "plc_tag": "DI_Rmt_Eme_St_Pb",
+    "device": "X0.7",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "PRESSED"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Remote Emergency Stop P.B pressed",
+      "delay_s": 0
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 11",
+    "notes": "Contact type (client R1): NC. NC push button: input ON = healthy, value inverted (TRUE = pressed). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Under_Grnd_Slud_Pmp_TO_VP_Mn_Rn",
+    "name": "Under Ground Sludge Pump to Volute Press (Main) Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X0.8 · NO",
+    "plc_tag": "DI_Under_Grnd_Slud_Pmp_TO_VP_Mn_Rn",
+    "device": "X0.8",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 12",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Under_Grnd_Slud_Pmp_TO_VP_Mn_Tp",
+    "name": "Under Ground Sludge Pump to Volute Press (Main) Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X0.9 · NC",
+    "plc_tag": "DI_Under_Grnd_Slud_Pmp_TO_VP_Mn_Tp",
+    "device": "X0.9",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Under Ground Sludge Pump to Volute Press (Main) tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 13",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Under_Grnd_Slud_Pmp_TO_VP_Stby_Rn",
+    "name": "Under Ground Sludge Pump to Volute Press (Standby) Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X0.10 · NO",
+    "plc_tag": "DI_Under_Grnd_Slud_Pmp_TO_VP_Stby_Rn",
+    "device": "X0.10",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 14",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Under_Grnd_Slud_Pmp_TO_VP_Stby_Tp",
+    "name": "Under Ground Sludge Pump to Volute Press (Standby) Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X0.11 · NC",
+    "plc_tag": "DI_Under_Grnd_Slud_Pmp_TO_VP_Stby_Tp",
+    "device": "X0.11",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Under Ground Sludge Pump to Volute Press (Standby) tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 15",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Dry_Hot_Wtr_Inlet_Pmp_Vfd_Rn",
+    "name": "Dryer Hot Water Inlet Pump VFD Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X0.12 · NO",
+    "plc_tag": "DI_Dry_Hot_Wtr_Inlet_Pmp_Vfd_Rn",
+    "device": "X0.12",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 16",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Dry_Hot_Wtr_Inlet_Pmp_Vfd_Tp",
+    "name": "Dryer Hot Water Inlet Pump VFD Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X0.13 · NO",
+    "plc_tag": "DI_Dry_Hot_Wtr_Inlet_Pmp_Vfd_Tp",
+    "device": "X0.13",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Dryer Hot Water Inlet Pump VFD tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 17",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Cool_Twr_Pmp_For_Su_Co_Of_Dry_Rn",
+    "name": "Cooling Tower Water Pump for Surface Condenser of Dryer Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X0.14 · NO",
+    "plc_tag": "DI_Cool_Twr_Pmp_For_Su_Co_Of_Dry_Rn",
+    "device": "X0.14",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 18",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Cool_Twr_Pmp_For_Su_Co_Of_Dry_Tp",
+    "name": "Cooling Tower Water Pump for Surface Condenser of Dryer Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X0.15 · NC",
+    "plc_tag": "DI_Cool_Twr_Pmp_For_Su_Co_Of_Dry_Tp",
+    "device": "X0.15",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Cooling Tower Water Pump for Surface Condenser of Dryer tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 19",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Cool_Twr_Fn_For_Su_Co_Of_Dry_An_P2_Rn",
+    "name": "Cooling Tower Fan for Surface Condenser of Dryer and PHE-2 Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.0 · NO",
+    "plc_tag": "DI_Cool_Twr_Fn_For_Su_Co_Of_Dry_An_P2_Rn",
+    "device": "X1.0",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 20",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Cool_Twr_Fn_For_Su_Co_Of_Dry_An_P2_Tp",
+    "name": "Cooling Tower Fan for Surface Condenser of Dryer and PHE-2 Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.1 · NC",
+    "plc_tag": "DI_Cool_Twr_Fn_For_Su_Co_Of_Dry_An_P2_Tp",
+    "device": "X1.1",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Cooling Tower Fan for Surface Condenser of Dryer and PHE-2 tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 21",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Centrifug_Pmp_Su_Co_To_Degas_Rn",
+    "name": "Centrifugal Pump Surface Cond. to Degas Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.2 · NO",
+    "plc_tag": "DI_Centrifug_Pmp_Su_Co_To_Degas_Rn",
+    "device": "X1.2",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 22",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Centrifug_Pmp_Su_Co_To_Degas_Tp",
+    "name": "Centrifugal Pump Surface Cond. to Degas Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.3 · NC",
+    "plc_tag": "DI_Centrifug_Pmp_Su_Co_To_Degas_Tp",
+    "device": "X1.3",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Centrifugal Pump Surface Cond. to Degas tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 23",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Filtrate_Tnk_Pmp_Main_Rn",
+    "name": "Filtrate Tank Pump (Main) Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.4 · NO",
+    "plc_tag": "DI_Filtrate_Tnk_Pmp_Main_Rn",
+    "device": "X1.4",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 24",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Filtrate_Tnk_Pmp_Main_Tp",
+    "name": "Filtrate Tank Pump (Main) Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.5 · NC",
+    "plc_tag": "DI_Filtrate_Tnk_Pmp_Main_Tp",
+    "device": "X1.5",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Filtrate Tank Pump (Main) tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 25",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Filtrate_Tnk_Pump_Stby_Rn",
+    "name": "Filtrate Tank Pump (Standby) Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.6 · NO",
+    "plc_tag": "DI_Filtrate_Tnk_Pump_Stby_Rn",
+    "device": "X1.6",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 26",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Filtrate_Tnk_Pump_Stby_Tp",
+    "name": "Filtrate Tank Pump (Standby) Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.7 · NC",
+    "plc_tag": "DI_Filtrate_Tnk_Pump_Stby_Tp",
+    "device": "X1.7",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Filtrate Tank Pump (Standby) tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 27",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Undr_Grnd_Subm_Pmp_Mn_Rn",
+    "name": "Under Ground Submersible Pump (Main) Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.8 · NO",
+    "plc_tag": "DI_Undr_Grnd_Subm_Pmp_Mn_Rn",
+    "device": "X1.8",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 28",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Undr_Grnd_Subm_Pmp_Mn_Tp",
+    "name": "Under Ground Submersible Pump (Main) Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.9 · NC",
+    "plc_tag": "DI_Undr_Grnd_Subm_Pmp_Mn_Tp",
+    "device": "X1.9",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Under Ground Submersible Pump (Main) tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 29",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Undr_Grnd_Subm_Pmp_Stby_Rn",
+    "name": "Under Ground Submersible Pump (Standby) Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.10 · NO",
+    "plc_tag": "DI_Undr_Grnd_Subm_Pmp_Stby_Rn",
+    "device": "X1.10",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 30",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Undr_Grnd_Subm_pmp_Stby_Tp",
+    "name": "Under Ground Submersible Pump (Standby) Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.11 · NC",
+    "plc_tag": "DI_Undr_Grnd_Subm_pmp_Stby_Tp",
+    "device": "X1.11",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Under Ground Submersible Pump (Standby) tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 31",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Degf_Phe_Cool_Twr_Wtr_Cirul_Pmp_Rn",
+    "name": "Degasifier PHE Cooling Tower (Water Circulation) Pump Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.12 · NO",
+    "plc_tag": "DI_Degf_Phe_Cool_Twr_Wtr_Cirul_Pmp_Rn",
+    "device": "X1.12",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 32",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Degf_Phe_Cool_Twr_Wtr_Cirul_Pmp_Tp",
+    "name": "Degasifier PHE Cooling Tower (Water Circulation) Pump Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.13 · NC",
+    "plc_tag": "DI_Degf_Phe_Cool_Twr_Wtr_Cirul_Pmp_Tp",
+    "device": "X1.13",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Degasifier PHE Cooling Tower (Water Circulation) Pump tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 33",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Gvt_Tnk_To_Wtp_Phe_Wtr_Pmp_Rn",
+    "name": "Gravity Tank to WTP - PHE Water Pump Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.14 · NO",
+    "plc_tag": "DI_Gvt_Tnk_To_Wtp_Phe_Wtr_Pmp_Rn",
+    "device": "X1.14",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 34",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Gvt_Tnk_To_wtp_Phe_Wtr_Pmp_Tp",
+    "name": "Gravity Tank to WTP - PHE Water Pump Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X1.15 · NC",
+    "plc_tag": "DI_Gvt_Tnk_To_wtp_Phe_Wtr_Pmp_Tp",
+    "device": "X1.15",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Gravity Tank to WTP - PHE Water Pump tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 35",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Degasifier_Exhaust_Blower_Hot_Air_Blower_Run_Feedback",
+    "name": "Degasifier Exhaust Blower (Hot Air Blower) Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.0 · NO",
+    "plc_tag": "",
+    "device": "X2.0",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 36",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Degasifier_Exhaust_Blower_Hot_Air_Blower_Trip",
+    "name": "Degasifier Exhaust Blower (Hot Air Blower) Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.1 · NC",
+    "plc_tag": "",
+    "device": "X2.1",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Degasifier Exhaust Blower (Hot Air Blower) tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 37",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Degf_Cirul_Wtr_Pmp_Rn",
+    "name": "Degasifier Circulating Water Pump VFD Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.2 · NO",
+    "plc_tag": "DI_Degf_Cirul_Wtr_Pmp_Rn",
+    "device": "X2.2",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 38",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Degf_Cirul_Wtr_Pmp_Tp",
+    "name": "Degasifier Circulating Water Pump VFD Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.3 · NO",
+    "plc_tag": "DI_Degf_Cirul_Wtr_Pmp_Tp",
+    "device": "X2.3",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Degasifier Circulating Water Pump VFD tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 39",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Turb_Oil_Cool_Cirul_Pmp_Rn",
+    "name": "Turbine PHE Oil Cooling Centrifugal Pump Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.4 · NO",
+    "plc_tag": "DI_Turb_Oil_Cool_Cirul_Pmp_Rn",
+    "device": "X2.4",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 40",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Turb_Oil_Cool_Cirul_Pmp_Tp",
+    "name": "Turbine PHE Oil Cooling Centrifugal Pump Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.5 · NC",
+    "plc_tag": "DI_Turb_Oil_Cool_Cirul_Pmp_Tp",
+    "device": "X2.5",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Turbine PHE Oil Cooling Centrifugal Pump tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 41",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Turb_Oil_Cool_Twr_Fan_Rn",
+    "name": "Turbine PHE Oil Cooling Tower Fan Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.6 · NO",
+    "plc_tag": "DI_Turb_Oil_Cool_Twr_Fan_Rn",
+    "device": "X2.6",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 42",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Trub_Oil_Cool_Twr_Fan_Tp",
+    "name": "Turbine PHE Oil Cooling Tower Fan Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.7 · NC",
+    "plc_tag": "DI_Trub_Oil_Cool_Twr_Fan_Tp",
+    "device": "X2.7",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Turbine PHE Oil Cooling Tower Fan tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 43",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Blr_Cool_Wtr_Pmp_Rn",
+    "name": "Boiler Cooling Water Pump Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.8 · NO",
+    "plc_tag": "DI_Blr_Cool_Wtr_Pmp_Rn",
+    "device": "X2.8",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 44",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Blr_Cool_Wtr_Pmp_Tp",
+    "name": "Boiler Cooling Water Pump Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.9 · NC",
+    "plc_tag": "DI_Blr_Cool_Wtr_Pmp_Tp",
+    "device": "X2.9",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Boiler Cooling Water Pump tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 45",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Acid_Dosing_Pump_Run_Feedback",
+    "name": "Acid Dosing Pump Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.10 · NO",
+    "plc_tag": "",
+    "device": "X2.10",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 46",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Acid_Dosing_Pump_Trip",
+    "name": "Acid Dosing Pump Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.11 · NC",
+    "plc_tag": "",
+    "device": "X2.11",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Acid Dosing Pump tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 47",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Base_Dosing_Pmp_Rn",
+    "name": "Base Dosing Pump Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.12 · NO",
+    "plc_tag": "DI_Base_Dosing_Pmp_Rn",
+    "device": "X2.12",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 48",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Base_Dosing_Pmp_Tp",
+    "name": "Base Dosing Pump Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.13 · NC",
+    "plc_tag": "DI_Base_Dosing_Pmp_Tp",
+    "device": "X2.13",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Base Dosing Pump tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 49",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Make_Up_Wtr_Pmp_Mn_Rn",
+    "name": "Make Up Water Pump (Main) Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.14 · NO",
+    "plc_tag": "DI_Make_Up_Wtr_Pmp_Mn_Rn",
+    "device": "X2.14",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 50",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Make_Up_Wtr_Pmp_Mn_Tp",
+    "name": "Make Up Water Pump (Main) Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X2.15 · NC",
+    "plc_tag": "DI_Make_Up_Wtr_Pmp_Mn_Tp",
+    "device": "X2.15",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Make Up Water Pump (Main) tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 51",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Make_Up_Wtr_Pmp_Stby_Rn",
+    "name": "Make Up Water Pump (Standby) Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X3.0 · NO",
+    "plc_tag": "DI_Make_Up_Wtr_Pmp_Stby_Rn",
+    "device": "X3.0",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 52",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Make_Up_Wtr_Pmp_Stby_Tp",
+    "name": "Make Up Water Pump (Standby) Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X3.1 · NC",
+    "plc_tag": "DI_Make_Up_Wtr_Pmp_Stby_Tp",
+    "device": "X3.1",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Make Up Water Pump (Standby) tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 53",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Prog_Cavity_Pmp_Rn",
+    "name": "Progressive Cavity Pump Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X3.2 · NO",
+    "plc_tag": "DI_Prog_Cavity_Pmp_Rn",
+    "device": "X3.2",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 54",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Prog_Cavity_Pmp_Tp",
+    "name": "Progressive Cavity Pump Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X3.3 · NC",
+    "plc_tag": "DI_Prog_Cavity_Pmp_Tp",
+    "device": "X3.3",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Progressive Cavity Pump tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 55",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Agita_Prop_Mix_For_Slud_Tnk_Rn",
+    "name": "Agitator Propeller Mixer for Sludge Tank Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X3.4 · NO",
+    "plc_tag": "DI_Agita_Prop_Mix_For_Slud_Tnk_Rn",
+    "device": "X3.4",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 56",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Agita_Prop_Mix_For_Slud_Tnk_Tp",
+    "name": "Agitator Propeller Mixer for Sludge Tank Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X3.5 · NC",
+    "plc_tag": "DI_Agita_Prop_Mix_For_Slud_Tnk_Tp",
+    "device": "X3.5",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Agitator Propeller Mixer for Sludge Tank tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 57",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Spare_Pump_1_DOL_Starter_Run_Feedback",
+    "name": "Spare Pump-1 - DOL Starter Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X3.6 · NO",
+    "plc_tag": "",
+    "device": "X3.6",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 58",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_Pump_1_DOL_Starter_Trip",
+    "name": "Spare Pump-1 - DOL Starter Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X3.7 · NC",
+    "plc_tag": "",
+    "device": "X3.7",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Spare Pump-1 - DOL Starter tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 59",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Spare_Pump_2_DOL_Starter_Run_Feedback",
+    "name": "Spare Pump-2- DOL Starter Run Feedback",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X3.8 · NO",
+    "plc_tag": "",
+    "device": "X3.8",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Stopped",
+      "true": "Running"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 60",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_Pump_2_DOL_Starter_Trip",
+    "name": "Spare Pump-2- DOL Starter Trip",
+    "group": "Motor feedback",
+    "area": "Panel",
+    "description": "X3.9 · NC",
+    "plc_tag": "",
+    "device": "X3.9",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "Healthy",
+      "true": "TRIP"
+    },
+    "alarm": {
+      "enabled": true,
+      "on": true,
+      "priority": "red",
+      "message": "Spare Pump-2- DOL Starter tripped",
+      "delay_s": 1
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 61",
+    "notes": "Contact type (client R1): NC. NC trip contact: input ON = healthy, so the value is inverted (TRUE = tripped). | 2026-10-19: set to NO type (no inversion) on Medge request - input 1 = active/pressed/trip."
+  },
+  {
+    "id": "DI_Magnetic_Float_Sensor_Hot_Water_Tank_LL",
+    "name": "Magnetic Float Sensor - Hot Water Tank - LL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X3.10 · NC",
+    "plc_tag": "",
+    "device": "X3.10",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 62",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Magnetic_Float_Sensor_Hot_Water_Tank_HL",
+    "name": "Magnetic Float Sensor - Hot Water Tank - HL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X3.11 · NC",
+    "plc_tag": "",
+    "device": "X3.11",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 63",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Magnetic_Float_Sensor_Raw_Water_Tank_LL",
+    "name": "Magnetic Float Sensor - Raw Water Tank - LL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X3.12 · NC",
+    "plc_tag": "",
+    "device": "X3.12",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 64",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Magnetic_Float_Sensor_Raw_Water_Tank_HL",
+    "name": "Magnetic Float Sensor - Raw Water Tank - HL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X3.13 · NC",
+    "plc_tag": "",
+    "device": "X3.13",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 65",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Float_Sensor_Cooling_Tower_1_LL",
+    "name": "Float Sensor - Cooling Tower 1 - LL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X3.14 · NC",
+    "plc_tag": "",
+    "device": "X3.14",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 66",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Float_Sensor_Cooling_Tower_1_HL",
+    "name": "Float Sensor - Cooling Tower 1 - HL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X3.15 · NC",
+    "plc_tag": "",
+    "device": "X3.15",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 67",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Float_Sensor_Cooling_Tower_2_LL",
+    "name": "Float Sensor - Cooling Tower 2 - LL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X4.0 · NC",
+    "plc_tag": "",
+    "device": "X4.0",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 68",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Float_Sensor_Cooling_Tower_2_HL",
+    "name": "Float Sensor - Cooling Tower 2 - HL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X4.1 · NC",
+    "plc_tag": "",
+    "device": "X4.1",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 69",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Magnetic_Float_Sensor_De_Gasifier_HH",
+    "name": "Magnetic Float Sensor - De-Gasifier - HH",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X4.2 · NC",
+    "plc_tag": "",
+    "device": "X4.2",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 70",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Magnetic_Float_Sensor_De_Gasifier_H",
+    "name": "Magnetic Float Sensor - De-Gasifier - H",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X4.3 · NC",
+    "plc_tag": "",
+    "device": "X4.3",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 71",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Magnetic_Float_Sensor_De_Gasifier_L",
+    "name": "Magnetic Float Sensor - De-Gasifier - L",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X4.4 · NC",
+    "plc_tag": "",
+    "device": "X4.4",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 72",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Magnetic_Float_Sensor_De_Gasifier_LL",
+    "name": "Magnetic Float Sensor - De-Gasifier - LL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X4.5 · NC",
+    "plc_tag": "",
+    "device": "X4.5",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 73",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Magnetic_Float_Sensor_Gravity_Tank_LL",
+    "name": "Magnetic Float Sensor - Gravity Tank- LL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X4.6 · NC",
+    "plc_tag": "",
+    "device": "X4.6",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 74",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Magnetic_Float_Sensor_Gravity_Tank_HL",
+    "name": "Magnetic Float Sensor - Gravity Tank- HL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X4.7 · NC",
+    "plc_tag": "",
+    "device": "X4.7",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 75",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Float_Sensor_Raw_Water_Tank_1_LL",
+    "name": "Float Sensor - Raw Water Tank 1 - LL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X4.8 · NC",
+    "plc_tag": "",
+    "device": "X4.8",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 76",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Float_Sensor_Raw_Water_Tank_1_HL",
+    "name": "Float Sensor - Raw Water Tank 1 - HL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X4.9 · NC",
+    "plc_tag": "",
+    "device": "X4.9",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 77",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Float_Sensor_Pure_Water_Tank_2_LL",
+    "name": "Float Sensor - Pure Water Tank 2 - LL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X4.10 · NC",
+    "plc_tag": "",
+    "device": "X4.10",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 78",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Float_Sensor_Pure_Water_Tank_2_HL",
+    "name": "Float Sensor - Pure Water Tank 2 - HL",
+    "group": "Level switches",
+    "area": "Panel",
+    "description": "X4.11 · NC",
+    "plc_tag": "",
+    "device": "X4.11",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 79",
+    "notes": "Contact type (client R1): NC. Float switch logic (NC) depends on mounting - check which state means 'level reached'."
+  },
+  {
+    "id": "DI_Pressure_Switch_for_Pneumatic_Air_Line",
+    "name": "Pressure Switch for Pneumatic Air Line",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X4.12 · PNP/3 WIRE",
+    "plc_tag": "",
+    "device": "X4.12",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 80",
+    "notes": "Contact type (client R1): PNP/3 WIRE."
+  },
+  {
+    "id": "DI_Flow_Switch_for_Ground_Water_Pump_to_Raw_Water_Storage_T",
+    "name": "Flow Switch for Ground Water Pump to Raw Water Storage Tank",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X4.13 · NC",
+    "plc_tag": "",
+    "device": "X4.13",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 81",
+    "notes": "Contact type (client R1): NC."
+  },
+  {
+    "id": "DI_Potential_Free_DI_1_From_Boiler_Panel",
+    "name": "Potential Free DI 1 From Boiler Panel",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X4.14 · NC",
+    "plc_tag": "",
+    "device": "X4.14",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 82",
+    "notes": "Contact type (client R1): NC."
+  },
+  {
+    "id": "DI_Potential_Free_DI_2_From_Boiler_Panel",
+    "name": "Potential Free DI 2 From Boiler Panel",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X4.15 · NC",
+    "plc_tag": "",
+    "device": "X4.15",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 83",
+    "notes": "Contact type (client R1): NC."
+  },
+  {
+    "id": "DI_Potential_Free_DI_1_From_Dryer_Panel",
+    "name": "Potential Free DI 1 From Dryer Panel",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X5.0 · NO",
+    "plc_tag": "",
+    "device": "X5.0",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 84",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Potential_Free_DI_2_From_Dryer_Panel",
+    "name": "Potential Free DI 2 From Dryer Panel",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X5.1 · NO",
+    "plc_tag": "",
+    "device": "X5.1",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 85",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Potential_Free_DI_1_From_Turbine_Panel",
+    "name": "Potential Free DI 1 From Turbine Panel",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X5.2 · NO",
+    "plc_tag": "",
+    "device": "X5.2",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 86",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Potential_Free_DI_2_From_Turbine_Panel",
+    "name": "Potential Free DI 2 From Turbine Panel",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X5.3 · NO",
+    "plc_tag": "",
+    "device": "X5.3",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 87",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Potential_Free_DI_1_From_Gasifier_Panel",
+    "name": "Potential Free DI 1 From Gasifier Panel",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X5.4 · NO",
+    "plc_tag": "",
+    "device": "X5.4",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 88",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Potential_Free_DI_2_From_Gasifier_Panel",
+    "name": "Potential Free DI 2 From Gasifier Panel",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X5.5 · NO",
+    "plc_tag": "",
+    "device": "X5.5",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 89",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Potential_Free_DI_1_From_Volute_Press_Panel",
+    "name": "Potential Free DI 1 From Volute Press Panel",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X5.6 · NO",
+    "plc_tag": "",
+    "device": "X5.6",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 90",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Potential_Free_DI_2_From_Volute_Press_Panel",
+    "name": "Potential Free DI 2 From Volute Press Panel",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X5.7 · NO",
+    "plc_tag": "",
+    "device": "X5.7",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 91",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Potential_Free_DI_1_From_WTP_Panel",
+    "name": "Potential Free DI 1 From WTP Panel",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X5.8 · NO",
+    "plc_tag": "",
+    "device": "X5.8",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 92",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Potential_Free_DI_2_From_WTP_Panel",
+    "name": "Potential Free DI 2 From WTP Panel",
+    "group": "Interlocks",
+    "area": "Panel",
+    "description": "X5.9 · NO",
+    "plc_tag": "",
+    "device": "X5.9",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 93",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Submersible_Pump_Panel_Local_remote_Switch_in_Local",
+    "name": "Submersible Pump Panel Local/remote Switch in Local",
+    "group": "Panel controls",
+    "area": "Panel",
+    "description": "X5.10 · NO",
+    "plc_tag": "",
+    "device": "X5.10",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 94",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Submersible_Pump_Panel_Local_remote_Switch_in_Remote",
+    "name": "Submersible Pump Panel Local/remote Switch in Remote",
+    "group": "Panel controls",
+    "area": "Panel",
+    "description": "X5.11 · NC",
+    "plc_tag": "",
+    "device": "X5.11",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 95",
+    "notes": "Contact type (client R1): NC."
+  },
+  {
+    "id": "DI_Sludge_Feed_Valve_On_Off_Valve_Open",
+    "name": "Sludge Feed Valve On-Off Valve Open",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X5.12 · NC",
+    "plc_tag": "",
+    "device": "X5.12",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 96",
+    "notes": "Contact type (client R1): NC."
+  },
+  {
+    "id": "DI_Sludge_Feed_Valve_On_Off_Valve_Close",
+    "name": "Sludge Feed Valve On-Off Valve Close",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X5.13 · NC",
+    "plc_tag": "",
+    "device": "X5.13",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 97",
+    "notes": "Contact type (client R1): NC."
+  },
+  {
+    "id": "DI_LP_Steam_On_Off_Valve_Open",
+    "name": "LP Steam On-Off Valve Open",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X5.14 · NO",
+    "plc_tag": "",
+    "device": "X5.14",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 98",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_LP_Steam_On_Off_Valve_Close",
+    "name": "LP Steam On-Off Valve Close",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X5.15 · NO",
+    "plc_tag": "",
+    "device": "X5.15",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 99",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Process_Water_On_Off_Valve_Open",
+    "name": "Process Water On-Off Valve Open",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X6.0 · NO",
+    "plc_tag": "",
+    "device": "X6.0",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 100",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Process_Water_On_Off_Valve_Close",
+    "name": "Process Water On-Off Valve Close",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X6.1 · NO",
+    "plc_tag": "",
+    "device": "X6.1",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 101",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_Valve_01_Open",
+    "name": "Spare Valve- 01 Open",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X6.2 · NO",
+    "plc_tag": "",
+    "device": "X6.2",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 102",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_Valve_01_Close",
+    "name": "Spare Valve- 01 Close",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X6.3 · NO",
+    "plc_tag": "",
+    "device": "X6.3",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 103",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_Valve_02_Open",
+    "name": "Spare Valve- 02 Open",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X6.4 · NO",
+    "plc_tag": "",
+    "device": "X6.4",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 104",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_Valve_02_Close",
+    "name": "Spare Valve- 02 Close",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X6.5 · NO",
+    "plc_tag": "",
+    "device": "X6.5",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 105",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_Valve_03_Open",
+    "name": "Spare Valve- 03 Open",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X6.6 · NO",
+    "plc_tag": "",
+    "device": "X6.6",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 106",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_Valve_03_Close",
+    "name": "Spare Valve- 03 Close",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X6.7 · NO",
+    "plc_tag": "",
+    "device": "X6.7",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 107",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_Valve_04_Open",
+    "name": "Spare Valve- 04 Open",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X6.8 · NO",
+    "plc_tag": "",
+    "device": "X6.8",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 108",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_Valve_04_Close",
+    "name": "Spare Valve- 04 Close",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X6.9 · NO",
+    "plc_tag": "",
+    "device": "X6.9",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 109",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_Valve_05_Open",
+    "name": "Spare Valve- 05 Open",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X6.10 · NO",
+    "plc_tag": "",
+    "device": "X6.10",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 110",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_Valve_05_Close",
+    "name": "Spare Valve- 05 Close",
+    "group": "Valve feedback",
+    "area": "Panel",
+    "description": "X6.11 · NO",
+    "plc_tag": "",
+    "device": "X6.11",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "-",
+      "true": "Yes"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 111",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_01",
+    "name": "Spare -01",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "X6.12 · NO",
+    "plc_tag": "",
+    "device": "X6.12",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 112",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_02",
+    "name": "Spare -02",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "X6.13 · NO",
+    "plc_tag": "",
+    "device": "X6.13",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 113",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_03",
+    "name": "Spare -03",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "X6.14 · NO",
+    "plc_tag": "",
+    "device": "X6.14",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 114",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DI_Spare_04",
+    "name": "Spare -04",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "X6.15 · NO",
+    "plc_tag": "",
+    "device": "X6.15",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL INPUT row 115",
+    "notes": "Contact type (client R1): NO."
+  },
+  {
+    "id": "DO_Under_Ground_Sludge_Pump_to_Volute_Press_Main",
+    "name": "Under Ground Sludge Pump to Volute Press (Main) (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.0 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y0.0",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 4",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Under_Ground_Sludge_Pump_to_Volute_Press_Standby",
+    "name": "Under Ground Sludge Pump to Volute Press (Standby) (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.1 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y0.1",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 5",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Dryer_Hot_Water_Inlet_Pump_Run",
+    "name": "Dryer Hot Water Inlet Pump Run (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.2 · AUX RELAY",
+    "plc_tag": "",
+    "device": "Y0.2",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 6",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Dryer_Hot_Water_Inlet_Pump_Auto",
+    "name": "Dryer Hot Water Inlet Pump Auto (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.3 · AUX RELAY",
+    "plc_tag": "",
+    "device": "Y0.3",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 7",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Cooling_Tower_Water_Pump_for_Surface_Condenser_of_Dryer",
+    "name": "Cooling Tower Water Pump for Surface Condenser of Dryer (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.4 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y0.4",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 8",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Cooling_Tower_Fan_for_Surface_Condenser_of_Dryer_and_PHE",
+    "name": "Cooling Tower Fan for Surface Condenser of Dryer and PHE 2 (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.5 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y0.5",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 9",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Centrifugal_Pump_Surface_Conensate_to_Degas",
+    "name": "Centrifugal Pump Surface Conensate to Degas (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.6 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y0.6",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 10",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Filtrate_Tank_Pump_Main",
+    "name": "Filtrate Tank Pump (Main) (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.7 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y0.7",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 11",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Filtrate_Tank_Pump_Standby",
+    "name": "Filtrate Tank Pump (Standby) (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.8 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y0.8",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 12",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Under_Ground_Submersible_Pump_Main",
+    "name": "Under Ground Submersible Pump (Main) (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.9 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y0.9",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 13",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Under_Ground_Submersible_Pump_Standby",
+    "name": "Under Ground Submersible Pump (Standby) (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.10 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y0.10",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 14",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_PHE_Cooling_Tower_Water_Circulation_Pump",
+    "name": "PHE Cooling Tower (Water Circulation) Pump (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.11 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y0.11",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 15",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Gravity_Tank_to_WTP_PHE_Water_Pump",
+    "name": "Gravity Tank to WTP - PHE Water Pump (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.12 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y0.12",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 16",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Degasifier_Exhaust_Blower",
+    "name": "Degasifier Exhaust Blower (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.13 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y0.13",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 17",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Degasifier_Exhaust_Blower_Standby",
+    "name": "Degasifier Exhaust Blower Standby (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.14 · CONTACTOR",
+    "plc_tag": "",
+    "device": "Y0.14",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 18",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Degasifier_Circulating_Water_Pump_Run",
+    "name": "Degasifier Circulating Water Pump Run (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y0.15 · AUX RELAY",
+    "plc_tag": "",
+    "device": "Y0.15",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 19",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Degasifier_Circulating_Water_Pump_Auto",
+    "name": "Degasifier Circulating Water Pump Auto (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.0 · AUX RELAY",
+    "plc_tag": "",
+    "device": "Y1.0",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 20",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Turbine_Oil_Cooling_Centrifugal_Pump",
+    "name": "Turbine Oil Cooling Centrifugal Pump (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.1 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y1.1",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 21",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Turbine_Oil_Cooling_Tower_Fan",
+    "name": "Turbine Oil Cooling Tower Fan (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.2 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y1.2",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 22",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Boiler_Cooling_Water_Pump",
+    "name": "Boiler Cooling Water Pump (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.3 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y1.3",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 23",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Acid_Dosing_Pump",
+    "name": "Acid Dosing Pump (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.4 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y1.4",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 24",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Base_Dosing_Pump",
+    "name": "Base Dosing Pump (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.5 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y1.5",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 25",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Make_Up_Water_Pump_Main",
+    "name": "Make Up Water Pump (Main) (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.6 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y1.6",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 26",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Make_Up_Water_Pump_Standby",
+    "name": "Make Up Water Pump (Standby) (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.7 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y1.7",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 27",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Progressive_Cavity_Pump",
+    "name": "Progressive Cavity Pump (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.8 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y1.8",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 28",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Agitator_Propeller_Mixer_for_Sludge_Tank",
+    "name": "Agitator Propeller Mixer for Sludge Tank (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.9 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y1.9",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 29",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_Pump_1_DOL_Starter",
+    "name": "Spare Pump-1 - DOL Starter (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.10 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y2.0",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 30",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_Pump_2_DOL_Starter",
+    "name": "Spare Pump-2- DOL Starter (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.11 · MPCB + CONTACTOR",
+    "plc_tag": "",
+    "device": "Y2.1",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 31",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Sludge_Feed_Valve_Open",
+    "name": "Sludge Feed Valve Open (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.12 · AUX RELAY",
+    "plc_tag": "",
+    "device": "Y1.10",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 32",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Sludge_Feed_Valve_Close",
+    "name": "Sludge Feed Valve Close (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.13 · AUX RELAY",
+    "plc_tag": "",
+    "device": "Y1.11",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 33",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_LP_Steam_Open",
+    "name": "LP Steam Open (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.14 · AUX RELAY",
+    "plc_tag": "",
+    "device": "Y1.12",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 34",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_LP_Steam_Close",
+    "name": "LP Steam Close (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y1.15 · AUX RELAY",
+    "plc_tag": "",
+    "device": "Y1.13",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 35",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Process_Water_Open",
+    "name": "Process Water Open (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.0 · AUX RELAY",
+    "plc_tag": "",
+    "device": "Y1.14",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 36",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Process_Water_Close",
+    "name": "Process Water Close (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.1 · AUX RELAY",
+    "plc_tag": "",
+    "device": "Y1.15",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 37",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_Valve_1_Open",
+    "name": "Spare Valve - 1 Open (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.2 · 24VDC AUX RELAY",
+    "plc_tag": "",
+    "device": "Y2.0",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 38",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_Valve_1_Close",
+    "name": "Spare Valve - 1 Close (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.3 · 24VDC AUX RELAY",
+    "plc_tag": "",
+    "device": "Y2.1",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 39",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_Valve_2_Open",
+    "name": "Spare Valve - 2 Open (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.4 · 24VDC AUX RELAY",
+    "plc_tag": "",
+    "device": "Y2.2",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 40",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_Valve_2_Close",
+    "name": "Spare Valve - 2 Close (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.5 · 24VDC AUX RELAY",
+    "plc_tag": "",
+    "device": "Y2.3",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 41",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_Valve_3_Open",
+    "name": "Spare Valve - 3 Open (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.6 · 24VDC AUX RELAY",
+    "plc_tag": "",
+    "device": "Y2.4",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 42",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_Valve_3_Close",
+    "name": "Spare Valve - 3 Close (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.7 · 24VDC AUX RELAY",
+    "plc_tag": "",
+    "device": "Y2.5",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 43",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_Valve_4_Open",
+    "name": "Spare Valve - 4 Open (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.8 · 24VDC AUX RELAY",
+    "plc_tag": "",
+    "device": "Y2.6",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 44",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_Valve_4_Close",
+    "name": "Spare Valve - 4 Close (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.9 · 24VDC AUX RELAY",
+    "plc_tag": "",
+    "device": "Y2.7",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 45",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_Valve_5_Open",
+    "name": "Spare Valve - 5 Open (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.10 · 24VDC AUX RELAY",
+    "plc_tag": "",
+    "device": "Y2.8",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 46",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_Valve_5_Close",
+    "name": "Spare Valve - 5 Close (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.11 · 24VDC AUX RELAY",
+    "plc_tag": "",
+    "device": "Y2.9",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 47",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Air_Compressure_Dryer",
+    "name": "Air Compressure Dryer (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.12 · 24VDC AUX RELAY",
+    "plc_tag": "",
+    "device": "Y2.10",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 48",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Auto_Drain_Valve",
+    "name": "Auto Drain Valve (cmd)",
+    "group": "Outputs",
+    "area": "Panel",
+    "description": "Y2.13 · 24VDC AUX RELAY",
+    "plc_tag": "",
+    "device": "Y2.11",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 49",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Emergency_On_Lamp",
+    "name": "Emergency On Lamp (cmd)",
+    "group": "Panel indication",
+    "area": "Panel",
+    "description": "Y2.14 · 24VDC LAMP",
+    "plc_tag": "",
+    "device": "Y2.12",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 50",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Tower_Light_Red",
+    "name": "Tower Light Red (cmd)",
+    "group": "Panel indication",
+    "area": "Panel",
+    "description": "Y2.15 · 24VDC TOWER LIGHT",
+    "plc_tag": "",
+    "device": "Y2.13",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 51",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Tower_Light_Yellow",
+    "name": "Tower Light Yellow (cmd)",
+    "group": "Panel indication",
+    "area": "Panel",
+    "description": "Y3.0 · 24VDC TOWER LIGHT",
+    "plc_tag": "",
+    "device": "Y2.14",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 52",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Tower_Light_Green",
+    "name": "Tower Light Green (cmd)",
+    "group": "Panel indication",
+    "area": "Panel",
+    "description": "Y3.1 · 24VDC TOWER LIGHT",
+    "plc_tag": "",
+    "device": "Y2.15",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 53",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Hooter_With_Lamp",
+    "name": "Hooter With Lamp (cmd)",
+    "group": "Panel indication",
+    "area": "Panel",
+    "description": "Y3.2 · 24VDC LAMP",
+    "plc_tag": "",
+    "device": "Y3.1",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": false,
+    "log": true,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 54",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_01",
+    "name": "Spare - 01 (cmd)",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "Y3.3 · POTENTIAL FREE WIRING",
+    "plc_tag": "",
+    "device": "Y3.2",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 55",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_02",
+    "name": "Spare - 02 (cmd)",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "Y3.4 · POTENTIAL FREE WIRING",
+    "plc_tag": "",
+    "device": "Y3.3",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 56",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_03",
+    "name": "Spare - 03 (cmd)",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "Y3.5 · POTENTIAL FREE WIRING",
+    "plc_tag": "",
+    "device": "Y3.4",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 57",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_04",
+    "name": "Spare - 04 (cmd)",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "Y3.6 · POTENTIAL FREE WIRING",
+    "plc_tag": "",
+    "device": "Y3.5",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 58",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_05",
+    "name": "Spare - 05 (cmd)",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "Y3.7 · POTENTIAL FREE WIRING",
+    "plc_tag": "",
+    "device": "Y3.6",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 59",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_06",
+    "name": "Spare - 06 (cmd)",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "Y3.8 · POTENTIAL FREE WIRING",
+    "plc_tag": "",
+    "device": "Y3.7",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 60",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_07",
+    "name": "Spare - 07 (cmd)",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "Y3.9 · POTENTIAL FREE WIRING",
+    "plc_tag": "",
+    "device": "Y3.8",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 61",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_08",
+    "name": "Spare - 08 (cmd)",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "Y3.10 · POTENTIAL FREE WIRING",
+    "plc_tag": "",
+    "device": "Y3.9",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 62",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_09",
+    "name": "Spare - 09 (cmd)",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "Y3.11 · POTENTIAL FREE WIRING",
+    "plc_tag": "",
+    "device": "Y3.10",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 63",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_10",
+    "name": "Spare - 10 (cmd)",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "Y3.12 · POTENTIAL FREE WIRING",
+    "plc_tag": "",
+    "device": "Y3.11",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 64",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_11",
+    "name": "Spare - 11 (cmd)",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "Y3.13 · POTENTIAL FREE WIRING",
+    "plc_tag": "",
+    "device": "Y3.12",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 65",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_12",
+    "name": "Spare - 12 (cmd)",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "Y3.14 · POTENTIAL FREE WIRING",
+    "plc_tag": "",
+    "device": "Y3.13",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 66",
+    "notes": "PLC output coil (read only)."
+  },
+  {
+    "id": "DO_Spare_13",
+    "name": "Spare - 13 (cmd)",
+    "group": "Spare",
+    "area": "Panel",
+    "description": "Y3.15 · POTENTIAL FREE WIRING",
+    "plc_tag": "",
+    "device": "Y3.14",
+    "data_type": "BOOL",
+    "word_order": "default",
+    "invert": false,
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "",
+    "decimals": 0,
+    "poll_ms": 1000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "alarm": {
+      "enabled": false
+    },
+    "mapping_verified": false,
+    "source_ref": "Client R1 IO LIST 9-2-26 / DIGITAL OUTPUT row 67",
+    "notes": "PLC output coil (read only)."
+  }
+]
