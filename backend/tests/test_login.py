@@ -61,6 +61,26 @@ class TestLogin(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return {"code": e.code}
 
+    def post(self, op, path, body):
+        req = urllib.request.Request(f"http://127.0.0.1:{PORT}{path}", data=json.dumps(body).encode(),
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            return 200, json.loads(op.open(req).read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read() or b"{}")
+
+    def test_client_scaling_and_levels(self):
+        cli = self.browser()
+        self.login(cli, "ankur", "ankur123")
+        body = {"id": "LT_01", "source": "plc", "range_min": 0, "range_max": 3600, "decimals": 1,
+                "levels": {"hh": 3200, "h": 2400, "l": 900, "ll": 600}}
+        self.assertEqual(self.post(cli, "/api/client/scaling", body)[0], 200)
+        self.assertEqual(self.app.store.tag_map()["LT_01"]["levels"], {"hh": 3200.0, "h": 2400.0, "l": 900.0, "ll": 600.0})
+        bad = dict(body, levels={"hh": 900, "h": 2400, "l": 900, "ll": 600})          # out of order
+        self.assertEqual(self.post(cli, "/api/client/scaling", bad)[0], 400)
+        self.assertEqual(self.post(cli, "/api/client/scaling", dict(body, id="PT_01"))[0], 400)   # levels: level tags only
+        self.assertEqual(self.post(self.browser(), "/api/client/scaling", body)[0], 401)          # login required
+
     def test_anonymous_goes_to_login(self):
         op = self.browser()
         self.assertEqual(self.get(op, "/")[:2], (302, "/login"))            # straight to login (no welcome page)

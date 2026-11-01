@@ -35,7 +35,8 @@
   $("logoutBtn").onclick = MD.logout;
 
   // ---------- routing ----------
-  const TITLES = { overview: "Plant dashboard", equipment: "Equipment", trends: "Trends", alarms: "Alarms" };   // Reports page removed on client request
+  const TITLES = { overview: "Plant dashboard", mimic: "Process mimic", instruments: "Instruments & scaling",
+    equipment: "Equipment", trends: "Trends", datalog: "Data log", alarms: "Alarms" };   // Reports page removed on client request; Data log = HMI data log screens
   function route() {
     view = (location.hash || "#overview").slice(1);
     if (!TITLES[view]) view = "overview";
@@ -45,6 +46,7 @@
     document.querySelectorAll("[data-section]").forEach((s) => s.classList.toggle("hidden", s.dataset.section !== view));
     document.querySelectorAll("[data-view]").forEach((a) => a.classList.toggle("active", a.dataset.view === view));
     render();
+    if (window.Plant) Plant.show(view);
     if (view === "trends") renderTrends(true, true);
     if (view === "alarms") loadHistory();
     if (view === "overview") loadOvTrend(true);
@@ -82,7 +84,8 @@
     if (view === "overview") renderOverview();
     if (view === "equipment") renderEquipment();
     if (view === "alarms") renderActive($("activeTable"));
-    renderAlarmPopup();
+    if (window.Plant) Plant.render(live, view);      // key points, mimic, instruments (js/plant.js)
+    // alarm pop-up removed on client request: alarms are shown on the Alarms page (bell badge shows the count)
   }
 
   // ---------- alarm pop-up: opens for unacknowledged alarms, closes on Acknowledge ----------
@@ -333,42 +336,8 @@
     const yellow = live.alarms.length - red;
     const tag = srcTag();
 
-    renderHero(eq, motors, running, tripped, stopped, tag);
-
-    const ph = live.tags.find((t) => t.kpi && t.unit === "pH");
-    const pr = live.tags.find((t) => t.kpi && t.group === "Pressure");
-    renderMini(red, yellow, tripped, ph, pr);
-
-    // equipment availability card - motors only (valves are not counted)
-    //   available = running + stopped-and-ready; not available = tripped / fault / no feedback / no data
-    const mc = (sts) => motors.filter((e) => sts.includes(e.status)).length;
-    const aRun = mc(["RUNNING", "STARTING"]), aReady = mc(["STOPPED"]), aTrip = mc(["TRIP", "FAULT"]), aWarn = mc(["NO FEEDBACK"]);
-    const aNone = motors.length - aRun - aReady - aTrip - aWarn;
-    const avail = aRun + aReady;
-    const av = motors.length ? Math.round((avail / motors.length) * 100) : 0;
-    const segs = [["Running", aRun, "#77c000"], ["Ready", aReady, "#fdd079"], ["Tripped", aTrip, "#e5484d"]];
-    if (aWarn) segs.push(["No run feedback", aWarn, "#f5a524"]);
-    if (aNone) segs.push(["No data", aNone, "#c9c9c4"]);
-    const notAv = motors.length - avail;
-    $("availCard").innerHTML = `<div class="g-top"><span class="g-lbl" title="Share of motors that are running or ready to start">Equipment availability</span>
-        <span class="av-badge ${av === 100 ? "ok" : av >= 90 ? "warn" : "bad"}">${av === 100 ? "All available" : `${notAv} not available`}</span></div>
-      <div class="av-line"><b class="num">${avail}</b> of <b class="num">${motors.length}</b> motors are ready to run</div>
-      <div class="pie-row">${pieSVG(segs, motors.length, `${av}%`, "available")}
-      <dl class="pie-legend">${segs.map(([l, n, c]) => `<dt><i style="background:${c}"></i>${l}</dt><dd class="num" ${l.startsWith("Tripped") && n ? 'style="color:var(--crit-ink)"' : ""}>${n}</dd>`).join("")}
-      <dt class="sep">Last update</dt><dd class="num sep">${fmtTime(live.status.last_update)}</dd></dl></div>`;
-    $("availCard").title = `Availability = (running ${aRun} + ready ${aReady}) ÷ ${motors.length} motors = ${av}%. Tripped or faulted motors lower it. Valves are not counted.`;
-
-    // tank levels card (donut per tank, red tick = alarm set point)
-    const levels = live.tags.filter((t) => t.group === "Level");
-    $("levelCard").innerHTML = levels.length ? `<div class="g-top"><span class="g-lbl">Tank levels</span></div>` + levels.map((t) => {
-      const pct = pctOf(t, t.value), sp = pctOf(t, t.setpoint_value);
-      const high = pct != null && sp != null && pct >= sp;
-      return `<div class="pie-row lvl">${levelSVG(pct, sp, high)}
-        <div class="lvl-info"><div class="lvl-name">${esc(t.name.replace(/ Level$/, ""))}</div>
-        <dl><dt>Level</dt><dd class="num">${esc(fmtValue(t))} ${esc(t.unit)}</dd>
-        ${t.setpoint_value != null ? `<dt>Alarm set point</dt><dd class="num">${Number(t.setpoint_value).toFixed(t.decimals ?? 1)} ${esc(t.unit)}</dd>` : ""}
-        <dt>Capacity</dt><dd class="num">${t.eng_max ?? "-"} ${esc(t.unit)}</dd></dl></div></div>`;
-    }).join("") : '<div class="empty">No level tags</div>';
+    if ($("hero")) renderHero(eq, motors, running, tripped, stopped, tag);   // "Equipment running" card removed from the overview on request
+    // (availability, tank-level and pH / pressure mini cards removed: the key-points band above shows them once)
 
     // trend segment
     const groups = PROCESS_GROUPS.filter((g) => live.tags.some((t) => t.group === g && t.trend));
@@ -385,15 +354,7 @@
     $("pvCount").textContent = `${shown.length}`;
     renderPvTiles(shown, pv);
 
-    // alarms
-    $("alarmCount").textContent = live.alarms.length ? `${live.alarms.length}` : "";
-    $("alarmMini").innerHTML = live.alarms.length
-      ? `<div class="table-wrap"><table>${live.alarms.slice(0, 5).map((a) => `<tr class="${a.acked_at ? "" : "unacked"}"><td>${prio(a.priority)}<div style="font-weight:600">${esc(a.message)}</div>
-          <div class="muted" style="font-size:11.5px">${fmtTime(a.raised_at)} · ${dur(Date.now() / 1000 - a.raised_at)}${a.simulated ? ' · <span class="q SIMULATED">SIM</span>' : ""}</div></td></tr>`).join("")}</table></div>`
-      : `<div class="empty">No active alarms</div>`;
-
-    // run hours
-    renderRunHours(motors);
+    // (active-alarms card removed from the overview on request: alarms stay on the Alarms page and the pop-up)
 
     // equipment
     const counts = {};
@@ -667,9 +628,8 @@
         <div class="eqc-meta">${esc(e.area || "")}${spec ? " · " + esc(spec) : ""}${e.simulated ? ' · <span class="q SIMULATED">DEMO</span>' : ""}</div>
       </div>
       <div class="eqc-stats">
-        <div><span class="sl">In this state</span><b class="num since">-</b></div>
-        ${motor ? `<div><span>Run hours</span><b class="num rh">-</b></div><div><span>Starts</span><b class="num starts">-</b></div>`
-          : `<div><span>Position</span><b class="pos">-</b></div><div><span>Type</span><b>On-off</b></div>`}
+        ${motor ? `<div><span>Run hours</span><b class="num rh">-</b></div>` : `<div><span>Position</span><b class="pos">-</b></div>`}
+        <div><span>Mode (HMI)</span><b class="mode">-</b></div>
       </div>
       ${motor ? '<div class="eqc-bar" title="Run hours compared with the most-used motor"><i></i></div>' : ""}
     </div>`;
@@ -679,7 +639,7 @@
     return `<div class="eql" data-id="${esc(e.id)}" data-kind="${kind}"><span class="eqc-ic sm">${eqIcon(kind)}</span>
       <span class="eqc-tag">${esc(e.tag_no || "-")}</span><span class="eql-name" title="${esc(e.name)}">${esc(e.name)}</span>
       <span class="muted eql-area">${esc(e.area || "")}</span><span class="eqc-pill"><span class="dot"></span><b class="st"></b></span>
-      <b class="num since">-</b><b class="num rh">${e.type === "motor" ? "-" : ""}</b><b class="num starts">${e.type === "motor" ? "-" : ""}</b></div>`;
+      <b class="mode">-</b><b class="num rh">${e.type === "motor" ? "-" : ""}</b><b class="num starts">${e.type === "motor" ? "-" : ""}</b></div>`;
   }
   // run hours as h / m / s so a running pump visibly counts up every second
   function fmtRunHours(h) {
@@ -687,14 +647,19 @@
     const hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
     return hh ? `${hh.toLocaleString()} h ${String(mm).padStart(2, "0")} m` : `${mm} m ${String(ss).padStart(2, "0")} s`;
   }
-  const STATE_FOR = { RUNNING: "Running for", STOPPED: "Stopped for", TRIP: "Tripped for", OPEN: "Open for", CLOSED: "Closed for" };
+  // HMI soft selectors: Auto / Manual, and for main-standby pairs which pump is selected
+  function modeTxt(e) {
+    if (e.auto == null) return "-";
+    let s = e.auto ? "Auto" : "Manual";
+    if (e.pair && e.standby_selected != null) s += e.standby_selected ? " · Standby sel." : " · Main sel.";
+    return s;
+  }
   function fillEq(el, e, maxH) {
     const st = eqState(e);
     if (el.dataset.state !== st) el.dataset.state = st;
     const q = (s) => el.querySelector(s);
     q(".st").textContent = EQ_TXT[e.status] || e.status || "-";
-    q(".since").textContent = e.since ? dur(Date.now() / 1000 - e.since) : "-";
-    if (q(".sl")) q(".sl").textContent = STATE_FOR[e.status] || "In this state";
+    if (q(".mode")) { q(".mode").textContent = modeTxt(e); q(".mode").classList.toggle("man", e.auto === false); }
     if (e.type === "motor") {
       if (q(".rh")) {
         q(".rh").textContent = fmtRunHours(e.run_hours);
@@ -712,7 +677,7 @@
       box._sig = sig;
       if (!list.length) box.innerHTML = '<div class="empty">No equipment matches</div>';
       else if (view === "list") {
-        box.innerHTML = `<div class="eql eql-h"><span></span><span>Tag</span><span>Equipment</span><span>Area</span><span>Status</span><span>In state</span><span>Run hours</span><span>Starts</span></div>` +
+        box.innerHTML = `<div class="eql eql-h"><span></span><span>Tag</span><span>Equipment</span><span>Area</span><span>Status</span><span>Mode (HMI)</span><span>Run hours</span><span>Starts</span></div>` +
           list.map(eqRowHTML).join("");
       } else if (group) {
         const areas = [...new Set(list.map((e) => e.area || "Other"))];
@@ -979,7 +944,6 @@
       live.alarms.forEach((a) => { if (a.id === id) a.acked_at = now; });
       toast("Alarm acknowledged");
       renderActive($("activeTable"));
-      renderAlarmPopup();
       loadHistory();
     } catch (e) { toast(e.message, true); btn.disabled = false; }
   }
@@ -1196,6 +1160,7 @@
     if (e.key === "Enter" && e.target.classList && e.target.classList.contains("pv")) openTag(e.target.dataset.tag);
   });
 
+  MD.openTag = openTag;                               // used by js/plant.js
   loadMeta().catch(() => {});
   route();
   poll();

@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="css/app.css">
   <!-- v2: same layout as v1, re-skinned with the Ankur SCADA design (colours, frame, tiles, buttons) -->
   <link rel="stylesheet" href="css/ankur-theme.css">
+  <link rel="stylesheet" href="css/plant.css">
 </head>
 <body class="client ankur">
 <div class="shell">
@@ -16,8 +17,11 @@
     <a class="rail-logo" href="#overview" title="Ankur Scientific"><img src="img/ankur-mark.png" alt="Ankur Scientific"></a>
     <nav class="rail-nav" id="nav">
       <a href="#overview" data-view="overview" title="Dashboard" aria-label="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg></a>
+      <a href="#mimic" data-view="mimic" title="Mimic" aria-label="Mimic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="9" width="6" height="11" rx="1.5"/><rect x="16" y="4" width="6" height="16" rx="1.5"/><path d="M8 14h3v-4h5"/><circle cx="11.5" cy="17.5" r="2"/></svg></a>
+      <a href="#instruments" data-view="instruments" title="Instruments" aria-label="Instruments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17a8 8 0 1 1 16 0"/><path d="m12 13 3.5-4"/><path d="M8 21h8"/></svg></a>
       <a href="#equipment" data-view="equipment" title="Equipment" aria-label="Equipment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></a>
       <a href="#trends" data-view="trends" title="Trends" aria-label="Trends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg></a>
+      <a href="#datalog" data-view="datalog" title="Data log" aria-label="Data log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11M3 14.5h18"/></svg></a>
       <a href="#alarms" data-view="alarms" title="Alarms" aria-label="Alarms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span id="navAlarmCount" class="rail-badge hidden"></span></a>
     </nav>
     <div class="rail-foot">
@@ -37,11 +41,15 @@
       </div>
       <nav class="head-nav" id="segNav" role="tablist" aria-label="Pages">
         <a href="#overview" data-view="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>Overview</a>
+        <a href="#mimic" data-view="mimic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="9" width="6" height="11" rx="1.5"/><rect x="16" y="4" width="6" height="16" rx="1.5"/><path d="M8 14h3v-4h5"/><circle cx="11.5" cy="17.5" r="2"/></svg>Mimic</a>
+        <a href="#instruments" data-view="instruments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17a8 8 0 1 1 16 0"/><path d="m12 13 3.5-4"/><path d="M8 21h8"/></svg>Instruments</a>
         <a href="#equipment" data-view="equipment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Equipment</a>
         <a href="#trends" data-view="trends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg>Trends</a>
+        <a href="#datalog" data-view="datalog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11M3 14.5h18"/></svg>Data log</a>
         <a href="#alarms" data-view="alarms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>Alarms<span class="nav-badge hidden" id="segAlarmCount"></span></a>
       </nav>
       <div class="head-right">
+        <button class="help-btn" id="helpBtn" type="button" title="How to read this dashboard" aria-label="Help: how to read this dashboard">?</button>
         <div class="conn" id="connStrip"></div>
         <div class="brand-pair" title="Client: Ankur Scientific · Automation &amp; IoT: Medge Controls">
           <img class="b-client" src="img/ankur-logo.png" alt="Ankur Scientific">
@@ -55,15 +63,15 @@
 
     <!-- OVERVIEW -->
     <section data-section="overview">
-      <div class="ps-strip" aria-label="Panel and safety">
+      <!-- key points of the client's control philosophy (system, run hours, the six controlled loops, plant areas) -->
+      <div class="ps-strip ps-first" aria-label="Panel and safety">
         <div class="ps" id="panelStatus"></div>
         <span class="ps-chip" id="psChip" hidden></span>
       </div>
-      <div class="ov-grid">
-        <div class="ov-left">
-          <div class="hero" id="hero"></div>
-          <div class="mini-grid" id="miniStats"></div>
-        </div>
+      <div class="kp" id="keyPoints"></div>
+      <!-- one dashboard: key points above; equipment running + process trend; process values + alarms + equipment
+           (availability, tank-level, pH/pressure mini cards and the run-hours list were duplicates and are removed) -->
+      <div class="ov-grid ov-one ov-trend-only">
         <div class="card chart-card">
           <div class="card-head ov-th">
             <h2>Process trend <span class="muted" id="trendUnit"></span> <span class="tr-live sm" title="Updates automatically"><span class="dot"></span>Live</span></h2>
@@ -79,32 +87,15 @@
           <div class="chart" id="ovChart"></div>
           <div class="ov-foot" id="ovFoot"></div>
         </div>
-        <div class="ov-side">
-          <div class="card gauge-card" id="availCard"></div>
-          <div class="card gauge-card" id="levelCard"></div>
-        </div>
       </div>
 
-      <div class="ov-grid2">
+      <div class="ov-grid2 ov-full">
         <div class="card">
           <div class="card-head">
             <h2>Process values <span class="count" id="pvCount"></span></h2>
             <div class="seg sm" id="pvSeg"></div>
           </div>
           <div class="pv-list" id="pvList"></div>
-        </div>
-        <div class="stack">
-          <div class="card">
-            <div class="card-head"><h2>Active alarms <span class="count" id="alarmCount"></span></h2><a class="link" href="#alarms">View all</a></div>
-            <div id="alarmMini"></div>
-          </div>
-          <div class="card">
-            <div class="card-head"><h2>Run hours</h2>
-              <div class="seg sm" id="rhSeg"><button class="active" data-n="8">Top 8</button><button data-n="all">All</button></div></div>
-            <div class="rh-sum" id="rhSum"></div>
-            <div id="runBars" class="rh-list"></div>
-            <div class="rh-foot muted" id="rhNote"></div>
-          </div>
         </div>
       </div>
 
@@ -118,8 +109,48 @@
       </div>
     </section>
 
+    <!-- MIMIC -->
+    <section data-section="mimic" class="hidden">
+      <div class="card">
+        <div class="mm-tabs" id="mimicTabs" role="tablist" aria-label="Plant areas"></div>
+        <div class="mm-head"><h2 id="mimicTitle"></h2><span class="muted" id="mimicNote"></span></div>
+        <div class="mm-wrap" id="mimicHost"><div id="mimicSvg"></div><div class="mm-pop hidden" id="mimicPop"></div></div>
+        <div id="mimicLegend"></div>
+      </div>
+    </section>
+
+    <!-- INSTRUMENTS (range, scaling, 4-20 mA signal) -->
+    <section data-section="instruments" class="hidden">
+      <div class="card">
+        <div class="card-head"><h2>Instruments &amp; scaling</h2></div>
+        <p class="inst-note" id="instNote"></p>
+        <div class="inst-grid" id="instGrid"></div>
+      </div>
+    </section>
+
+    <!-- DATA LOG (HMI data log screens: temperature / pressure / others) -->
+    <section data-section="datalog" class="hidden">
+      <div class="card">
+        <div class="card-head dl-head">
+          <div class="seg sm" id="dlGroup" role="group" aria-label="Values"></div>
+          <div class="dl-tools">
+            <label>Period <select id="dlRange"><option value="1">Last 1 hour</option><option value="8">Last 8 hours</option>
+              <option value="24" selected>Last 24 hours</option><option value="168">Last 7 days</option></select></label>
+            <label>Every <select id="dlInt"><option value="60">1 min</option><option value="300">5 min</option>
+              <option value="900" selected>15 min</option><option value="3600">1 hour</option></select></label>
+            <a class="btn sm" id="dlXlsx" href="#" download>⭳ Excel</a>
+          </div>
+        </div>
+        <p class="inst-note" id="dlNote"></p>
+        <div class="table-wrap dl-wrap"><table class="dl-table" id="dlTable"></table></div>
+      </div>
+    </section>
+
     <!-- EQUIPMENT -->
     <section data-section="equipment" class="hidden">
+      <!-- HMI selector screens: Auto/Manual, Main/Standby and set values (view only) -->
+      <div class="card sel-card"><div class="card-head"><h2>Selector switches &amp; set values <span class="muted small">as set on the HMI</span></h2></div>
+        <div class="sel-grid" id="selGrid"></div></div>
       <div class="eq-kpis" id="eqKpis"></div>
       <div class="eq-legend" aria-label="What the states mean">
         <b>States:</b>
@@ -140,6 +171,9 @@
         </div>
         <div class="eq-wrap" id="eqGrid"></div>
       </div>
+      <!-- HMI IO screens: field signals ON / OFF (no PLC addresses on the client page) -->
+      <div class="card" style="margin-top:16px"><div class="card-head"><h2>Field signals</h2><div class="seg sm" id="ioSeg"></div></div>
+        <div class="io-grid" id="ioGrid"></div></div>
     </section>
 
     <!-- TRENDS -->
@@ -211,6 +245,7 @@
 
 <script src="js/common.js"></script>
 <script src="js/chart.js"></script>
+<script src="js/plant.js"></script>
 <script src="js/dashboard.js"></script>
 </body>
 </html>

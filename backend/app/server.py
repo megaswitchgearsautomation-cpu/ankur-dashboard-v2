@@ -167,7 +167,13 @@ def make_handler(app):
                         # equipment with "show_on_dashboard": false (e.g. spare starters) is not sent to the client
                         "equipment": [client_equipment(x) for x in e.equipment()
                                       if x.get("id") not in {q["id"] for q in app.store.equipment if q.get("show_on_dashboard") is False}],
-                        "alarms": alarms})
+                        "alarms": alarms,
+                        # plant states for the mimic / instruments pages (level switches, valve limits, air, flow,
+                        # PLC scaling block) - values only, keyed by tag id
+                        "aux": {t["id"]: {"value": t["value"], "quality": client_tag(t)["quality"], "name": t["name"],
+                                          "group": t["group"], "unit": t.get("unit", ""), "decimals": t.get("decimals", 1)}
+                                for t in e.live(include_hidden=True)
+                                if t["group"] in CLIENT_AUX_GROUPS and not t["id"].startswith("DI_Potential_Free")}})
 
         def api_trend(self, q):
             ids = [x for x in q.get("tags", "").split(",") if x][:8]
@@ -262,6 +268,50 @@ def make_handler(app):
             if done:
                 app.historian.event("alarm_ack", f"{user} acknowledged {len(done)} alarm(s), {saved} note(s)")
             self._json({"ok": True, "acknowledged": done, "notes_saved": saved})
+
+        def api_client_scaling(self, q):
+            """Change how the dashboard scales one analog input (range + source). Dashboard config only:
+            nothing is written to the PLC. 'plc' = use the PLC's scaled value; 'signal' = compute it from 4-20 mA."""
+            b = self._body()
+            tid = str(b.get("id") or "")
+            tags = [dict(t) for t in app.store.tags]
+            t = next((x for x in tags if x["id"] == tid and x.get("group") in SCALABLE_GROUPS), None)
+            if not t:
+                raise ValueError("Unknown instrument")
+            try:
+                lo, hi = float(b["range_min"]), float(b["range_max"])
+                dec = int(b.get("decimals", t.get("decimals", 1)))
+            except (KeyError, TypeError, ValueError):
+                raise ValueError("Range min and max must be numbers")
+            if hi <= lo:
+                raise ValueError("Range max must be greater than range min")
+            if not 0 <= dec <= 4:
+                raise ValueError("Decimals must be 0..4")
+            source = b.get("source", "plc")
+            if source == "signal" and not any(x["id"] == f"{tid}_MA" for x in tags):
+                raise ValueError("This instrument has no 4-20 mA signal tag")
+            # optional HH / H / L / LL level set points (dashboard indication only, level instruments)
+            lv = b.get("levels")
+            if lv is not None:
+                if t.get("group") != "Level" or not isinstance(lv, dict):
+                    raise ValueError("HH / H / L / LL can only be set for level instruments")
+                try:
+                    lv = {k: float(lv[k]) for k in ("hh", "h", "l", "ll")}
+                except (KeyError, TypeError, ValueError):
+                    raise ValueError("HH, H, L and LL must all be numbers")
+                if not lo <= lv["ll"] < lv["l"] < lv["h"] < lv["hh"] <= hi:
+                    raise ValueError("Levels must be in order: LL < L < H < HH, inside the range")
+                t["levels"] = lv
+            old = (t.get("eng_min"), t.get("eng_max"), (t.get("scaling") or {}).get("mode", "none"))
+            t["eng_min"], t["eng_max"], t["decimals"] = lo, hi, dec
+            t["scaling"] = {"mode": "signal", "eng_min": lo, "eng_max": hi} if source == "signal" else {"mode": "none"}
+            for x in tags:                                  # keep the 4-20 mA companion's display range in step
+                if x.get("scale_of") == tid and x.get("scale_role") in ("min", "max"):
+                    x["eng_min"], x["eng_max"] = lo, hi
+            app.store.save_tags(tags)
+            user = app.store.settings["client"].get("username", "client")
+            app.historian.event("scaling", f"{user} changed {tid} scaling {old} -> ({lo}, {hi}, {t['scaling']['mode']})")
+            self._json({"ok": True})
 
         def api_alarm_ack(self, q):   # admin only (client dashboard is view-only)
             b = self._body()
@@ -450,6 +500,7 @@ def make_handler(app):
         ("GET", "/api/trend"): Handler.api_trend,
         ("GET", "/api/alarms"): Handler.api_alarms,
         ("POST", "/api/client/alarms/ack"): Handler.api_client_ack,
+        ("POST", "/api/client/scaling"): Handler.api_client_scaling,
         ("GET", "/api/report/tags"): Handler.api_report_tags,
         ("GET", "/api/report"): Handler.api_report,
         ("GET", "/api/report.xlsx"): Handler.api_report_xlsx,
@@ -500,8 +551,13 @@ def client_status(c):
     return {"state": state, "validated": bool(c.get("comm_verified")), "last_update": c.get("last_update")}
 
 
+CLIENT_AUX_GROUPS = ("Level switches", "Valve feedback", "Interlocks", "Panel controls", "Scaling", "Set values",
+                     "Motor feedback", "Outputs", "Safety", "Panel indication")
+# analog inputs whose scaling the client may change on the dashboard (dashboard-side only, never written to the PLC)
+SCALABLE_GROUPS = ("Temperature", "Pressure", "Level", "Analysis")
+
 _TAG_FIELDS = ("id", "name", "group", "unit", "decimals", "data_type", "value", "ts", "simulated", "verified",
-               "states", "eng_min", "eng_max", "setpoint_value", "trend", "kpi", "trend_min", "trend_max")
+               "states", "eng_min", "eng_max", "setpoint_value", "trend", "kpi", "trend_min", "trend_max", "scaling_mode", "levels")
 
 
 def client_tag(t):
@@ -514,7 +570,7 @@ def client_tag(t):
 
 def client_equipment(e):
     return {k: e.get(k) for k in ("id", "name", "area", "type", "tag_no", "kw", "status", "color", "since",
-                                  "run_hours", "starts", "simulated")}
+                                  "run_hours", "starts", "simulated", "auto", "standby_selected", "pair")}
 
 
 def client_alarm(a):

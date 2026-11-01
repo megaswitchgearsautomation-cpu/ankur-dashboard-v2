@@ -275,9 +275,21 @@ class Engine:
                 val = bool(val) ^ bool(t.get("invert"))
             else:
                 val = codec.apply_scaling(raw, t.get("scaling"))
+                sc = t.get("scaling") or {}
+                if sc.get("mode") == "signal":
+                    val = self._from_signal(t, sc, val)
             st.raw, st.value, st.quality, st.ts, st.error = raw, val, Q_GOOD, now, None
         except codec.DecodeError as e:
             self._set_bad(t, now, str(e), cfg=True)
+
+    def _from_signal(self, t, sc, fallback):
+        """Dashboard-side scaling: value = min + (mA - 4) / 16 x (max - min), from the tag's 4-20 mA companion.
+        Nothing is written to the PLC; if the signal is not available the PLC value is kept."""
+        ma = self.states.get(sc.get("signal_tag") or f'{t["id"]}_MA')
+        if not ma or ma.quality not in (Q_GOOD, Q_STALE) or not isinstance(ma.value, (int, float)):
+            return fallback
+        e0, e1 = float(sc["eng_min"]), float(sc["eng_max"])
+        return e0 + (float(ma.value) - 4.0) / 16.0 * (e1 - e0)
 
     def _set_bad(self, t, now, err, cfg=False):
         st = self.states[t["id"]]
@@ -341,6 +353,8 @@ class Engine:
                 return running and not tripped
             if role == "cmd_tag":
                 return running and not tripped
+        if t.get("sim_value") is not None:             # selector switches etc.: steady demo state
+            return bool(t["sim_value"])
         al = t.get("alarm") or {}
         if al.get("enabled"):
             # rare short alarm pulses so the alarm UI can be exercised
@@ -355,8 +369,20 @@ class Engine:
         if lo is None or hi is None:
             lo, hi = 0.0, 100.0
         span = float(hi) - float(lo)
+        if t.get("sim_value") is not None:    # HMI set values: steady demo value
+            return float(t["sim_value"])
         if t["id"].endswith("_SP"):          # simulated set points sit steady near the top of range
             return float(lo) + span * 0.85
+        role = t.get("scale_role")           # PLC scaling block of an analog input: follow the parent value
+        if role in ("min", "max"):
+            return float(lo) if role == "min" else float(hi)
+        if role == "ma":
+            src = self.store.tag_map().get(t.get("scale_of") or "") or {}
+            pv = getattr(self.states.get(src.get("id", "")), "value", None)
+            s0, s1 = src.get("eng_min"), src.get("eng_max")
+            if isinstance(pv, (int, float)) and s0 is not None and s1 is not None and float(s1) != float(s0):
+                return round(4 + 16 * (float(pv) - float(s0)) / (float(s1) - float(s0)), 3)
+            return 4.0
         base =float(lo) + span * (0.45 + 0.2 * ph)
         v = base + span * 0.12 * math.sin(now / (120 + 240 * ph) + ph * 6.28) \
             + span * 0.015 * math.sin(now / 45 + ph * 3) + random.uniform(-0.002, 0.002) * span
@@ -555,7 +581,7 @@ class Engine:
                 "states": t.get("states"), "eng_min": t.get("eng_min"), "eng_max": t.get("eng_max"),
                 "alarm": {k: (t.get("alarm") or {}).get(k) for k in ("hi", "lo", "hihi", "lolo")},
                 "setpoint_tag": t.get("setpoint_tag"), "device": t.get("device"), "trend": t.get("trend", True),
-                "kpi": t.get("kpi", False),
+                "kpi": t.get("kpi", False), "scaling_mode": (t.get("scaling") or {}).get("mode", "none"), "levels": t.get("levels"),
                 "trend_min": t.get("trend_min"), "trend_max": t.get("trend_max"),   # optional fixed trend Y-axis
             })
         return out
@@ -576,7 +602,11 @@ class Engine:
             st = self._equipment_state.get(e["id"], {"status": "UNKNOWN", "color": "grey", "since": None})
             rt = self.runtime.get(e["id"], {"seconds": 0, "starts": 0, "sim_seconds": 0})
             sim = self.mode == "simulation"
-            out.append({"id": e["id"], "name": e["name"], "area": e.get("area", ""), "type": e.get("type", "motor"),
+            am, _ = self._tv(e.get("am_tag"))          # HMI Auto/Manual soft selector (M60xx)
+            ms, _ = self._tv(e.get("ms_tag"))          # HMI Main/Standby soft selector (M70xx), pairs only
+            out.append({"auto": None if am is None else bool(am), "standby_selected": None if ms is None else bool(ms),
+                        "pair": e.get("pair"),
+                        "id": e["id"], "name": e["name"], "area": e.get("area", ""), "type": e.get("type", "motor"),
                         "tag_no": e.get("tag_no", ""), "kw": e.get("kw"), "starter": e.get("starter", ""),
                         "status": st["status"], "color": st["color"], "since": st.get("since"),
                         "run_hours": round((rt["sim_seconds"] if sim else rt["seconds"]) / 3600, 2),

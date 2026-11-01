@@ -82,7 +82,7 @@ def apply_scaling(raw, scaling: dict | None):
     if isinstance(raw, bool) or not scaling:
         return raw
     mode = scaling.get("mode", "none")
-    if mode == "none":
+    if mode in ("none", "signal"):       # "signal": the engine recomputes the value from the 4-20 mA tag
         return raw
     if mode == "linear":
         r0, r1 = float(scaling["raw_min"]), float(scaling["raw_max"])
@@ -100,7 +100,7 @@ def apply_scaling(raw, scaling: dict | None):
 
 def unscale(eng, scaling: dict | None):
     """Inverse scaling (simulator only)."""
-    if not scaling or scaling.get("mode", "none") == "none":
+    if not scaling or scaling.get("mode", "none") in ("none", "signal"):
         return eng
     if scaling["mode"] == "linear":
         r0, r1 = float(scaling["raw_min"]), float(scaling["raw_max"])

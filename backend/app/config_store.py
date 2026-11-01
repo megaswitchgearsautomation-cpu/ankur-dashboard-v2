@@ -251,8 +251,14 @@ def validate_tags(tags, settings):
         except (TypeError, ValueError):
             errors.append(f"{where}: poll_ms must be 200..3600000")
         sc = t.get("scaling") or {"mode": "none"}
-        if sc.get("mode") not in ("none", "linear", "gain_offset"):
+        if sc.get("mode") not in ("none", "linear", "gain_offset", "signal"):
             errors.append(f"{where}: scaling.mode invalid")
+        elif sc.get("mode") == "signal":
+            try:
+                if float(sc["eng_max"]) == float(sc["eng_min"]):
+                    errors.append(f"{where}: signal scaling range min and max must differ")
+            except (KeyError, TypeError, ValueError):
+                errors.append(f"{where}: signal scaling needs eng_min and eng_max")
         elif sc.get("mode") == "linear":
             try:
                 if float(sc["raw_max"]) == float(sc["raw_min"]) or float(sc["eng_max"]) == float(sc["eng_min"]):
