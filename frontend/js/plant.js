@@ -336,10 +336,9 @@
       draw: () => [
         `<text class="band" x="1385" y="20" text-anchor="end">1 · WATER SUPPLY</text><text class="band" x="1385" y="282" text-anchor="end">2 · SLUDGE &amp; HOT WATER</text><text class="band" x="1385" y="574" text-anchor="end">3 · WATER RECOVERY</text>`,
         // ---- 1 water supply: borewell pumps -> raw water tank -> supply pumps -> header -> towers / hot water tank
-        P.ground(25, 148, 172, "ground"), P.well(60, 172, 250), P.well(132, 172, 250),
-        P.pipe("M60 196 L60 120 L148 120 M132 196 L132 120", "water", ["OP_P6A", "OP_P6B"]),
-        P.subPump(60, 246, "OP_P6A", { side: "below" }), P.subPump(132, 246, "OP_P6B", { side: "below" }),
-        P.lamp(81, 103, SW.FLOW, "FS"), P.text(66, 90, "03-FS-301"),
+        P.pipe("M88 98 L120 98 M88 200 L120 200 M120 98 L120 200 M120 150 L148 150", "water", ["OP_P6A", "OP_P6B"]),
+        P.pump(60, 98, "OP_P6A"), P.pump(60, 200, "OP_P6B"),
+        P.lamp(140, 258, SW.FLOW, "FS"), P.text(176, 262, "03-FS-301 flow"),
         P.tank(150, 60, 190, 150, { fluid: "water", label: "Raw water tank (03-LS-301)", sw: [LS("LS301_HL", 0.18, "HL"), LS("LS301_LL", 0.85, "LL")] }),
         P.pipe("M260 210 L260 235 L395 235 L395 108 L412 108 M395 210 L412 210", "water", ["OP_P14", "OP_P15"]),
         P.pump(440, 108, "OP_P14"), P.pump(440, 210, "OP_P15"),
@@ -426,11 +425,9 @@
         const dests = ["Boiler RO + DM make-up", "Boiler wet scrubber conveyor", "Cooling tower-1 make-up", "Cooling tower-2 make-up",
           "Vacuum pump & KO drum", "Volute press", "Sludge screen", "Hot water tank make-up"];
         return [
-          // P&ID sheet 3: ground-water pumps are underground submersible (borewell) pumps
-          P.ground(20, 200, 440), P.well(60, 440, 534), P.well(170, 440, 534),
-          P.subPump(60, 530, "OP_P6A"), P.subPump(170, 530, "OP_P6B"),
-          P.pipe("M60 480 L60 420 L170 420 L170 480", "water", ["OP_P6A", "OP_P6B"]),
-          P.pipe("M110 420 L110 160 L200 160", "water", ["OP_P6A", "OP_P6B"]),
+          P.pump(60, 480, "OP_P6A"), P.pump(170, 480, "OP_P6B"),
+          P.pipe("M88 480 L110 480 L110 430 M140 480 L110 480", "water", ["OP_P6A", "OP_P6B"]),
+          P.pipe("M110 430 L110 160 L200 160", "water", ["OP_P6A", "OP_P6B"]),
           P.lamp(30, 330, SW.FLOW, "FS"), P.text(22, 356, "03-FS-301 flow"), P.pipe("M60 330 L110 330", "ctp"),
           P.box(30, 60, 130, 40, "From CTP plant"), P.pipe("M95 100 L95 130 L200 130 L200 160", "ctp"),
           P.tank(200, 140, 260, 220, { fluid: "water", label: "Raw water storage tank (03-LS-301)", sw: [LS("LS301_HL", 0.18, "HL"), LS("LS301_LL", 0.85, "LL")] }),
