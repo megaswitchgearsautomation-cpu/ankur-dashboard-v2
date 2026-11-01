@@ -124,6 +124,13 @@ svg.mimic { display: block; width: 100%; min-width: 760px; height: auto; font-fa
 .mimic .eq.pump.trip circle.pm-led { fill: #ff3b3b; stroke: #fff; animation: kpBlink 1s steps(2) infinite; }
 .mimic .eq.pump.warn circle.pm-led { fill: #ffb020; stroke: #fff; }
 .mimic .eq.pump.trip .pm-motor { animation: kpBlink 1s steps(2) infinite; }
+/* submersible pumps: label on a light backing so it reads on top of the tank liquid */
+.mimic .eq.pump.sub .pm-scr { stroke: #5f5f58; stroke-width: 1.4; }
+.mimic .eq.pump.sub .pm-lb { fill: rgba(255, 255, 255, .85); stroke: none; }
+.mimic .eq.pump.sub circle.pm-led { stroke-width: .8; }
+.mimic .gnd line { stroke: #7a5a32; stroke-width: 2.5; } .mimic .gnd path { stroke: #a88a5e; stroke-width: 1.2; fill: none; }
+.mimic .gnd text { font-size: 10px; fill: #7a5a32; font-style: italic; }
+.mimic .well { fill: rgba(120, 170, 220, .18); stroke: #8a8a82; stroke-width: 1.2; stroke-dasharray: 4 3; }
 .mimic .eq.pump:focus-visible .pm-motor { stroke: var(--accent); stroke-width: 2.5; }
 @keyframes mmSpin { to { transform: rotate(360deg); } }
 .mimic .eq:focus-visible { outline: none; } .mimic .eq:focus-visible circle { stroke: var(--accent); stroke-width: 4; }
