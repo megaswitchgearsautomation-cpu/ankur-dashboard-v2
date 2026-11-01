@@ -149,6 +149,22 @@ svg.mimic { display: block; width: 100%; min-width: 760px; height: auto; font-fa
 .mimic .tx-box { fill: #fff; stroke: #4d5c0a; stroke-width: 1.5; } .mimic .tx-v { font-size: 12.5px; font-weight: 800; fill: #222; }
 .mimic .dest rect { fill: #fff; stroke: #b8b8b0; stroke-width: 1.5; } .mimic .dest text { font-size: 12.5px; font-weight: 700; }
 .mimic .dest.dest-proc rect { fill: #f3f7e6; stroke: #8fa61c; }
+/* cooling tower */
+.mimic .ct-stack { fill: url(#gMetal); stroke: #6f6f68; stroke-width: 1.4; }
+.mimic .ct-ring { stroke: #8a8a82; stroke-width: 1.2; }
+.mimic .ct-deck { fill: #8f938a; stroke: #6f6f68; stroke-width: 1; }
+.mimic .ct-body { fill: url(#gCT); stroke: #7d8276; stroke-width: 2; }
+.mimic .ct-drift { fill: #c9cdc3; stroke: #8f938a; stroke-width: 1; }
+.mimic .ct-hdr { stroke: var(--ln-water); stroke-width: 3; opacity: .7; }
+.mimic .ct-spray { stroke: #5aa0e0; stroke-width: 1.3; fill: none; opacity: .8; }
+.mimic .ct-fillbg { fill: #e6e9e1; }
+.mimic .ct-fill { stroke: #9aa093; stroke-width: 1; fill: none; }
+.mimic .ct-inlet { fill: #5b6157; opacity: .9; }
+.mimic .ct-louv { stroke: #c9cdc3; stroke-width: 3; fill: none; }
+.mimic .ct-basin { fill: #a7aba0; stroke: #6f6f68; stroke-width: 1.5; }
+.mimic .ct-water { fill: url(#gWater); }
+.mimic .ct-wave { stroke: #d6ecfb; stroke-width: 1.4; fill: none; opacity: .9; }
+.mimic .fan-l { font-size: 11px; font-weight: 800; fill: #444; }
 .mimic .tw-body { fill: #e4e7e0; stroke: #8f8f86; stroke-width: 2.5; } .mimic .tw-pack { stroke: #b5b9ad; stroke-width: 2; } .mimic .tw-fill { stroke: var(--ln-water); stroke-width: 10; opacity: .45; }
 .mimic .hx rect { fill: #fff; stroke: #c43d3d; stroke-width: 2.5; } .mimic .hx path { stroke: #c43d3d; stroke-width: 1.5; }
 .mm-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink-2); margin-top: 10px; align-items: center; }

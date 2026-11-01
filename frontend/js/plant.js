@@ -305,10 +305,26 @@
       return `<g class="dest ${kind}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>${lines.map((l, i) =>
         `<text x="${x + w / 2}" y="${y + h / 2 + 4 + (i - (lines.length - 1) / 2) * 14}" text-anchor="middle">${esc(l)}</text>`).join("")}</g>`;
     },
+    // induced-draft cooling tower (footprint x..x+120, y-24..y+144): fan stack on top (fan drawn at x+60, y-11),
+    // drift eliminator, spray, fill pack, air-inlet louvers and the cold-water basin at the bottom
     tower(x, y, label) {
-      return `<g class="tower"><path d="M${x} ${y} L${x + 120} ${y} L${x + 108} ${y + 150} L${x + 12} ${y + 150} Z" class="tw-body"/>
-        <path d="M${x + 14} ${y + 110} L${x + 106} ${y + 110}" class="tw-fill"/><path d="M${x + 20} ${y + 40} L${x + 100} ${y + 40} M${x + 18} ${y + 60} L${x + 102} ${y + 60} M${x + 16} ${y + 80} L${x + 104} ${y + 80}" class="tw-pack"/>
-        <text class="t-lbl" x="${x + 60}" y="${y + 170}" text-anchor="middle">${esc(label)}</text></g>`;
+      let fill = "", louv = "", spray = "";
+      for (let i = 0; i < 10; i++) fill += `M${x + 12 + i * 10} ${y + 44} l10 34 M${x + 22 + i * 10} ${y + 44} l-10 34 `;
+      for (let i = 0; i < 4; i++) louv += `M${x + 4 - i * 1.2} ${y + 88 + i * 8} L${x + 116 + i * 1.2} ${y + 88 + i * 8} `;
+      for (let i = 0; i < 9; i++) spray += `M${x + 18 + i * 11} ${y + 28} l-2 8 M${x + 18 + i * 11} ${y + 28} l2 8 `;
+      return `<g class="tower">
+        <path class="ct-stack" d="M${x + 32} ${y - 24} L${x + 88} ${y - 24} L${x + 84} ${y - 2} L${x + 36} ${y - 2} Z"/>
+        <line class="ct-ring" x1="${x + 33}" y1="${y - 17}" x2="${x + 87}" y2="${y - 17}"/>
+        <rect class="ct-deck" x="${x}" y="${y - 3}" width="120" height="6" rx="1.5"/>
+        <path class="ct-body" d="M${x + 4} ${y + 3} L${x + 116} ${y + 3} L${x + 120} ${y + 118} L${x} ${y + 118} Z"/>
+        <rect class="ct-drift" x="${x + 10}" y="${y + 10}" width="100" height="9" rx="1"/>
+        <path class="ct-hdr" d="M${x + 12} ${y + 26} L${x + 108} ${y + 26}"/><path class="ct-spray" d="${spray}"/>
+        <rect class="ct-fillbg" x="${x + 10}" y="${y + 44}" width="100" height="34"/><path class="ct-fill" d="${fill}"/>
+        <rect class="ct-inlet" x="${x + 2}" y="${y + 84}" width="116" height="34"/><path class="ct-louv" d="${louv}"/>
+        <rect class="ct-basin" x="${x - 6}" y="${y + 116}" width="132" height="28" rx="3"/>
+        <rect class="ct-water" x="${x - 3}" y="${y + 122}" width="126" height="19" rx="2"/>
+        <path class="ct-wave" d="M${x} ${y + 125} q8 -3 16 0 t16 0 t16 0 t16 0 t16 0 t16 0 t16 0 t16 0"/>
+        <text class="t-lbl" x="${x + 60}" y="${y + 162}" text-anchor="middle">${esc(label)}</text></g>`;
     },
     hx(x, y, label) {
       return `<g class="hx"><rect x="${x}" y="${y}" width="44" height="90" rx="5"/><path d="M${x + 8} ${y + 14} L${x + 36} ${y + 14} M${x + 8} ${y + 32} L${x + 36} ${y + 32} M${x + 8} ${y + 50} L${x + 36} ${y + 50} M${x + 8} ${y + 68} L${x + 36} ${y + 68}"/>
@@ -345,13 +361,13 @@
         P.pipe("M468 108 L500 108 M468 210 L500 210 M500 108 L500 210 M500 160 L560 160 L560 40 L1360 40", "water", ["OP_P14", "OP_P15"]),
         P.tx(610, 120, "PT_01", "PT-301"),
         P.text(585, 32, "raw water header: make-up to towers, hot water tank, boiler, vacuum pump, sludge screen"),
-        P.pipe("M730 40 L730 70", "water", ["OP_P14", "OP_P15"]), P.tower(670, 70, "Cooling tower-1 (06-LS-601)"), P.fan(730, 100, "OP_F1"),
+        P.pipe("M688 40 L688 72", "water", ["OP_P14", "OP_P15"]), P.tower(670, 70, "Cooling tower-1 (06-LS-601)"), P.fan(730, 59, "OP_F1", ""), P.text(764, 54, "06-F-601", "fan-l"),
         P.lamp(798, 160, SW.LS601_HL, "HL"), P.lamp(798, 195, SW.LS601_LL, "LL"),
         P.pipe("M790 205 L815 205 L815 90 L837 90 M815 150 L837 150 M815 205 L815 210 L837 210", "water", ["OP_P7", "OP_P3", "OP_P11"]),
         P.pump(865, 90, "OP_P7", { name: false }), P.pump(865, 150, "OP_P3", { name: false }), P.pump(865, 210, "OP_P11", { name: false }),
         P.text(900, 94, "De-gasifier PHE pump", "dtxt"), P.text(900, 154, "Dryer condenser pump", "dtxt"), P.text(900, 214, "Boiler cooling pump", "dtxt"),
         P.pipe("M1040 40 L1040 298", "water", ["OP_P14", "OP_P15"]),
-        P.pipe("M1170 40 L1170 70", "water", ["OP_P14", "OP_P15"]), P.tower(1110, 70, "Cooling tower-2 (06-LS-602)"), P.fan(1170, 100, "OP_F2"),
+        P.pipe("M1128 40 L1128 72", "water", ["OP_P14", "OP_P15"]), P.tower(1110, 70, "Cooling tower-2 (06-LS-602)"), P.fan(1170, 59, "OP_F2", ""), P.text(1204, 54, "06-F-602", "fan-l"),
         P.lamp(1238, 160, SW.LS602_HL, "HL"), P.lamp(1238, 195, SW.LS602_LL, "LL"),
         P.pipe("M1230 205 L1262 205 L1262 150 L1292 150", "water", ["OP_P10"]), P.pump(1320, 150, "OP_P10", { name: false }),
         P.text(1278, 214, "Turbine oil cooling", "dtxt"),
@@ -446,7 +462,7 @@
       name: "Cooling tower 1", note: "CT pumps run when 06-LS-601 above L, stop at LL · Fan runs only with a CT-1 pump",
       draw: () => [
         P.box(30, 400, 120, 40, "Make-up water"), P.pipe("M150 420 L200 420", "water"),
-        P.tower(200, 190, "Cooling tower-1 (06-LS-601)"), P.fan(260, 170, "OP_F1"),
+        P.tower(200, 190, "Cooling tower-1 (06-LS-601)"), P.fan(260, 179, "OP_F1"),
         P.lamp(330, 260, SW.LS601_HL, "HL"), P.lamp(330, 300, SW.LS601_LL, "LL"),
         P.pipe("M308 320 L420 320 L420 120 L540 120", "water", ["OP_P7"]), P.pipe("M420 320 L420 290 L540 290", "water", ["OP_P3"]),
         P.pipe("M420 320 L420 450 L540 450", "water", ["OP_P11"]),
@@ -462,7 +478,7 @@
     ct2: {
       name: "Cooling tower 2 & hot water loop", note: "Hot water pump 06-P-605 runs above LL of 06-LS-603 · Fan OP-F602 runs with pump 06-P-604",
       draw: () => [
-        P.tower(620, 60, "Cooling tower-2 (06-LS-602)"), P.fan(680, 40, "OP_F2"),
+        P.tower(620, 60, "Cooling tower-2 (06-LS-602)"), P.fan(680, 49, "OP_F2"),
         P.lamp(750, 130, SW.LS602_HL, "HL"), P.lamp(750, 170, SW.LS602_LL, "LL"),
         P.pipe("M728 190 L830 190 L830 240", "water", ["OP_P10"]), P.pump(830, 255, "OP_P10", { label: "06-P-604" }),
         P.pipe("M845 255 L900 255", "water", ["OP_P10"]), P.box(860, 270, 120, 40, "Turbine oil PHE"),
@@ -555,6 +571,8 @@
         <defs>
           ${[["water", "#2f7fd1"], ["hot", "#e8731a"], ["sludge", "#a8781e"], ["steam", "#c43d3d"], ["air", "#1fb5b5"], ["chem", "#8e44c9"], ["ctp", "#3a3f2a"]]
             .map(([k, c]) => `<marker id="ar-${k}" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="${c}"/></marker>`).join("")}
+          <linearGradient id="gCT" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b9bdb4"/><stop offset=".35" stop-color="#eef0ea"/><stop offset=".7" stop-color="#d4d8cf"/><stop offset="1" stop-color="#a3a89d"/></linearGradient>
+          <linearGradient id="gWater" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8cc4f0"/><stop offset="1" stop-color="#2f7fd1"/></linearGradient>
           <linearGradient id="gMetal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4f1"/><stop offset=".45" stop-color="#c9c9c3"/><stop offset="1" stop-color="#85857e"/></linearGradient>
           <linearGradient id="gRun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9ec7c"/><stop offset=".5" stop-color="#4fa612"/><stop offset="1" stop-color="#2b6a06"/></linearGradient>
           <linearGradient id="gStop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecece8"/><stop offset=".5" stop-color="#a9a9a2"/><stop offset="1" stop-color="#6f6f68"/></linearGradient>
