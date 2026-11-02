@@ -125,12 +125,7 @@
   function renderKeyPoints() {
     const box = $("keyPoints");
     if (!box) return;
-    const blower = eq("OP_M1");
-    const mode = sw(SW.MODE), air = sw(SW.AIR), flow = sw(SW.FLOW);
-    const sysRun = running("OP_M1");
-    const red = live.alarms.filter((a) => a.priority === "red").length;
-    const trips = live.equipment.filter((e) => ["TRIP", "FAULT"].includes(e.status)).length;
-
+    // (system / run hours / mode / air / flow / plant-health strip removed on request)
     const lt1 = tag("LT_01"), lt2 = tag("LT_02"), pt1 = tag("PT_01"), ph = tag("PH_01"), t4 = tag("T_04"), t2 = tag("T_02"), pt3 = tag("PT_03");
     const phv = num(ph), t4v = num(t4), pt1v = num(pt1);
     const phState = phv == null ? "" : phv <= 6.5 ? "⚠ Too acidic - alkali being added" : phv >= 7.5 ? "⚠ Too alkaline - acid being added" : "✔ pH is OK";
@@ -138,14 +133,6 @@
 
     box.innerHTML = `
       <div class="kp-areas">${AREAS.filter((a) => !a.overall).map((a) => areaChip(a)).join("")}</div>
-      <div class="kp-sys">
-        <div class="ks ks-run ${sysRun ? "on" : ""}"><span class="ks-l">System</span><b>${sysRun ? "Running" : "Stopped"}</b><span class="ks-d">Plant is running when the hot air blower runs</span></div>
-        <div class="ks ks-hours"><span class="ks-l">System run hours</span><b class="num">${esc(hhmm(blower && blower.run_hours))}</b><span class="ks-d">Total running time (hours : minutes)</span></div>
-        <div class="ks ${mode == null ? "nd" : ""}"><span class="ks-l">Control mode</span><b>${swTxt(mode, "Auto", "Manual")}</b><span class="ks-d">Auto = PLC runs the pumps by itself</span></div>
-        <div class="ks ${air === false ? "bad" : air ? "ok" : "nd"}"><span class="ks-l">Instrument air</span><b>${swTxt(air, "Healthy", "Low")}</b><span class="ks-d">Air that operates the valves</span></div>
-        <div class="ks ${flow === false && (running("OP_P6A") || running("OP_P6B")) ? "bad" : flow ? "ok" : "nd"}"><span class="ks-l">Raw water flow</span><b>${swTxt(flow, "Flow detected", "No flow")}</b><span class="ks-d">Water coming from the borewell pumps</span></div>
-        <div class="ks ${red || trips ? "bad" : "ok"}"><span class="ks-l">Plant health</span><b>${red || trips ? `${trips} trip · ${red} critical` : "Normal"}</b><span class="ks-d"><a href="#alarms">${live.alarms.length} active alarm${live.alarms.length === 1 ? "" : "s"}</a></span></div>
-      </div>
       <div class="kp-grid">
         ${lt1 ? kpCard("LT_01", "kp-lvl", "Sludge storage tank", "How full the tank is · pumps send sludge to the volute press", valHTML(lt1), tankMini(lt1),
           chip("AGIT", "Mixer OP-A1") + chip("OP_P1A") + chip("OP_P1B") + chip("PCP", "PCP") + chip("MV_01", "Feed valve")) : ""}
@@ -867,8 +854,7 @@
       <li><i class="lamp"></i><b>Yellow lamp</b> - float switch ON (water has reached that level)</li></ul>
       <p><b>DEMO DATA</b> at the top means the values are simulated, not from the plant.</p>`],
     ["Overview", `<p>The first page. The top row shows each plant area and how many of its machines are running - click one to see its drawing.</p>
-      <p>Below that: is the plant running, total run hours, Auto / Manual mode, air for the valves and raw-water flow.
-      The six big cards are the most important values: tank levels, water pressure, pH, de-gasifier temperature and hot water to the dryer. Each card says in words whether the value is OK.</p>`],
+      <p>The six big cards are the most important values: tank levels, water pressure, pH, de-gasifier temperature and hot water to the dryer. Each card says in words whether the value is OK.</p>`],
     ["Mimic", `<p>Drawings of the plant. <b>Overall plant</b> shows all areas joined together; the other tabs show each area in detail.
       Pumps turn green when running, pipes show moving dashes when liquid is flowing (the arrow is the direction), tanks fill up with the real level. Click a pump or value for details.</p>`],
     ["Instruments", `<p>One card per measuring instrument (level, pressure, temperature, pH). The bar shows where the value is between the lowest and highest it can measure; the red mark is where the alarm comes.
