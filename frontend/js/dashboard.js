@@ -852,7 +852,20 @@
     $("ovFoot").innerHTML = (hiX ? `<span><em>Highest now</em> <i style="background:${hiX.color}"></i>${short(hiX.s.name)} <b class="num">${fmt(hiX.now)} ${esc(unit)}</b></span>` : "") +
       (loX && loX !== hiX ? `<span><em>Lowest now</em> <i style="background:${loX.color}"></i>${short(loX.s.name)} <b class="num">${fmt(loX.now)} ${esc(unit)}</b></span>` : "") +
       (sps.length > 1 ? `<span><em>Alarm set points</em> ${sps.map(fmt).join(" / ")} ${esc(unit)}</span>` : "") +
-      (sim ? '<span class="q SIMULATED">DEMO DATA</span>' : "");
+      (sim ? '<span class="q SIMULATED">DEMO DATA</span>' : "") + gapNote(r);
+  }
+  // explain empty stretches: history is only recorded while the dashboard server is running
+  function gapNote(r) {
+    const ts = [...new Set(r.series.flatMap((s) => s.points.filter((p) => p.avg != null).map((p) => p.t)))].sort((a, b) => a - b);
+    const bucket = (r.to - r.from) / 160, minGap = Math.max(bucket * 4, 180);
+    const edges = [r.from - bucket, ...ts, r.to + bucket];
+    const gaps = [];
+    for (let i = 1; i < edges.length; i++) if (edges[i] - edges[i - 1] > minGap) gaps.push([Math.max(r.from, edges[i - 1]), Math.min(r.to, edges[i])]);
+    if (!gaps.length) return "";
+    const t = (s) => fmtTime(s).replace(/:\d\d$/, "");
+    const txt = !ts.length ? "No data was recorded in this period"
+      : `No data ${gaps.slice(0, 2).map(([a, b]) => `${t(a)} - ${t(b)}`).join(", ")}${gaps.length > 2 ? " and more" : ""}`;
+    return `<span class="ov-gap" title="History is saved by the dashboard server. While it is not running nothing is recorded.">⚠ ${txt}: the dashboard server was not running. Choose 8h / 24h for earlier history.</span>`;
   }
   $("ovRangeSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => {
     $("ovRangeSeg").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
