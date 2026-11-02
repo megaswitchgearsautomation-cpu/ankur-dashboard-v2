@@ -173,7 +173,7 @@ def make_handler(app):
                         "aux": {t["id"]: {"value": t["value"], "quality": client_tag(t)["quality"], "name": t["name"],
                                           "group": t["group"], "unit": t.get("unit", ""), "decimals": t.get("decimals", 1)}
                                 for t in e.live(include_hidden=True)
-                                if t["group"] in CLIENT_AUX_GROUPS and not t["id"].startswith("DI_Potential_Free")}})
+                                if t["group"] in CLIENT_AUX_GROUPS or t["id"].endswith("_ALM_SP")}})
 
         def api_trend(self, q):
             ids = [x for x in q.get("tags", "").split(",") if x][:8]
@@ -291,17 +291,10 @@ def make_handler(app):
             if source == "signal" and not any(x["id"] == f"{tid}_MA" for x in tags):
                 raise ValueError("This instrument has no 4-20 mA signal tag")
             # optional HH / H / L / LL level set points (dashboard indication only, level instruments)
-            lv = b.get("levels")
-            if lv is not None:
-                if t.get("group") != "Level" or not isinstance(lv, dict):
+            if b.get("levels") is not None:
+                if t.get("group") != "Level":
                     raise ValueError("HH / H / L / LL can only be set for level instruments")
-                try:
-                    lv = {k: float(lv[k]) for k in ("hh", "h", "l", "ll")}
-                except (KeyError, TypeError, ValueError):
-                    raise ValueError("HH, H, L and LL must all be numbers")
-                if not lo <= lv["ll"] < lv["l"] < lv["h"] < lv["hh"] <= hi:
-                    raise ValueError("Levels must be in order: LL < L < H < HH, inside the range")
-                t["levels"] = lv
+                t["levels"] = check_levels(b.get("levels"), lo, hi)
             old = (t.get("eng_min"), t.get("eng_max"), (t.get("scaling") or {}).get("mode", "none"))
             t["eng_min"], t["eng_max"], t["decimals"] = lo, hi, dec
             t["scaling"] = {"mode": "signal", "eng_min": lo, "eng_max": hi} if source == "signal" else {"mode": "none"}
@@ -312,6 +305,48 @@ def make_handler(app):
             user = app.store.settings["client"].get("username", "client")
             app.historian.event("scaling", f"{user} changed {tid} scaling {old} -> ({lo}, {hi}, {t['scaling']['mode']})")
             self._json({"ok": True})
+
+        def api_client_levels(self, q):
+            """Save the HH / H / L / LL set points of one level transmitter (Tank levels page). Dashboard only."""
+            b = self._body()
+            tid = str(b.get("id") or "")
+            tags = [dict(t) for t in app.store.tags]
+            t = next((x for x in tags if x["id"] == tid and x.get("group") == "Level"), None)
+            if not t:
+                raise ValueError("Unknown level instrument")
+            lo, hi = float(t.get("eng_min") or 0), float(t.get("eng_max") or 100)
+            old = t.get("levels")
+            t["levels"] = check_levels(b.get("levels"), lo, hi)
+            app.store.save_tags(tags)
+            user = app.store.settings["client"].get("username", "client")
+            app.historian.event("levels", f"{user} changed {tid} set points {old} -> {t['levels']}")
+            self._json({"ok": True, "levels": t["levels"]})
+
+        def api_client_write(self, q):
+            """Write one HMI level set point / set delay to the PLC (Tank levels page). Only tags marked
+            "writable"; set points must keep LL < L < H < HH. The value read back from the PLC is returned."""
+            b = self._body()
+            tid = str(b.get("id") or "")
+            tmap = app.store.tag_map()
+            t = tmap.get(tid)
+            if not t or not t.get("writable"):
+                raise ValueError("This value cannot be changed from the dashboard")
+            try:
+                value = float(b["value"])
+            except (KeyError, TypeError, ValueError):
+                raise ValueError("Enter a number")
+            if t.get("level_of"):                       # keep the four set points in order
+                cur = {tmap[x["id"]]["level_key"]: x["value"] for x in app.engine.live(include_hidden=True)
+                       if tmap.get(x["id"], {}).get("level_of") == t["level_of"] and isinstance(x.get("value"), (int, float))}
+                cur[t["level_key"]] = value
+                if all(k in cur for k in ("hh", "h", "l", "ll")) and not cur["ll"] < cur["l"] < cur["h"] < cur["hh"]:
+                    raise ValueError("Set points must stay in order LL < L < H < HH")
+            old = next((x["value"] for x in app.engine.live(include_hidden=True) if x["id"] == tid), None)
+            res = app.engine.write_value(tid, value)
+            user = app.store.settings["client"].get("username", "client")
+            app.historian.event("write", f"{user} wrote {tid} ({t['name']}): {old} -> {res['value']}"
+                                + (" [demo]" if res.get("simulated") else f" to {t.get('device')}"))
+            self._json({"ok": True, **res})
 
         def api_alarm_ack(self, q):   # admin only (client dashboard is view-only)
             b = self._body()
@@ -501,6 +536,8 @@ def make_handler(app):
         ("GET", "/api/alarms"): Handler.api_alarms,
         ("POST", "/api/client/alarms/ack"): Handler.api_client_ack,
         ("POST", "/api/client/scaling"): Handler.api_client_scaling,
+        ("POST", "/api/client/levels"): Handler.api_client_levels,
+        ("POST", "/api/client/write"): Handler.api_client_write,
         ("GET", "/api/report/tags"): Handler.api_report_tags,
         ("GET", "/api/report"): Handler.api_report,
         ("GET", "/api/report.xlsx"): Handler.api_report_xlsx,
@@ -551,8 +588,21 @@ def client_status(c):
     return {"state": state, "validated": bool(c.get("comm_verified")), "last_update": c.get("last_update")}
 
 
-CLIENT_AUX_GROUPS = ("Level switches", "Valve feedback", "Interlocks", "Panel controls", "Scaling", "Set values",
-                     "Motor feedback", "Outputs", "Safety", "Panel indication")
+def check_levels(lv, lo, hi):
+    """HH / H / L / LL level set points: all numbers, LL < L < H < HH, inside the instrument range."""
+    if not isinstance(lv, dict):
+        raise ValueError("HH, H, L and LL are required")
+    try:
+        lv = {k: float(lv[k]) for k in ("hh", "h", "l", "ll")}
+    except (KeyError, TypeError, ValueError):
+        raise ValueError("HH, H, L and LL must all be numbers")
+    if not lo <= lv["ll"] < lv["l"] < lv["h"] < lv["hh"] <= hi:
+        raise ValueError(f"Levels must be in order LL < L < H < HH, between {lo:g} and {hi:g}")
+    return lv
+
+
+CLIENT_AUX_GROUPS = ("Level switches", "Valve feedback", "Interlocks", "Panel controls", "Scaling", "Set values", "Level set points",
+                     "Motor feedback", "Outputs", "Safety", "Panel indication", "PLC alarms")
 # analog inputs whose scaling the client may change on the dashboard (dashboard-side only, never written to the PLC)
 SCALABLE_GROUPS = ("Temperature", "Pressure", "Level", "Analysis")
 

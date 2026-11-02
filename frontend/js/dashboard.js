@@ -35,7 +35,7 @@
   $("logoutBtn").onclick = MD.logout;
 
   // ---------- routing ----------
-  const TITLES = { overview: "Plant dashboard", mimic: "Process mimic", instruments: "Instruments & scaling",
+  const TITLES = { overview: "Plant dashboard", levels: "Tank levels", mimic: "Process mimic", instruments: "Instruments & scaling",
     equipment: "Equipment", trends: "Trends", datalog: "Data log", alarms: "Alarms" };   // Reports page removed on client request; Data log = HMI data log screens
   function route() {
     view = (location.hash || "#overview").slice(1);

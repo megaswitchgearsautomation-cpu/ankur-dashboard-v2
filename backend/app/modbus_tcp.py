@@ -1,8 +1,8 @@
-"""Minimal, read-only Modbus TCP client (standard library only).
+"""Minimal Modbus TCP client (standard library only).
 
-Supports FC01 Read Coils, FC02 Read Discrete Inputs, FC03 Read Holding Registers,
-FC04 Read Input Registers.  No write function codes are implemented on purpose:
-phase 1 is read-only monitoring.
+Reads: FC01 Read Coils, FC02 Read Discrete Inputs, FC03 Read Holding Registers, FC04 Read Input Registers.
+Write: FC16 Write Multiple Registers only, and only through Engine.write_value(), which allows just the tags
+marked "writable" in the tag config (the HMI level set points). Everything else stays read-only.
 """
 from __future__ import annotations
 
@@ -91,6 +91,24 @@ class ModbusTcpClient:
         if nbytes != count * 2:
             raise ModbusError("Register count mismatch in response")
         return list(struct.unpack(f">{count}H", data))
+
+    # -- write (FC16) ------------------------------------------------------------
+    def write_registers(self, address: int, values):
+        """FC16 Write Multiple Registers at a zero-based holding-register address."""
+        values = [int(v) & 0xFFFF for v in values]
+        if not 1 <= len(values) <= 4:
+            raise ModbusError("write: 1..4 registers only")
+        if not 0 <= address <= 0xFFFF or address + len(values) - 1 > 0xFFFF:
+            raise ModbusError(f"address range {address}+{len(values)} invalid")
+        pdu = struct.pack(f">BHHB{len(values)}H", 16, address, len(values), len(values) * 2, *values)
+        resp = self._transact(pdu)
+        if resp[0] == 16 | 0x80:
+            raise ModbusException(16, resp[1] if len(resp) > 1 else 0)
+        if resp[0] != 16 or len(resp) < 5:
+            raise ModbusError("Unexpected reply to FC16")
+        raddr, rcount = struct.unpack(">HH", resp[1:5])
+        if raddr != address or rcount != len(values):
+            raise ModbusError("FC16 reply does not match the request")
 
     def _transact(self, pdu: bytes) -> bytes:
         with self._lock:

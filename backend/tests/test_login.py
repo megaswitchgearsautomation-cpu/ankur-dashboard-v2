@@ -80,6 +80,21 @@ class TestLogin(unittest.TestCase):
         self.assertEqual(self.post(cli, "/api/client/scaling", bad)[0], 400)
         self.assertEqual(self.post(cli, "/api/client/scaling", dict(body, id="PT_01"))[0], 400)   # levels: level tags only
         self.assertEqual(self.post(self.browser(), "/api/client/scaling", body)[0], 401)          # login required
+        # Tank levels page: set points only
+        ok = self.post(cli, "/api/client/levels", {"id": "LT_02", "levels": {"hh": 3300, "h": 2800, "l": 800, "ll": 400}})
+        self.assertEqual(ok[0], 200)
+        self.assertEqual(self.app.store.tag_map()["LT_02"]["levels"]["h"], 2800.0)
+        self.assertEqual(self.post(cli, "/api/client/levels", {"id": "LT_02", "levels": {"hh": 9000, "h": 2800, "l": 800, "ll": 400}})[0], 400)
+        self.assertEqual(self.post(cli, "/api/client/levels", {"id": "T_01", "levels": {"hh": 4, "h": 3, "l": 2, "ll": 1}})[0], 400)
+
+    def test_client_write_set_point(self):
+        cli = self.browser()
+        self.login(cli, "ankur", "ankur123")
+        code, r = self.post(cli, "/api/client/write", {"id": "LT_01_H_DLY", "value": 12})       # demo mode: simulated write
+        self.assertEqual((code, r.get("value"), r.get("simulated")), (200, 12.0, True))
+        self.assertEqual(self.post(cli, "/api/client/write", {"id": "LT_01", "value": 100})[0], 400)       # not writable
+        self.assertEqual(self.post(cli, "/api/client/write", {"id": "LT_01_H_DLY", "value": 99999})[0], 400)  # out of range
+        self.assertEqual(self.post(self.browser(), "/api/client/write", {"id": "LT_01_H_DLY", "value": 5})[0], 401)
 
     def test_anonymous_goes_to_login(self):
         op = self.browser()

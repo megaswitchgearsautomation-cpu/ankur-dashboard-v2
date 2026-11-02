@@ -43,8 +43,8 @@ body.ankur { background: var(--ak-olive); }
 /* header: white bar with grey border (SCADA header style) */
 .ankur .head { background: #fff; border: 2px solid var(--ak-box); border-radius: 16px; padding: 10px 14px; gap: 14px; flex-wrap: nowrap;
   background-image: linear-gradient(90deg, rgba(166,214,60,.10), rgba(255,255,255,0) 32%); }
-.ankur .head-title { min-width: 0; flex: 1 1 auto; overflow: hidden; }
-.ankur .head-title h1 { color: #1d1d1d; font-weight: 800; font-size: 22px; line-height: 1.15; }
+.ankur .head-title { min-width: 210px; flex: 1 1 auto; overflow: hidden; }   /* title never squeezed by the tabs */
+.ankur .head-title h1 { color: #1d1d1d; font-weight: 800; font-size: 22px; line-height: 1.15; white-space: nowrap; }
 .ankur .head-title .sub { color: #777; display: flex; align-items: center; gap: 6px; font-size: 12.5px; white-space: nowrap; margin-top: 2px; }
 .head-ic { flex: none; width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; color: #fff;
   background: linear-gradient(135deg, #222c03, #4d5a17); box-shadow: inset 0 0 0 2px rgba(166,214,60,.35); }
@@ -74,7 +74,8 @@ body.ankur { background: var(--ak-olive); }
   .head-title .sub .clock { flex-basis: 100%; padding-left: 19px; font-size: 12px; }
 }
 @media (max-width: 1500px) { .head-nav a { padding: 8px 11px; } }
-@media (max-width: 1250px) { .ankur .head { flex-wrap: wrap; } .head-nav { order: 3; margin-left: 0; width: 100%; justify-content: center; } .head-right { margin-left: auto; } }
+/* eight tabs: below this width they get their own row under the title */
+@media (max-width: 1800px) { .ankur .head { flex-wrap: wrap; } .head-nav { order: 3; margin-left: 0; width: 100%; justify-content: center; } .head-right { margin-left: auto; } }
 @media (max-width: 760px) { .head-right .brand-pair { display: none; } .head-nav a { padding: 7px 9px; font-size: 12px; } .head-nav a svg { display: none; } }
 
 /* tabs: underline style instead of pills */

@@ -17,6 +17,7 @@
     <a class="rail-logo" href="#overview" title="Ankur Scientific"><img src="img/ankur-mark.png" alt="Ankur Scientific"></a>
     <nav class="rail-nav" id="nav">
       <a href="#overview" data-view="overview" title="Dashboard" aria-label="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg></a>
+      <a href="#levels" data-view="levels" title="Tank levels" aria-label="Tank levels"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M5 13h14"/><path d="M8 7h3M8 10h2" stroke-width="1.6"/></svg></a>
       <a href="#mimic" data-view="mimic" title="Mimic" aria-label="Mimic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="9" width="6" height="11" rx="1.5"/><rect x="16" y="4" width="6" height="16" rx="1.5"/><path d="M8 14h3v-4h5"/><circle cx="11.5" cy="17.5" r="2"/></svg></a>
       <a href="#instruments" data-view="instruments" title="Instruments" aria-label="Instruments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17a8 8 0 1 1 16 0"/><path d="m12 13 3.5-4"/><path d="M8 21h8"/></svg></a>
       <a href="#equipment" data-view="equipment" title="Equipment" aria-label="Equipment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></a>
@@ -41,6 +42,7 @@
       </div>
       <nav class="head-nav" id="segNav" role="tablist" aria-label="Pages">
         <a href="#overview" data-view="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>Overview</a>
+        <a href="#levels" data-view="levels"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M5 13h14"/><path d="M8 7h3M8 10h2" stroke-width="1.6"/></svg>Tank levels</a>
         <a href="#mimic" data-view="mimic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="9" width="6" height="11" rx="1.5"/><rect x="16" y="4" width="6" height="16" rx="1.5"/><path d="M8 14h3v-4h5"/><circle cx="11.5" cy="17.5" r="2"/></svg>Mimic</a>
         <a href="#instruments" data-view="instruments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17a8 8 0 1 1 16 0"/><path d="m12 13 3.5-4"/><path d="M8 21h8"/></svg>Instruments</a>
         <a href="#equipment" data-view="equipment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Equipment</a>
@@ -106,6 +108,15 @@
           <a class="link" href="#equipment">All equipment →</a>
         </div>
         <div class="eq-wrap" id="eqCards"></div>
+      </div>
+    </section>
+
+    <!-- TANK LEVELS: actual level against the settable HH / H / L / LL set points -->
+    <section data-section="levels" class="hidden">
+      <div class="lv-grid" id="lvCards"></div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-head"><h2>Float-switch tanks <span class="muted small">level switches (ON = water has reached that switch)</span></h2></div>
+        <div class="lsw-grid" id="lvSwitches"></div>
       </div>
     </section>
 

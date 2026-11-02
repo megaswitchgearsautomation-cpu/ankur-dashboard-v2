@@ -61,6 +61,7 @@ class Engine:
         self._last_runtime_save = time.time()
         self._last_purge = 0.0
         self._sim_trip = {}
+        self._sim_override = {}          # demo mode: values "written" from the dashboard
         self.iot = IotLink()
         for a in historian.open_alarms():
             self._open_alarms[(a["tag"], a["kind"])] = a
@@ -369,6 +370,8 @@ class Engine:
         if lo is None or hi is None:
             lo, hi = 0.0, 100.0
         span = float(hi) - float(lo)
+        if t["id"] in self._sim_override:    # demo value written from the dashboard
+            return float(self._sim_override[t["id"]])
         if t.get("sim_value") is not None:    # HMI set values: steady demo value
             return float(t["sim_value"])
         if t["id"].endswith("_SP"):          # simulated set points sit steady near the top of range
@@ -595,6 +598,47 @@ class Engine:
             done.append(i)
         self.hist.runtime_save(self.runtime)
         return done
+
+    def write_value(self, tag_id, value):
+        """Write one engineering value to the PLC (FC16). Only tags marked "writable" (HMI level set points).
+        Returns the value read back from the PLC. In demo mode only the simulated value changes."""
+        t = self.store.tag_map().get(tag_id)
+        if not t or not t.get("writable"):
+            raise ValueError("This value cannot be changed from the dashboard")
+        lo, hi = t.get("eng_min"), t.get("eng_max")
+        if (lo is not None and value < float(lo)) or (hi is not None and value > float(hi)):
+            raise ValueError(f"Value must be between {lo:g} and {hi:g} {t.get('unit', '')}".strip())
+        sc = t.get("scaling") or {}
+        raw = (value - float(sc.get("offset", 0))) / float(sc.get("gain", 1) or 1) if sc.get("mode") == "gain_offset" else value
+        dt = t["data_type"]
+        if dt in ("UINT16", "INT16", "UINT32", "INT32"):
+            raw = int(round(raw))
+            lim = {"UINT16": (0, 65535), "INT16": (-32768, 32767), "UINT32": (0, 4294967295), "INT32": (-2147483648, 2147483647)}[dt]
+            if not lim[0] <= raw <= lim[1]:
+                raise ValueError("Value out of range for the PLC register")
+        if self.mode == "simulation":
+            self._sim_override[tag_id] = value
+            st = self.states.get(tag_id)
+            if st:
+                st.value, st.quality, st.ts = value, Q_SIM, time.time()
+            return {"value": value, "simulated": True}
+        ma = self.resolved.get(tag_id)
+        if isinstance(ma, str) or ma is None or ma.function_code != 3 or ma.is_bit_table:
+            raise ValueError("Only holding registers (D) can be written")
+        wo = t.get("word_order") or "default"
+        if wo == "default":
+            wo = self.store.settings["plc"]["default_word_order"]
+        regs = codec.encode_registers(raw, dt, wo)
+        with self._lock:
+            if not self._client:
+                raise ValueError("Not connected to the PLC")
+            self._client.write_registers(ma.address, regs)
+            back = self._client.read(3, ma.address, len(regs))
+        rb = codec.apply_scaling(codec.decode_registers(back, dt, wo), sc)
+        st = self.states.get(tag_id)
+        if st:
+            st.raw, st.value, st.quality, st.ts, st.error = back, rb, Q_GOOD, time.time(), None
+        return {"value": rb, "simulated": False}
 
     def equipment(self):
         out = []

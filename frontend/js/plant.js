@@ -77,8 +77,16 @@
   }
   // HH / H / L / LL level set points of a level transmitter (set on the dashboard; default % of range)
   const LV_KEYS = [["hh", "HH"], ["h", "H"], ["l", "L"], ["ll", "LL"]];
+  // HH / H / L / LL: the values set on the HMI "LT Set Point" screen (read from the PLC); fallback = dashboard / default
+  function plcLevels(t) {
+    if (!t || !live) return null;
+    const v = Object.fromEntries(LV_KEYS.map(([k]) => [k, auxNum(`${t.id}_${k.toUpperCase()}_SP`)]));
+    return LV_KEYS.every(([k]) => v[k] != null) ? v : null;
+  }
   function levelsOf(t) {
     if (!t) return null;
+    const plc = plcLevels(t);
+    if (plc) return plc;
     if (t.levels) return t.levels;
     const lo = t.eng_min ?? 0, span = (t.eng_max ?? 100) - lo;
     return { hh: lo + span * 0.9, h: lo + span * 0.75, l: lo + span * 0.25, ll: lo + span * 0.1 };
@@ -122,33 +130,177 @@
   const valHTML = (t) => `<b class="num">${esc(fmt(t))}</b><small>${esc(t ? t.unit : "")}</small>`;
   const swTxt = (v, on, off) => (v == null ? "No data" : v ? on : off);
 
+  // ---------- detail rows inside the key-point cards (everything the control philosophy uses) ----------
+  // cls: ok / bad / warn / unk / info - colours the dot in front of the value
+  const row = (label, val, cls = "info") => `<div class="kd-r ${cls}"><span>${esc(label)}</span><b><i></i>${val}</b></div>`;
+  const dl = (rows) => `<div class="kp-dl">${rows.filter(Boolean).join("")}</div>`;
+  const note = (txt, cls = "") => (txt ? `<div class="kp-next ${cls}">${esc(txt)}</div>` : "");
+  const tripped = (id) => { const e = eq(id); return !!e && ["TRIP", "FAULT"].includes(e.status); };
+  const spNum = (id, d = 0) => { const v = auxNum(id); return v == null ? "--" : Number(v).toFixed(d); };
+  function eqRow(label, id) {                           // one motor / valve: state · Auto/Manual
+    const e = eq(id);
+    if (!e) return row(label, "No data", "unk");
+    const c = eqCls(e);
+    return row(label, esc([STATE_TXT[e.status] || e.status, e.auto == null ? null : e.auto ? "Auto" : "Manual"].filter(Boolean).join(" · ")),
+      c === "run" ? "ok" : c === "trip" ? "bad" : c === "warn" ? "warn" : c === "unk" ? "unk" : "info");
+  }
+  function pairRow(label, a, b) {                       // main / standby pair: selected one, running one, trips
+    const ea = eq(a), eb = eq(b);
+    if (!ea && !eb) return row(label, "No data", "unk");
+    const e = ea || eb;
+    const sel = e.standby_selected == null ? "" : e.standby_selected ? `Standby ${PID[b]} selected` : `Main ${PID[a]} selected`;
+    const run = running(a) ? PID[a] : running(b) ? PID[b] : "";
+    const trips = [a, b].filter(tripped).map((x) => PID[x]);
+    const parts = [sel, run ? `${run} running` : "none running", e.auto == null ? "" : e.auto ? "Auto" : "Manual"];
+    if (trips.length) parts.push(`${trips.join(", ")} TRIPPED`);
+    return row(label, esc(parts.filter(Boolean).join(" · ")), trips.length ? "bad" : run ? "ok" : "info");
+  }
+  function swRow(label, id, onTxt, offTxt, badWhen) {   // a digital input; badWhen = the state that is a problem
+    const v = sw(id);
+    return row(label, esc(swTxt(v, onTxt, offTxt)), v == null ? "unk" : badWhen != null && v === badWhen ? "bad" : "ok");
+  }
+  function almRow(label, id) {                          // PLC alarm bit for an analog input
+    const v = sw(id);
+    return row(label, v == null ? "No data" : v ? "ALARM" : "Normal", v == null ? "unk" : v ? "bad" : "ok");
+  }
+  // float switch: ON = liquid has reached the switch
+  const floatRow = (label, id) => swRow(label, id, "Water at switch", "Below switch");
+  function floatTank(hl, ll) {                          // text level from an HL + LL switch pair
+    const h = sw(hl), l = sw(ll);
+    if (h == null || l == null) return ["No data", "unk"];
+    if (h) return ["HIGH (HL switch on)", "warn"];
+    if (!l) return ["LOW (below LL switch)", "bad"];
+    return ["Normal (between LL and HL)", "ok"];
+  }
+
   function renderKeyPoints() {
     const box = $("keyPoints");
     if (!box) return;
-    // (system / run hours / mode / air / flow / plant-health strip removed on request)
     const lt1 = tag("LT_01"), lt2 = tag("LT_02"), pt1 = tag("PT_01"), ph = tag("PH_01"), t4 = tag("T_04"), t2 = tag("T_02"), pt3 = tag("PT_03");
     const phv = num(ph), t4v = num(t4), pt1v = num(pt1);
     const phState = phv == null ? "" : phv <= 6.5 ? "⚠ Too acidic - alkali being added" : phv >= 7.5 ? "⚠ Too alkaline - acid being added" : "✔ pH is OK";
     const steamOpen = running("OP_SV1");
+    const air = sw(SW.AIR);
+
+    // sludge tank: what happens next (logic 3.A: valve opens at LL / closes at HH; pump starts at NL / stops at VLL)
+    const l1 = num(lt1), pStart = auxNum("SP_SLUDGE_PUMP_START"), pStop = auxNum("SP_SLUDGE_PUMP_STOP");
+    const vOpen = auxNum("SP_SLUDGE_VALVE_OPEN"), vClose = auxNum("SP_SLUDGE_VALVE_CLOSE");
+    const sPump = running("OP_P1A") || running("OP_P1B");
+    let sNext = "";
+    if (l1 != null && pStart != null && pStop != null) {
+      sNext = sPump ? `Sludge pump running - stops when level falls to ${pStop.toFixed(0)} mm`
+        : l1 >= pStart ? `Level is above pump start (${pStart.toFixed(0)} mm) - pump should be running: check Auto mode / trip`
+          : `Sludge pump starts when level reaches ${pStart.toFixed(0)} mm (mixer starts 60 s before)`;
+    }
+    let vNext = "";
+    if (vOpen != null && vClose != null) vNext = running("MV_01") ? `Feed valve open - closes at ${vClose.toFixed(0)} mm` : `Feed valve opens when level falls to ${vOpen.toFixed(0)} mm`;
+
+    // raw water: why the make-up pumps are (not) running (logic 4: stop at LS-301 LL, keep header > 3 kg/cm²)
+    const rawLL = sw(SW.LS301_LL), rawHL = sw(SW.LS301_HL);
+    const mkRun = running("OP_P14") || running("OP_P15"), ugRun = running("OP_P6A") || running("OP_P6B");
+    const rawNote = rawLL === false && !rawHL ? "Raw water tank below LL - supply pumps stopped (no dry running); borewell pump should be filling"
+      : mkRun ? "Supply pump running on VFD - keeps header pressure above 3 kg/cm²" : "";
+    const ugNote = ugRun ? "Borewell pump filling the raw water tank - stops at HL" : rawHL ? "Raw water tank full (HL) - borewell pumps off" : "";
+    const [rawTxt, rawCls] = floatTank(SW.LS301_HL, SW.LS301_LL);
+
+    // de-gasifier tank (4 switches)
+    const dg = ["LS701_HH", "LS701_H", "LS701_L", "LS701_LL"].map((k) => sw(SW[k]));
+    const dgTxt = dg.some((v) => v == null) ? ["No data", "unk"] : dg[0] ? ["HH - outlet valve opens", "warn"] : dg[1] ? ["H", "ok"]
+      : dg[2] ? ["L", "ok"] : dg[3] ? ["Between LL and L", "warn"] : ["Below LL - recirculation pump stops", "bad"];
+
+    const [ct1Txt, ct1Cls] = floatTank(SW.LS601_HL, SW.LS601_LL), [ct2Txt, ct2Cls] = floatTank(SW.LS602_HL, SW.LS602_LL);
+    const [hwTxt, hwCls] = floatTank(SW.LS603_HL, SW.LS603_LL), [gvTxt, gvCls] = floatTank(SW.LS702_HL, SW.LS702_LL);
+    const [cRawTxt, cRawCls] = floatTank(SW.LS801, SW.LS802), [cPureTxt, cPureCls] = floatTank(SW.LS803, SW.LS804);
+    const ct1Run = ["OP_P7", "OP_P3", "OP_P11"].filter(running).length;
+    const panels = [["Boiler", "Boiler"], ["Dryer", "Dryer"], ["Turbine", "Turbine"], ["Gasifier", "Gasifier"], ["Volute press", "Volute_Press"], ["WTP", "WTP"]];
+    const pfd = (n, p) => sw(`DI_Potential_Free_DI_${n}_From_${p}_Panel`);
+    const pfdTxt = (v) => (v == null ? "--" : v ? "ON" : "OFF");
+    const loc = sw("DI_Submersible_Pump_Panel_Local_remote_Switch_in_Local"), rem = sw("DI_Submersible_Pump_Panel_Local_remote_Switch_in_Remote");
 
     box.innerHTML = `
       <div class="kp-areas">${AREAS.filter((a) => !a.overall).map((a) => areaChip(a)).join("")}</div>
       <div class="kp-grid">
-        ${lt1 ? kpCard("LT_01", "kp-lvl", "Sludge storage tank", "How full the tank is · pumps send sludge to the volute press", valHTML(lt1), tankMini(lt1),
-          chip("AGIT", "Mixer OP-A1") + chip("OP_P1A") + chip("OP_P1B") + chip("PCP", "PCP") + chip("MV_01", "Feed valve")) : ""}
-        ${lt2 ? kpCard("LT_02", "kp-lvl", "Filtrate tank", "Water squeezed out of the sludge by the volute press", valHTML(lt2), tankMini(lt2), chip("OP_P5A") + chip("OP_P5B")) : ""}
-        ${pt1 ? kpCard("PT_01", "kp-pr", "Water supply pressure", "Water to the whole plant · should stay above 3.0 bar", valHTML(pt1),
-          band(pt1, 3, pt1.eng_max, { caption: pt1v == null ? "" : pt1v >= 3 ? "✔ Pressure is OK" : "⚠ Pressure is low (below 3.0 bar)" }),
-          chip("OP_P14") + chip("OP_P15") + chip("OP_P6A", "UG 03-P-301") + chip("OP_P6B", "UG 03-P-302"), pt1v != null && pt1v < 3 ? "warn" : "") : ""}
+        ${lt1 ? kpCard("LT_01", "kp-lvl", "Sludge storage tank", "01-LT-101 radar · pumps send sludge to the volute press", valHTML(lt1),
+          tankMini(lt1) + lvRow(lt1) + note(sNext, sNext.startsWith("Level is above") ? "warn" : "") + note(vNext) + dl([
+            pairRow("Sludge pumps 01-P-101/102", "OP_P1A", "OP_P1B"),
+            row("Pump start / stop level", `${spNum("SP_SLUDGE_PUMP_START")} / ${spNum("SP_SLUDGE_PUMP_STOP")} mm`),
+            eqRow("Feed valve 01-MV-101", "MV_01"),
+            row("Valve open / close level", `${spNum("SP_SLUDGE_VALVE_OPEN")} / ${spNum("SP_SLUDGE_VALVE_CLOSE")} mm`),
+            eqRow("Mixer OP-A1", "AGIT"), eqRow("Progressive cavity pump OP-P201", "PCP"),
+            row("Instrument air (valve needs it)", air == null ? "No data" : air ? "OK" : "LOW - valve blocked", air == null ? "unk" : air ? "ok" : "bad"),
+            almRow("PLC level alarm", "LT_01_ALM"),
+          ]), chip("AGIT", "Mixer OP-A1") + chip("OP_P1A") + chip("OP_P1B") + chip("PCP", "PCP") + chip("MV_01", "Feed valve"), lvState(lt1)) : ""}
+        ${lt2 ? kpCard("LT_02", "kp-lvl", "Filtrate tank", "01-LT-102 radar · water squeezed out of the sludge", valHTML(lt2),
+          tankMini(lt2) + lvRow(lt2) + dl([
+            pairRow("Filtrate pumps 01-P-103/104", "OP_P5A", "OP_P5B"),
+            row("Pump logic", "Starts at normal level · stops at very low level (dry-run protection)"),
+            almRow("PLC level alarm", "LT_02_ALM"),
+          ]), chip("OP_P5A") + chip("OP_P5B"), lvState(lt2)) : ""}
+        ${pt1 ? kpCard("PT_01", "kp-pr", "Water supply pressure", "03-PT-301 · water to the whole plant · should stay above 3.0 bar", valHTML(pt1),
+          band(pt1, 3, pt1.eng_max, { caption: pt1v == null ? "" : pt1v >= 3 ? "✔ Pressure is OK" : "⚠ Pressure is low (below 3.0 bar)" })
+          + note(rawNote, rawLL === false && !rawHL ? "bad" : "") + note(ugNote) + dl([
+            pairRow("Supply pumps 03-P-303/304 (VFD)", "OP_P14", "OP_P15"),
+            pairRow("Borewell pumps 03-P-301/302", "OP_P6A", "OP_P6B"),
+            row("Raw water tank 03-LS-301", esc(rawTxt), rawCls),
+            swRow("Borewell flow 03-FS-301", SW.FLOW, "Flow detected", "No flow", ugRun ? false : null),
+            row("Submersible panel switch", loc == null && rem == null ? "No data" : loc ? "LOCAL - PLC cannot start it" : rem ? "REMOTE (PLC control)" : "Neither", loc ? "warn" : rem ? "ok" : "unk"),
+            row("Pressure alarm set point", `${auxTxt("PT_01_ALM_SP")}`),
+            almRow("PLC pressure alarm", "PT_01_ALM"),
+          ]), chip("OP_P14") + chip("OP_P15") + chip("OP_P6A", "UG 03-P-301") + chip("OP_P6B", "UG 03-P-302"), pt1v != null && pt1v < 3 ? "warn" : "") : ""}
         ${ph ? kpCard("PH_01", "kp-ph", "Process water pH", "Acid / alkali is added automatically to keep it 6.5 - 7.5", valHTML(ph),
-          band(ph, 6.5, 7.5, { caption: phState, cls: "ph" }), chip("OP_P12", "Acid 07-P-702") + chip("OP_P13", "Alkali 07-P-703"),
+          band(ph, 6.5, 7.5, { caption: phState, cls: "ph" }) + dl([
+            eqRow("Acid dosing 07-P-702", "OP_P12"), row("Acid starts / stops", "pH ≤ 6.5 / pH ≥ 7.0"),
+            eqRow("Alkali dosing 07-P-703", "OP_P13"), row("Alkali starts / stops", "pH ≥ 7.5 / pH ≤ 7.0"),
+            row("Never both together", running("OP_P12") && running("OP_P13") ? "BOTH RUNNING" : "OK", running("OP_P12") && running("OP_P13") ? "bad" : "ok"),
+            row("pH alarm set point", auxTxt("PH_01_ALM_SP")), almRow("PLC pH alarm", "PH_01_ALM"),
+          ]), chip("OP_P12", "Acid 07-P-702") + chip("OP_P13", "Alkali 07-P-703"),
           phv != null && (phv < 6.5 || phv > 7.5) ? "warn" : "") : ""}
-        ${t4 ? kpCard("T_04", "kp-tp", "De-gasifier water temperature", "Steam heats the water · kept between 70 and 90 °C", valHTML(t4),
-          band(t4, 70, 90, { caption: `LP steam valve ${steamOpen ? "open" : "closed"}${t4v != null ? (t4v < 70 ? " · heating up" : t4v > 90 ? " · too hot" : " · ✔ OK") : ""}` }),
-          chip("OP_SV1", "Steam 07-XV-701") + chip("OP_P9") + chip("OP_P4") + chip("OP_M1", "Blower")) : ""}
-        ${t2 ? kpCard("T_02", "kp-hw", "Hot water to sludge dryer", "Hot water that dries the sludge", valHTML(t2),
-          `<div class="kp-pair"><span>Pressure</span><b class="num">${esc(fmt(pt3))}</b> <small>${esc(pt3 ? pt3.unit : "")}</small></div>`,
-          chip("OP_P2") + lampChip(SW.LS603_HL, "Tank HL") + lampChip(SW.LS603_LL, "Tank LL")) : ""}
+        ${t4 ? kpCard("T_04", "kp-tp", "De-gasifier water temperature", "07-TT-701 · steam heats the water · kept between 70 and 90 °C", valHTML(t4),
+          band(t4, 70, 90, { caption: `LP steam valve ${steamOpen ? "open" : "closed"}${t4v != null ? (t4v < 70 ? " · heating up" : t4v > 90 ? " · too hot" : " · ✔ OK") : ""}` }) + dl([
+            eqRow("LP steam valve 07-XV-701", "OP_SV1"),
+            row("Steam opens / closes at", `${spNum("SP_LP_STEAM_OPEN")} / ${spNum("SP_LP_STEAM_CLOSE")} °C`),
+            row("De-gasifier tank 07-LS-701", esc(dgTxt[0]), dgTxt[1]),
+            eqRow("Outlet valve 07-XV-702", "OP_SV2"),
+            eqRow("Hot air blower OP-M1 (system)", "OP_M1"),
+            eqRow("Condensate pump 05-P-501", "OP_P4"), eqRow("Recirculation pump 07-P-701", "OP_P9"),
+            row("Instrument air", air == null ? "No data" : air ? "OK" : "LOW - steam valve closed", air == null ? "unk" : air ? "ok" : "bad"),
+            row("Temp. alarm set point", auxTxt("T_04_ALM_SP")), almRow("PLC temperature alarm", "T_04_ALM"),
+          ]), chip("OP_SV1", "Steam 07-XV-701") + chip("OP_P9") + chip("OP_P4") + chip("OP_M1", "Blower")) : ""}
+        ${t2 ? kpCard("T_02", "kp-hw", "Hot water to sludge dryer", "06-TT-601 · hot water that dries the sludge", valHTML(t2),
+          `<div class="kp-pair"><span>Pressure</span><b class="num">${esc(fmt(pt3))}</b> <small>${esc(pt3 ? pt3.unit : "")}</small></div>` + dl([
+            eqRow("Hot water pump 06-P-605 (VFD)", "OP_P2"),
+            row("Hot water tank 06-LS-603", esc(hwTxt), hwCls),
+            row("Pump logic", "Runs above LL · stops at LL"),
+            row("Temp. alarm set point", auxTxt("T_02_ALM_SP")), almRow("PLC temperature alarm", "T_02_ALM"),
+            row("Pressure alarm set point", auxTxt("PT_03_ALM_SP")), almRow("PLC pressure alarm", "PT_03_ALM"),
+          ]), chip("OP_P2") + lampChip(SW.LS603_HL, "Tank HL") + lampChip(SW.LS603_LL, "Tank LL")) : ""}
+        ${kpCard("", "kp-ct", "Cooling towers", "CT-1: de-gasifier PHE, dryer condenser, boiler · CT-2: turbine oil", `<b class="num">${ct1Run}</b><small>/3 CT-1 pumps running</small>`,
+          dl([
+            row("CT-1 basin 06-LS-601", esc(ct1Txt), ct1Cls),
+            eqRow("De-gasifier PHE pump 06-P-601", "OP_P7"), eqRow("Dryer condenser pump 06-P-602", "OP_P3"),
+            eqRow("Boiler cooling pump 06-P-603", "OP_P11"), eqRow("CT-1 fan OP-F601", "OP_F1"),
+            row("CT-2 basin 06-LS-602", esc(ct2Txt), ct2Cls),
+            eqRow("Turbine oil cooling pump 06-P-604", "OP_P10"), eqRow("CT-2 fan OP-F602", "OP_F2"),
+            row("Fan logic", "Fan runs only when a pump of its tower runs · pumps stop at basin LL"),
+          ]), chip("OP_P7") + chip("OP_P3") + chip("OP_P11") + chip("OP_F1", "Fan-1") + chip("OP_P10") + chip("OP_F2", "Fan-2"),
+          ct1Cls === "bad" || ct2Cls === "bad" ? "warn" : "")}
+        ${kpCard("", "kp-wtp", "Gravity tank & WTP / CTP", "07-LS-702 gravity tank → 07-P-704 → raw water tank CTP", `<b class="num">${esc(running("OP_P8") ? "Running" : "Stopped")}</b><small>07-P-704</small>`,
+          dl([
+            row("Gravity tank 07-LS-702", esc(gvTxt), gvCls),
+            eqRow("Gravity tank → WTP pump 07-P-704", "OP_P8"),
+            row("Pump logic", "Runs while gravity tank above LL and CTP raw tank below HH"),
+            row("CTP raw water tank 08-LS-801/802", esc(cRawTxt), cRawCls),
+            row("CTP pure water tank 08-LS-803/804", esc(cPureTxt), cPureCls),
+          ]), chip("OP_P8"), gvCls === "bad" ? "warn" : "")}
+        ${kpCard("", "kp-pan", "Panel switches & linked panels", "OP panel push buttons and signals from the other plant panels", `<b class="num">${esc(swTxt(sw(SW.MODE), "Auto", "Manual"))}</b><small>system selector</small>`,
+          dl([
+            swRow("System auto start P.B.", "DI_Stm_Auto_St_Pb", "Pressed", "Released"),
+            swRow("Sequential shutdown P.B.", "DI_Squen_Stwn", "Pressed", "Released"),
+            swRow("Hooter accept P.B.", "DI_Htr_Acpt_Pb_With_lamp", "Pressed", "Released"),
+            swRow("Instrument air 04-PS-401", SW.AIR, "OK", "LOW", false),
+            ...panels.map(([n, p]) => row(`${n} panel signal 1 / 2`, `${pfdTxt(pfd(1, p))} / ${pfdTxt(pfd(2, p))}`, pfd(1, p) == null ? "unk" : "info")),
+            row("Air dryer / auto drain (cmd)", `${auxTxt("DO_Air_Compressure_Dryer")} / ${auxTxt("DO_Auto_Drain_Valve")}`),
+          ]), "")}
       </div>`;
     box.querySelectorAll("[data-open]").forEach((el) => {
       el.onclick = (ev) => { if (!ev.target.closest("a")) MD.openTag(el.dataset.open); };
@@ -156,6 +308,13 @@
     });
     box.querySelectorAll("[data-sheet]").forEach((el) => (el.onclick = () => { setSheet(el.dataset.sheet); location.hash = "#mimic"; }));
   }
+  // HH / H / L / LL set points (from the HMI) on the overview level cards; the reached one is lit
+  function lvRow(t) {
+    const lv = levelsOf(t), d = 0;
+    return `<div class="kp-lvrow"><a class="kp-lvlink" href="#levels" title="Open Tank levels">Set points${plcLevels(t) ? " (HMI)" : ""}</a>
+      ${LV_KEYS.map(([k, l]) => `<span class="kp-lv ${lvActive(t, k) ? `on ${k}` : ""}">${l} <b class="num">${Number(lv[k]).toFixed(d)}</b></span>`).join("")}</div>`;
+  }
+  const lvState = (t) => { const s = lvStatus(t)[0]; return s === "hh" || s === "ll" ? "warn" : ""; };
   function lampChip(id, label) {
     const v = sw(id);
     return `<span class="kp-eq ${v == null ? "unk" : v ? "lamp" : "stop"}" title="Float switch ${v == null ? "no data" : v ? "ON" : "OFF"}"><i></i>${esc(label)}</span>`;
@@ -545,9 +704,11 @@
   function renderMimic() {
     const tabs = $("mimicTabs"), box = $("mimicSvg");
     if (!tabs || !box) return;
+    if (!SHEETS[sheet]) sheet = "overall";              // a remembered sheet that no longer exists
     if (tabs._sheet !== sheet) {
       tabs._sheet = sheet;
-      tabs.innerHTML = AREAS.map((a, i) => `<button class="${a.id === sheet ? "active" : ""}${a.overall ? " all" : ""}" data-s="${a.id}"><b>${a.overall ? "★" : i}</b> ${esc(a.name)}</button>`).join("");
+      let n = 0;
+      tabs.innerHTML = AREAS.map((a) => `<button class="${a.id === sheet ? "active" : ""}${a.overall ? " all" : ""}" data-s="${a.id}"><b>${a.d3 ? "3D" : a.overall ? "★" : ++n}</b> ${esc(a.name)}</button>`).join("");
       tabs.querySelectorAll("button").forEach((b) => (b.onclick = () => { setSheet(b.dataset.s); renderMimic(); }));
     }
     if (box._sheet !== sheet) {
@@ -715,8 +876,6 @@
       <div class="sc-2"><label>Lowest value<input name="range_min" type="number" step="any" value="${t.eng_min ?? 0}" required></label>
         <label>Highest value<input name="range_max" type="number" step="any" value="${t.eng_max ?? 100}" required></label></div>
       <label>Decimal places<input name="decimals" type="number" min="0" max="4" step="1" value="${t.decimals ?? 1}"></label>
-      ${t.group === "Level" ? (() => { const lv = levelsOf(t); return `<div class="sc-lv"><b>Level set points (mimic HH / H / L / LL lamps)</b>
-        <div class="sc-4">${LV_KEYS.map(([k, l]) => `<label>${l}<input name="lv_${k}" type="number" step="any" value="${Number(lv[k]).toFixed(0)}"></label>`).join("")}</div></div>`; })() : ""}
       <p class="sc-hint">Lowest / highest = what the instrument can measure (for example 0 to 3600 mm). Only this dashboard changes.</p>
       <div class="sc-btns"><button class="btn sm primary" type="submit">Save</button><button class="btn sm" type="button" data-cancel>Cancel</button></div>
       <div class="sc-err" hidden></div></form>`;
@@ -728,13 +887,6 @@
       const fd = new FormData(form), err = form.querySelector(".sc-err");
       const body = { id, source: fd.get("source"), range_min: +fd.get("range_min"), range_max: +fd.get("range_max"), decimals: +fd.get("decimals") };
       if (!(body.range_max > body.range_min)) { err.hidden = false; err.textContent = "Highest value must be greater than lowest value"; return; }
-      if (t.group === "Level") {
-        body.levels = Object.fromEntries(LV_KEYS.map(([k]) => [k, +fd.get(`lv_${k}`)]));
-        const L = body.levels;
-        if (!(body.range_min <= L.ll && L.ll < L.l && L.l < L.h && L.h < L.hh && L.hh <= body.range_max)) {
-          err.hidden = false; err.textContent = "Set points must be in order LL < L < H < HH, inside the range"; return;
-        }
-      }
       try {
         await MD.api("/api/client/scaling", { method: "POST", body });
         MD.toast(`Range saved for ${t.name}`);
@@ -846,6 +998,157 @@
   }
 
   // ======================================================================================
+  // TANK LEVELS - actual level against the HH / H / L / LL set points set on the HMI (LT Set Point screen)
+  // ======================================================================================
+  const LV_TANKS = [
+    { id: "LT_01", name: "Sludge storage tank", pid: "01-LT-101", fluid: "sludge",
+      plc: [["Pump start", "SP_SLUDGE_PUMP_START"], ["Pump stop", "SP_SLUDGE_PUMP_STOP"], ["Valve open", "SP_SLUDGE_VALVE_OPEN"], ["Valve close", "SP_SLUDGE_VALVE_CLOSE"]] },
+    { id: "LT_02", name: "Filtrate tank", pid: "01-LT-102", fluid: "water", plc: [] },
+  ];
+  const SW_TANKS = [
+    { name: "Raw water storage tank", pid: "03-LS-301", sw: [["LS301_HL", "HL"], ["LS301_LL", "LL"]] },
+    { name: "Cooling tower-1 basin", pid: "06-LS-601", sw: [["LS601_HL", "HL"], ["LS601_LL", "LL"]] },
+    { name: "Cooling tower-2 basin", pid: "06-LS-602", sw: [["LS602_HL", "HL"], ["LS602_LL", "LL"]] },
+    { name: "Hot water tank", pid: "06-LS-603", sw: [["LS603_HL", "HL"], ["LS603_LL", "LL"]] },
+    { name: "De-gasifier", pid: "07-LS-701", sw: [["LS701_HH", "HH"], ["LS701_H", "H"], ["LS701_L", "L"], ["LS701_LL", "LL"]] },
+    { name: "Gravity PP tank", pid: "07-LS-702", sw: [["LS702_HL", "HL"], ["LS702_LL", "LL"]] },
+    { name: "Raw water tank (CTP)", pid: "08-LS-801/802", sw: [["LS801", "HH"], ["LS802", "LL"]] },
+    { name: "Pure water tank (CTP)", pid: "08-LS-803/804", sw: [["LS803", "HH"], ["LS804", "LL"]] },
+  ];
+  const GY0 = 22, GH = 268;                              // gauge tank top / height (viewBox 0 0 270 312)
+  function lvStatus(t) {
+    const v = num(t), lv = levelsOf(t);
+    if (v == null || !lv) return ["nd", "No data"];
+    if (v >= lv.hh) return ["hh", "HIGH-HIGH - above the HH set point"];
+    if (v >= lv.h) return ["h", "HIGH - above the H set point"];
+    if (v <= lv.ll) return ["ll", "LOW-LOW - below the LL set point"];
+    if (v <= lv.l) return ["l", "LOW - below the L set point"];
+    return ["ok", "NORMAL - between L and H"];
+  }
+  function lvCardHTML(c) {
+    const t = tag(c.id);
+    if (!t) return "";
+    const marks = LV_KEYS.map(([k, l]) => `<g class="lvg-ln ${k}" data-k="${k}"><line x1="78" x2="182" y1="0" y2="0"/><text x="188" y="4">${l}</text><text class="v num" x="210" y="4">--</text></g>`).join("");
+    const plcMarks = c.plc.map(([l, id], i) => `<g class="lvg-plc" data-sp="${id}"><path d="M72 0 l-7 -5 v10 Z"/><text x="62" y="4" text-anchor="end">${esc(l)}</text></g>`).join("");
+    return `<div class="card lvc" data-lt="${c.id}">
+      <div class="card-head"><h2>${esc(c.name)} <span class="muted small">${esc(c.pid)} · level transmitter</span></h2><span class="lv-src" data-src></span></div>
+      <div class="lvc-body">
+        <svg class="lvg" viewBox="0 0 270 312" role="img" aria-label="${esc(c.name)} level gauge">
+          <rect class="lvg-tank" x="80" y="${GY0}" width="100" height="${GH}" rx="8"/>
+          <clipPath id="clip_${c.id}"><rect x="83" y="${GY0 + 3}" width="94" height="${GH - 6}" rx="6"/></clipPath>
+          <rect class="lvg-fill ${c.fluid}" data-fill clip-path="url(#clip_${c.id})" x="80" y="${GY0 + GH}" width="100" height="0"/>
+          ${marks}${plcMarks}
+          <text class="lvg-pct num" x="130" y="${GY0 + GH / 2}" text-anchor="middle" data-pct>--</text>
+          <text class="lvg-end" x="76" y="${GY0 + GH + 4}" text-anchor="end">${esc(String(t.eng_min ?? 0))}</text>
+          <text class="lvg-end" x="76" y="${GY0 + 6}" text-anchor="end">${esc(String(t.eng_max ?? ""))}</text>
+        </svg>
+        <div class="lvc-info">
+          <div class="lvc-val"><b class="num" data-v>--</b> <small>${esc(t.unit || "")}</small></div>
+          <div class="lvc-st" data-st>--</div>
+          <table class="lvc-t"><thead><tr><th>Level</th><th>Set point</th><th>Set delay</th><th>Actual delay</th><th></th></tr></thead>
+            <tbody>${LV_KEYS.map(([k, l]) => { const up = k.toUpperCase(); return `<tr data-row="${k}"><td><b>${l}</b></td>
+              <td class="num lv-cell" data-w="${c.id}_${up}_SP" data-lbl="${l} set point"><span data-sp>--</span><button class="lv-ed" type="button" title="Change ${l} set point">✎</button></td>
+              <td class="num lv-cell" data-w="${c.id}_${up}_DLY" data-lbl="${l} set delay"><span data-dly>--</span><button class="lv-ed" type="button" title="Change ${l} set delay">✎</button></td>
+              <td class="num" data-act>--</td><td><i class="lvc-lamp"></i></td></tr>`; }).join("")}</tbody></table>
+          <div class="lv-note muted small">✎ writes the new value into the PLC (same as changing it on the HMI). The dashboard then reads it back from the PLC.</div>
+          ${c.plc.length ? `<div class="lvc-plc"><b>Pump &amp; valve control levels (HMI selector screen)</b>
+            ${c.plc.map(([l, id]) => `<span>${esc(l)} <b class="num" data-plc="${id}">--</b></span>`).join("")}</div>` : ""}
+        </div>
+      </div>
+      <div class="lvc-trend"><div class="lvc-th">Level - last 8 hours <span class="muted small">dashed lines = set points</span></div><div class="chart" data-chart></div></div>
+    </div>`;
+  }
+  let lvTrendAt = 0;
+  function renderLevels() {
+    const box = $("lvCards"), swBox = $("lvSwitches");
+    if (!box) return;
+    if (!box.dataset.built) { box.innerHTML = LV_TANKS.map(lvCardHTML).join(""); box.dataset.built = "1"; lvTrendAt = 0;
+      box.querySelectorAll(".lvc").forEach((el) => el.querySelector(".lvc-val").onclick = () => MD.openTag(el.dataset.lt));
+      box.onclick = (ev) => { const b = ev.target.closest(".lv-ed"); if (b) lvEdit(b.closest(".lv-cell")); }; }
+    box.querySelectorAll(".lvc").forEach((el) => {
+      const t = tag(el.dataset.lt);
+      if (!t) return;
+      const lv = levelsOf(t), p = pct(t), [stc, stt] = lvStatus(t), d = t.decimals ?? 1;
+      const yOf = (val) => GY0 + GH * (1 - (pct(t, val) ?? 0) / 100);
+      const fh = GH * (p ?? 0) / 100, fill = el.querySelector("[data-fill]");
+      fill.setAttribute("y", GY0 + GH - fh); fill.setAttribute("height", fh);
+      el.querySelector("[data-pct]").textContent = p == null ? "--" : `${Math.round(p)} %`;
+      el.querySelector("[data-v]").textContent = fmt(t);
+      const st = el.querySelector("[data-st]"); st.textContent = stt; st.className = `lvc-st ${stc}`;
+      el.querySelector("[data-src]").textContent = plcLevels(t) ? "Set points from HMI / PLC" : "Set points: default (HMI values not read)";
+      LV_KEYS.forEach(([k, l]) => {
+        const g = el.querySelector(`.lvg-ln[data-k="${k}"]`), y = yOf(lv[k]);
+        g.setAttribute("transform", `translate(0 ${y.toFixed(1)})`);
+        g.querySelector(".v").textContent = Number(lv[k]).toFixed(0);
+        g.classList.toggle("on", !!lvActive(t, k));
+        const row = el.querySelector(`tr[data-row="${k}"]`), up = k.toUpperCase();
+        const spEl = row.querySelector("[data-sp]"), dlyEl = row.querySelector("[data-dly]");
+        if (spEl) spEl.textContent = `${Number(lv[k]).toFixed(d)} ${t.unit || ""}`;   // (absent while that cell is being edited)
+        if (dlyEl) dlyEl.textContent = auxTxt(`${t.id}_${up}_DLY`);
+        row.querySelector("[data-act]").textContent = auxTxt(`${t.id}_${up}_ACT`);
+        row.className = lvActive(t, k) ? `on ${k}` : "";
+      });
+      el.querySelectorAll(".lvg-plc").forEach((g) => {
+        const v = auxNum(g.dataset.sp);
+        g.style.display = v == null ? "none" : "";
+        if (v != null) g.setAttribute("transform", `translate(0 ${yOf(v).toFixed(1)})`);
+      });
+      el.querySelectorAll("[data-plc]").forEach((b) => (b.textContent = auxTxt(b.dataset.plc)));
+    });
+    if (Date.now() - lvTrendAt > 60000) { lvTrendAt = Date.now(); loadLevelTrends(box); }
+    if (swBox) swBox.innerHTML = SW_TANKS.map((tk) => {
+      const st = tk.sw.map(([k, l]) => [l, sw(SW[k])]);
+      const top = st.find(([, v]) => v);
+      const nd = st.every(([, v]) => v == null);
+      const txt = nd ? "No data" : top ? `Water at ${top[0]} switch or above` : `Below the ${st[st.length - 1][0]} switch`;
+      return `<div class="lsw"><div class="lsw-h"><b>${esc(tk.name)}</b><span class="muted small">${esc(tk.pid)}</span></div>
+        <div class="lsw-lamps">${st.map(([l, v]) => `<span class="lsw-l ${v == null ? "nd" : v ? "on" : ""}">${l}</span>`).join("")}</div>
+        <div class="lsw-t ${top ? "" : "low"}">${esc(txt)}</div></div>`;
+    }).join("");
+  }
+  // write one set point / set delay to the PLC: inline input -> confirm -> POST -> show the value read back
+  function lvEdit(cell) {
+    if (!cell || cell.classList.contains("editing")) return;
+    const id = cell.dataset.w, a = (live.aux || {})[id] || {}, unit = a.unit || "";
+    const cur = typeof a.value === "number" ? a.value : "";
+    const saved = cell.innerHTML;
+    cell.classList.add("editing");
+    cell.innerHTML = `<form class="lv-form"><input type="number" step="any" value="${cur === "" ? "" : Number(cur).toFixed(a.decimals ?? 1)}" aria-label="${esc(cell.dataset.lbl)}">
+      <span class="u">${esc(unit)}</span><button class="btn sm primary" type="submit">Write</button><button class="btn sm" type="button" data-x>✕</button></form>`;
+    const form = cell.querySelector("form"), inp = form.querySelector("input");
+    const close = () => { cell.classList.remove("editing"); cell.innerHTML = saved; };
+    form.querySelector("[data-x]").onclick = close;
+    form.onsubmit = async (ev) => {
+      ev.preventDefault();
+      const v = Number(inp.value);
+      if (inp.value === "" || !isFinite(v)) { MD.toast("Enter a number", true); return; }
+      const demo = live.status.state === "demo";
+      if (!confirm(`Write ${cell.dataset.lbl} = ${v} ${unit} ${demo ? "(demo data - nothing is sent to the PLC)" : "to the PLC"}?\n\nThis changes the plant's level control, the same as changing it on the HMI.`)) return;
+      form.querySelectorAll("button,input").forEach((x) => (x.disabled = true));
+      try {
+        const r = await MD.api("/api/client/write", { method: "POST", body: { id, value: v } });
+        MD.toast(`${cell.dataset.lbl}: ${Number(r.value).toFixed(a.decimals ?? 1)} ${unit} ${r.simulated ? "(demo)" : "written - read back from PLC"}`);
+        if (live.aux && live.aux[id]) live.aux[id].value = r.value;
+        lvTrendAt = 0;
+        close();
+      } catch (e) { MD.toast(e.message, true); form.querySelectorAll("button,input").forEach((x) => (x.disabled = false)); }
+    };
+    inp.focus(); inp.select();
+  }
+  async function loadLevelTrends(box) {
+    for (const el of box.querySelectorAll(".lvc")) {
+      const t = tag(el.dataset.lt);
+      if (!t) continue;
+      try {
+        const r = await MD.api(`/api/trend?tags=${encodeURIComponent(t.id)}&minutes=480&points=240`);
+        const s = r.series[0], lv = levelsOf(t);
+        if (s) MDChart.render(el.querySelector("[data-chart]"), { name: s.name, unit: s.unit, decimals: s.decimals, color: "var(--s3)", points: s.points,
+          from: r.from, to: r.to, limits: LV_KEYS.map(([k, l]) => ({ v: lv[k], label: `${l} ${Number(lv[k]).toFixed(0)}` })), yMin: t.eng_min, yMax: t.eng_max });
+      } catch (_) { /* trend is optional */ }
+    }
+  }
+
+  // ======================================================================================
   // HELP - plain-language guide to every page (opens in the side drawer)
   // ======================================================================================
   const HELP = [
@@ -880,6 +1183,7 @@
     render(l, view) {
       live = l;
       if (view === "overview") renderKeyPoints();
+      if (view === "levels") renderLevels();
       if (view === "mimic") renderMimic();
       if (view === "instruments") renderInstruments();
       if (view === "equipment") { renderSelectors(); renderIO(); }
@@ -888,6 +1192,7 @@
     show(view) {
       if (view === "mimic") { const b = $("mimicSvg"); if (b) b._sheet = null; const t = $("mimicTabs"); if (t) t._sheet = null; }
       if (view === "datalog") { renderDatalog(true); return; }
+      if (view === "levels") lvTrendAt = 0;
       if (view !== "instruments") editing = null;
       if (live) this.render(live, view);
     },
