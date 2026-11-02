@@ -7,8 +7,8 @@
   <link rel="icon" href="img/ankur-mark.png">
   <link rel="stylesheet" href="css/app.css">
   <!-- v2: same layout as v1, re-skinned with the Ankur SCADA design (colours, frame, tiles, buttons) -->
-  <link rel="stylesheet" href="css/ankur-theme.css">
-  <link rel="stylesheet" href="css/plant.css">
+  <link rel="stylesheet" href="css/ankur-theme.css?v=20261102d">
+  <link rel="stylesheet" href="css/plant.css?v=20261102d">
 </head>
 <body class="client ankur">
 <div class="shell">
@@ -94,20 +94,11 @@
       <div class="ov-grid2 ov-full">
         <div class="card">
           <div class="card-head">
-            <h2>Process values <span class="count" id="pvCount"></span></h2>
+            <h2>Other process values <span class="count" id="pvCount"></span> <span class="muted small">(the rest are in the cards above)</span></h2>
             <div class="seg sm" id="pvSeg"></div>
           </div>
           <div class="pv-list" id="pvList"></div>
         </div>
-      </div>
-
-      <div class="card" style="margin-top:16px">
-        <div class="card-head">
-          <h2>Equipment</h2>
-          <div class="eq-sum" id="eqSummary"></div>
-          <a class="link" href="#equipment">All equipment →</a>
-        </div>
-        <div class="eq-wrap" id="eqCards"></div>
       </div>
     </section>
 
@@ -159,9 +150,7 @@
 
     <!-- EQUIPMENT -->
     <section data-section="equipment" class="hidden">
-      <!-- HMI selector screens: Auto/Manual, Main/Standby and set values (view only) -->
-      <div class="card sel-card"><div class="card-head"><h2>Selector switches &amp; set values <span class="muted small">as set on the HMI</span></h2></div>
-        <div class="sel-grid" id="selGrid"></div></div>
+      <!-- (HMI selector card removed: Auto/Manual + Main/Standby are on each equipment card, set values on Overview / Tank levels) -->
       <div class="eq-kpis" id="eqKpis"></div>
       <div class="eq-legend" aria-label="What the states mean">
         <b>States:</b>
@@ -171,6 +160,7 @@
         <span><i class="run"></i><b>Open</b> valve open limit switch ON</span>
         <span><i class="stop"></i><b>Closed</b> valve not open</span>
         <span class="muted">Run hours count up while a motor is running · Starts = number of times it started</span>
+        <span class="muted">Signals: <b>CMD</b> = PLC start command · <b>RUN</b> = run feedback · <b>TRIP</b> = trip input (lit = ON)</span>
       </div>
       <div class="card">
         <div class="card-head eq-head">
@@ -182,8 +172,9 @@
         </div>
         <div class="eq-wrap" id="eqGrid"></div>
       </div>
-      <!-- HMI IO screens: field signals ON / OFF (no PLC addresses on the client page) -->
-      <div class="card" style="margin-top:16px"><div class="card-head"><h2>Field signals</h2><div class="seg sm" id="ioSeg"></div></div>
+      <!-- (field signals list removed: each equipment card shows its own CMD / RUN / TRIP signals; level switches are on
+           Tank levels, safety / panel lamps on the Overview) -->
+      <div class="card" style="margin-top:16px"><div class="card-head"><h2>Spare &amp; other field signals</h2></div>
         <div class="io-grid" id="ioGrid"></div></div>
     </section>
 
@@ -256,7 +247,7 @@
 
 <script src="js/common.js"></script>
 <script src="js/chart.js"></script>
-<script src="js/plant.js"></script>
-<script src="js/dashboard.js"></script>
+<script src="js/plant.js?v=20261102e"></script>
+<script src="js/dashboard.js?v=20261102d"></script>
 </body>
 </html>

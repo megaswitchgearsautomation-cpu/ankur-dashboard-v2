@@ -648,8 +648,14 @@ class Engine:
             sim = self.mode == "simulation"
             am, _ = self._tv(e.get("am_tag"))          # HMI Auto/Manual soft selector (M60xx)
             ms, _ = self._tv(e.get("ms_tag"))          # HMI Main/Standby soft selector (M70xx), pairs only
+            # raw field signals of this equipment (HMI IO screens): command output + feedback inputs
+            io = {}
+            for k in ("cmd_tag", "run_tag", "trip_tag", "open_cmd_tag", "close_cmd_tag", "open_tag", "close_tag"):
+                if e.get(k):
+                    v, _ = self._tv(e[k])
+                    io[k[:-4]] = None if v is None else bool(v)
             out.append({"auto": None if am is None else bool(am), "standby_selected": None if ms is None else bool(ms),
-                        "pair": e.get("pair"),
+                        "pair": e.get("pair"), "io": io,
                         "id": e["id"], "name": e["name"], "area": e.get("area", ""), "type": e.get("type", "motor"),
                         "tag_no": e.get("tag_no", ""), "kw": e.get("kw"), "starter": e.get("starter", ""),
                         "status": st["status"], "color": st["color"], "since": st.get("since"),

@@ -620,7 +620,7 @@ def client_tag(t):
 
 def client_equipment(e):
     return {k: e.get(k) for k in ("id", "name", "area", "type", "tag_no", "kw", "status", "color", "since",
-                                  "run_hours", "starts", "simulated", "auto", "standby_selected", "pair")}
+                                  "run_hours", "starts", "simulated", "auto", "standby_selected", "pair", "io")}
 
 
 def client_alarm(a):

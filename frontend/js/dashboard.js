@@ -345,8 +345,9 @@
     $("ovTrendSeg").innerHTML = groups.map((g) => `<button class="${g === ovGroup ? "active" : ""}" data-g="${esc(g)}">${esc(g)}</button>`).join("");
     $("ovTrendSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => { ovGroup = b.dataset.g; loadOvTrend(true); renderOverview(); }));
 
-    // process values
-    const pv = live.tags.filter((t) => PROCESS_GROUPS.includes(t.group));
+    // process values: only the ones that do not already have their own key-point card above (shown once)
+    const inCards = new Set(["LT_01", "LT_02", "PT_01", "PH_01", "T_04", "T_02", "PT_03"]);
+    const pv = live.tags.filter((t) => PROCESS_GROUPS.includes(t.group) && !inCards.has(t.id));
     const pgs = ["All", ...PROCESS_GROUPS.filter((g) => pv.some((t) => t.group === g))];
     $("pvSeg").innerHTML = pgs.map((g) => `<button class="${g === pvGroup ? "active" : ""}" data-g="${esc(g)}">${esc(g)}</button>`).join("");
     $("pvSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => { pvGroup = b.dataset.g; renderOverview(); }));
@@ -356,15 +357,7 @@
 
     // (active-alarms card removed from the overview on request: alarms stay on the Alarms page and the pop-up)
 
-    // equipment
-    const counts = {};
-    eq.forEach((e) => (counts[e.status] = (counts[e.status] || 0) + 1));
-    const order = [["RUNNING", "green"], ["STOPPED", "grey"], ["TRIP", "red"], ["NO FEEDBACK", "yellow"], ["STARTING", "yellow"],
-      ["OPEN", "green"], ["CLOSED", "grey"], ["TRAVEL", "yellow"], ["FAULT", "red"], ["UNKNOWN", "grey"]];
-    $("eqSummary").innerHTML = order.filter(([s]) => counts[s]).map(([s, col]) =>
-      `<span class="status ${col}"><span class="dot"></span>${s} ${counts[s]}</span>`).join("");
-    const rank = { TRIP: 0, FAULT: 0, "NO FEEDBACK": 1, UNKNOWN: 2, STARTING: 3, RUNNING: 4, OPEN: 5, STOPPED: 6, CLOSED: 7, TRAVEL: 3 };
-    renderEqInto($("eqCards"), eq.slice().sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9) || a.id.localeCompare(b.id)).slice(0, 8), { view: "cards" });
+    // (overview equipment list removed: every pump is already in its key-point card and on the Equipment page)
 
     // panel & safety
     renderPanelSafety();
@@ -631,6 +624,9 @@
         ${motor ? `<div><span>Run hours</span><b class="num rh">-</b></div>` : `<div><span>Position</span><b class="pos">-</b></div>`}
         <div><span>Mode (HMI)</span><b class="mode">-</b></div>
       </div>
+      <div class="eqc-io" title="Field signals from the PLC (lit = ON)">${(motor ? [["cmd", "CMD"], ["run", "RUN"], ["trip", "TRIP"]]
+        : [["open_cmd", "OPEN CMD"], ["close_cmd", "CLOSE CMD"], ["open", "OPEN"], ["close", "CLOSED"]])
+        .filter(([k]) => e.io && k in e.io).map(([k, l]) => `<span class="sig" data-io="${k}"><i></i>${l}</span>`).join("")}</div>
       ${motor ? '<div class="eqc-bar" title="Run hours compared with the most-used motor"><i></i></div>' : ""}
     </div>`;
   }
@@ -660,6 +656,10 @@
     const q = (s) => el.querySelector(s);
     q(".st").textContent = EQ_TXT[e.status] || e.status || "-";
     if (q(".mode")) { q(".mode").textContent = modeTxt(e); q(".mode").classList.toggle("man", e.auto === false); }
+    el.querySelectorAll("[data-io]").forEach((s) => {           // CMD / RUN / TRIP lamps
+      const v = (e.io || {})[s.dataset.io];
+      s.className = `sig ${s.dataset.io}${v == null ? " nd" : v ? " on" : ""}`;
+    });
     if (e.type === "motor") {
       if (q(".rh")) {
         q(".rh").textContent = fmtRunHours(e.run_hours);

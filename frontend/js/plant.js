@@ -131,29 +131,38 @@
   const swTxt = (v, on, off) => (v == null ? "No data" : v ? on : off);
 
   // ---------- detail rows inside the key-point cards (everything the control philosophy uses) ----------
-  // cls: ok / bad / warn / unk / info - colours the dot in front of the value
-  const row = (label, val, cls = "info") => `<div class="kd-r ${cls}"><span>${esc(label)}</span><b><i></i>${val}</b></div>`;
-  const dl = (rows) => `<div class="kp-dl">${rows.filter(Boolean).join("")}</div>`;
-  const note = (txt, cls = "") => (txt ? `<div class="kp-next ${cls}">${esc(txt)}</div>` : "");
+  // cls: ok / bad / warn / stop / unk = coloured status badge; info = plain value (set points, logic text)
+  // the P&ID tag at the end of a label ("Sludge pumps 01-P-101/102") goes on its own small grey line
+  function row(label, val, cls = "info") {
+    const m = label.match(/^(.*?)\s+((?:\d{2}|OP)-[A-Z]{1,3}-?[\w/]*.*)$/);
+    const lab = m ? `${esc(m[1])}<small>${esc(m[2])}</small>` : esc(label);
+    const v = cls === "info" ? val : val.includes('class="pl"') ? val : `<span class="pl">${val}</span>`;
+    return `<div class="kd-r ${cls}"><span>${lab}</span><b>${v}</b></div>`;
+  }
+  // card details in titled groups: [["Equipment", rows], ["Set points & logic", rows], ["Alarms & safety", rows]]
+  const secs = (groups) => `<div class="kp-dl">${groups.filter(([, r]) => r.filter(Boolean).length)
+    .map(([h, r]) => `<div class="kd-sec"><div class="kd-h">${esc(h)}</div>${r.filter(Boolean).join("")}</div>`).join("")}</div>`;
+  const note = (txt, cls = "") => (txt ? `<div class="kp-next ${cls}"><b>${cls === "bad" || cls === "warn" ? "⚠" : "▶"}</b>${esc(txt)}</div>` : "");
   const tripped = (id) => { const e = eq(id); return !!e && ["TRIP", "FAULT"].includes(e.status); };
   const spNum = (id, d = 0) => { const v = auxNum(id); return v == null ? "--" : Number(v).toFixed(d); };
-  function eqRow(label, id) {                           // one motor / valve: state · Auto/Manual
+  const modeEm = (e) => (e && e.auto != null ? `<em>${e.auto ? "Auto" : "Manual"}</em>` : "");
+  function eqRow(label, id) {                           // one motor / valve: state badge + Auto/Manual
     const e = eq(id);
     if (!e) return row(label, "No data", "unk");
     const c = eqCls(e);
-    return row(label, esc([STATE_TXT[e.status] || e.status, e.auto == null ? null : e.auto ? "Auto" : "Manual"].filter(Boolean).join(" · ")),
-      c === "run" ? "ok" : c === "trip" ? "bad" : c === "warn" ? "warn" : c === "unk" ? "unk" : "info");
+    return row(label, `<span class="pl">${esc(STATE_TXT[e.status] || e.status)}</span>${modeEm(e)}`,
+      c === "run" ? "ok" : c === "trip" ? "bad" : c === "warn" ? "warn" : c === "unk" ? "unk" : "stop");
   }
-  function pairRow(label, a, b) {                       // main / standby pair: selected one, running one, trips
+  function pairRow(label, a, b) {                       // main / standby pair: running one (badge), selected one, mode
     const ea = eq(a), eb = eq(b);
     if (!ea && !eb) return row(label, "No data", "unk");
     const e = ea || eb;
-    const sel = e.standby_selected == null ? "" : e.standby_selected ? `Standby ${PID[b]} selected` : `Main ${PID[a]} selected`;
     const run = running(a) ? PID[a] : running(b) ? PID[b] : "";
     const trips = [a, b].filter(tripped).map((x) => PID[x]);
-    const parts = [sel, run ? `${run} running` : "none running", e.auto == null ? "" : e.auto ? "Auto" : "Manual"];
-    if (trips.length) parts.push(`${trips.join(", ")} TRIPPED`);
-    return row(label, esc(parts.filter(Boolean).join(" · ")), trips.length ? "bad" : run ? "ok" : "info");
+    const badge = trips.length ? `${trips.join(", ")} TRIPPED` : run ? `${run} running` : "Both stopped";
+    const sel = e.standby_selected == null ? "" : e.standby_selected ? "Standby selected" : "Main selected";
+    return row(label, `<span class="pl">${esc(badge)}</span><em>${esc([sel, e.auto == null ? "" : e.auto ? "Auto" : "Manual"].filter(Boolean).join(" · "))}</em>`,
+      trips.length ? "bad" : run ? "ok" : "stop");
   }
   function swRow(label, id, onTxt, offTxt, badWhen) {   // a digital input; badWhen = the state that is a problem
     const v = sw(id);
@@ -221,85 +230,75 @@
       <div class="kp-areas">${AREAS.filter((a) => !a.overall).map((a) => areaChip(a)).join("")}</div>
       <div class="kp-grid">
         ${lt1 ? kpCard("LT_01", "kp-lvl", "Sludge storage tank", "01-LT-101 radar · pumps send sludge to the volute press", valHTML(lt1),
-          tankMini(lt1) + lvRow(lt1) + note(sNext, sNext.startsWith("Level is above") ? "warn" : "") + note(vNext) + dl([
-            pairRow("Sludge pumps 01-P-101/102", "OP_P1A", "OP_P1B"),
-            row("Pump start / stop level", `${spNum("SP_SLUDGE_PUMP_START")} / ${spNum("SP_SLUDGE_PUMP_STOP")} mm`),
-            eqRow("Feed valve 01-MV-101", "MV_01"),
-            row("Valve open / close level", `${spNum("SP_SLUDGE_VALVE_OPEN")} / ${spNum("SP_SLUDGE_VALVE_CLOSE")} mm`),
-            eqRow("Mixer OP-A1", "AGIT"), eqRow("Progressive cavity pump OP-P201", "PCP"),
-            row("Instrument air (valve needs it)", air == null ? "No data" : air ? "OK" : "LOW - valve blocked", air == null ? "unk" : air ? "ok" : "bad"),
-            almRow("PLC level alarm", "LT_01_ALM"),
-          ]), chip("AGIT", "Mixer OP-A1") + chip("OP_P1A") + chip("OP_P1B") + chip("PCP", "PCP") + chip("MV_01", "Feed valve"), lvState(lt1)) : ""}
+          tankMini(lt1) + lvRow(lt1) + note(sNext, sNext.startsWith("Level is above") ? "warn" : "") + note(vNext) + secs([
+            ["Equipment", [pairRow("Sludge pumps 01-P-101/102", "OP_P1A", "OP_P1B"), eqRow("Feed valve 01-MV-101", "MV_01"),
+              eqRow("Mixer OP-A1", "AGIT"), eqRow("Cavity pump OP-P201", "PCP")]],
+            ["Set points & logic", [row("Pump start / stop", `${spNum("SP_SLUDGE_PUMP_START")} / ${spNum("SP_SLUDGE_PUMP_STOP")} mm`),
+              row("Valve open / close", `${spNum("SP_SLUDGE_VALVE_OPEN")} / ${spNum("SP_SLUDGE_VALVE_CLOSE")} mm`),
+              row("Mixer", "starts 60 s before pump · stops 60 s after")]],
+            ["Alarms & safety", [row("Instrument air (for valve)", air == null ? "No data" : air ? "OK" : "LOW - valve blocked", air == null ? "unk" : air ? "ok" : "bad"),
+              almRow("PLC level alarm", "LT_01_ALM")]],
+          ]), "", lvState(lt1)) : ""}
         ${lt2 ? kpCard("LT_02", "kp-lvl", "Filtrate tank", "01-LT-102 radar · water squeezed out of the sludge", valHTML(lt2),
-          tankMini(lt2) + lvRow(lt2) + dl([
-            pairRow("Filtrate pumps 01-P-103/104", "OP_P5A", "OP_P5B"),
-            row("Pump logic", "Starts at normal level · stops at very low level (dry-run protection)"),
-            almRow("PLC level alarm", "LT_02_ALM"),
-          ]), chip("OP_P5A") + chip("OP_P5B"), lvState(lt2)) : ""}
+          tankMini(lt2) + lvRow(lt2) + secs([
+            ["Equipment", [pairRow("Filtrate pumps 01-P-103/104", "OP_P5A", "OP_P5B")]],
+            ["Set points & logic", [row("Pump starts", "at normal level"), row("Pump stops", "at very low level (dry-run protection)")]],
+            ["Alarms & safety", [almRow("PLC level alarm", "LT_02_ALM")]],
+          ]), "", lvState(lt2)) : ""}
         ${pt1 ? kpCard("PT_01", "kp-pr", "Water supply pressure", "03-PT-301 · water to the whole plant · should stay above 3.0 bar", valHTML(pt1),
           band(pt1, 3, pt1.eng_max, { caption: pt1v == null ? "" : pt1v >= 3 ? "✔ Pressure is OK" : "⚠ Pressure is low (below 3.0 bar)" })
-          + note(rawNote, rawLL === false && !rawHL ? "bad" : "") + note(ugNote) + dl([
-            pairRow("Supply pumps 03-P-303/304 (VFD)", "OP_P14", "OP_P15"),
-            pairRow("Borewell pumps 03-P-301/302", "OP_P6A", "OP_P6B"),
-            row("Raw water tank 03-LS-301", esc(rawTxt), rawCls),
-            swRow("Borewell flow 03-FS-301", SW.FLOW, "Flow detected", "No flow", ugRun ? false : null),
-            row("Submersible panel switch", loc == null && rem == null ? "No data" : loc ? "LOCAL - PLC cannot start it" : rem ? "REMOTE (PLC control)" : "Neither", loc ? "warn" : rem ? "ok" : "unk"),
-            row("Pressure alarm set point", `${auxTxt("PT_01_ALM_SP")}`),
-            almRow("PLC pressure alarm", "PT_01_ALM"),
-          ]), chip("OP_P14") + chip("OP_P15") + chip("OP_P6A", "UG 03-P-301") + chip("OP_P6B", "UG 03-P-302"), pt1v != null && pt1v < 3 ? "warn" : "") : ""}
+          + note(rawNote, rawLL === false && !rawHL ? "bad" : "") + note(ugNote) + secs([
+            ["Equipment", [pairRow("Supply pumps (VFD) 03-P-303/304", "OP_P14", "OP_P15"), pairRow("Borewell pumps 03-P-301/302", "OP_P6A", "OP_P6B")]],
+            ["Tank & field signals", [row("Raw water tank 03-LS-301", esc(rawTxt), rawCls),
+              swRow("Borewell flow 03-FS-301", SW.FLOW, "Flow detected", "No flow", ugRun ? false : null),
+              row("Submersible panel", loc == null && rem == null ? "No data" : loc ? "LOCAL - PLC cannot start" : rem ? "REMOTE (PLC)" : "Neither", loc ? "warn" : rem ? "ok" : "unk")]],
+            ["Alarms & safety", [row("Pressure alarm set point", auxTxt("PT_01_ALM_SP")), almRow("PLC pressure alarm", "PT_01_ALM")]],
+          ]), "", pt1v != null && pt1v < 3 ? "warn" : "") : ""}
         ${ph ? kpCard("PH_01", "kp-ph", "Process water pH", "Acid / alkali is added automatically to keep it 6.5 - 7.5", valHTML(ph),
-          band(ph, 6.5, 7.5, { caption: phState, cls: "ph" }) + dl([
-            eqRow("Acid dosing 07-P-702", "OP_P12"), row("Acid starts / stops", "pH ≤ 6.5 / pH ≥ 7.0"),
-            eqRow("Alkali dosing 07-P-703", "OP_P13"), row("Alkali starts / stops", "pH ≥ 7.5 / pH ≤ 7.0"),
-            row("Never both together", running("OP_P12") && running("OP_P13") ? "BOTH RUNNING" : "OK", running("OP_P12") && running("OP_P13") ? "bad" : "ok"),
-            row("pH alarm set point", auxTxt("PH_01_ALM_SP")), almRow("PLC pH alarm", "PH_01_ALM"),
-          ]), chip("OP_P12", "Acid 07-P-702") + chip("OP_P13", "Alkali 07-P-703"),
-          phv != null && (phv < 6.5 || phv > 7.5) ? "warn" : "") : ""}
+          band(ph, 6.5, 7.5, { caption: phState, cls: "ph" }) + secs([
+            ["Equipment", [eqRow("Acid dosing 07-P-702", "OP_P12"), eqRow("Alkali dosing 07-P-703", "OP_P13")]],
+            ["Set points & logic", [row("Acid starts / stops", "pH ≤ 6.5 / pH ≥ 7.0"), row("Alkali starts / stops", "pH ≥ 7.5 / pH ≤ 7.0")]],
+            ["Alarms & safety", [row("Never both together", running("OP_P12") && running("OP_P13") ? "BOTH RUNNING" : "OK", running("OP_P12") && running("OP_P13") ? "bad" : "ok"),
+              row("pH alarm set point", auxTxt("PH_01_ALM_SP")), almRow("PLC pH alarm", "PH_01_ALM")]],
+          ]), "", phv != null && (phv < 6.5 || phv > 7.5) ? "warn" : "") : ""}
         ${t4 ? kpCard("T_04", "kp-tp", "De-gasifier water temperature", "07-TT-701 · steam heats the water · kept between 70 and 90 °C", valHTML(t4),
-          band(t4, 70, 90, { caption: `LP steam valve ${steamOpen ? "open" : "closed"}${t4v != null ? (t4v < 70 ? " · heating up" : t4v > 90 ? " · too hot" : " · ✔ OK") : ""}` }) + dl([
-            eqRow("LP steam valve 07-XV-701", "OP_SV1"),
-            row("Steam opens / closes at", `${spNum("SP_LP_STEAM_OPEN")} / ${spNum("SP_LP_STEAM_CLOSE")} °C`),
-            row("De-gasifier tank 07-LS-701", esc(dgTxt[0]), dgTxt[1]),
-            eqRow("Outlet valve 07-XV-702", "OP_SV2"),
-            eqRow("Hot air blower OP-M1 (system)", "OP_M1"),
-            eqRow("Condensate pump 05-P-501", "OP_P4"), eqRow("Recirculation pump 07-P-701", "OP_P9"),
-            row("Instrument air", air == null ? "No data" : air ? "OK" : "LOW - steam valve closed", air == null ? "unk" : air ? "ok" : "bad"),
-            row("Temp. alarm set point", auxTxt("T_04_ALM_SP")), almRow("PLC temperature alarm", "T_04_ALM"),
-          ]), chip("OP_SV1", "Steam 07-XV-701") + chip("OP_P9") + chip("OP_P4") + chip("OP_M1", "Blower")) : ""}
+          band(t4, 70, 90, { caption: `LP steam valve ${steamOpen ? "open" : "closed"}${t4v != null ? (t4v < 70 ? " · heating up" : t4v > 90 ? " · too hot" : " · ✔ OK") : ""}` }) + secs([
+            ["Equipment", [eqRow("LP steam valve 07-XV-701", "OP_SV1"), eqRow("Outlet valve 07-XV-702", "OP_SV2"), eqRow("Hot air blower OP-M1", "OP_M1"),
+              eqRow("Condensate pump 05-P-501", "OP_P4"), eqRow("Recirculation pump 07-P-701", "OP_P9")]],
+            ["Set points & logic", [row("Steam opens / closes", `${spNum("SP_LP_STEAM_OPEN")} / ${spNum("SP_LP_STEAM_CLOSE")} °C`),
+              row("De-gasifier tank 07-LS-701", esc(dgTxt[0]), dgTxt[1])]],
+            ["Alarms & safety", [row("Instrument air", air == null ? "No data" : air ? "OK" : "LOW - steam valve closed", air == null ? "unk" : air ? "ok" : "bad"),
+              row("Temp. alarm set point", auxTxt("T_04_ALM_SP")), almRow("PLC temperature alarm", "T_04_ALM")]],
+          ]), "") : ""}
         ${t2 ? kpCard("T_02", "kp-hw", "Hot water to sludge dryer", "06-TT-601 · hot water that dries the sludge", valHTML(t2),
-          `<div class="kp-pair"><span>Pressure</span><b class="num">${esc(fmt(pt3))}</b> <small>${esc(pt3 ? pt3.unit : "")}</small></div>` + dl([
-            eqRow("Hot water pump 06-P-605 (VFD)", "OP_P2"),
-            row("Hot water tank 06-LS-603", esc(hwTxt), hwCls),
-            row("Pump logic", "Runs above LL · stops at LL"),
-            row("Temp. alarm set point", auxTxt("T_02_ALM_SP")), almRow("PLC temperature alarm", "T_02_ALM"),
-            row("Pressure alarm set point", auxTxt("PT_03_ALM_SP")), almRow("PLC pressure alarm", "PT_03_ALM"),
-          ]), chip("OP_P2") + lampChip(SW.LS603_HL, "Tank HL") + lampChip(SW.LS603_LL, "Tank LL")) : ""}
+          `<div class="kp-pair"><span>Pressure</span><b class="num">${esc(fmt(pt3))}</b> <small>${esc(pt3 ? pt3.unit : "")}</small></div>` + secs([
+            ["Equipment", [eqRow("Hot water pump (VFD) 06-P-605", "OP_P2")]],
+            ["Set points & logic", [row("Hot water tank 06-LS-603", esc(hwTxt), hwCls), row("Pump", "runs above LL · stops at LL")]],
+            ["Alarms & safety", [row("Temp. alarm set point", auxTxt("T_02_ALM_SP")), almRow("PLC temperature alarm", "T_02_ALM"),
+              row("Pressure alarm set point", auxTxt("PT_03_ALM_SP")), almRow("PLC pressure alarm", "PT_03_ALM")]],
+          ]), "") : ""}
         ${kpCard("", "kp-ct", "Cooling towers", "CT-1: de-gasifier PHE, dryer condenser, boiler · CT-2: turbine oil", `<b class="num">${ct1Run}</b><small>/3 CT-1 pumps running</small>`,
-          dl([
-            row("CT-1 basin 06-LS-601", esc(ct1Txt), ct1Cls),
-            eqRow("De-gasifier PHE pump 06-P-601", "OP_P7"), eqRow("Dryer condenser pump 06-P-602", "OP_P3"),
-            eqRow("Boiler cooling pump 06-P-603", "OP_P11"), eqRow("CT-1 fan OP-F601", "OP_F1"),
-            row("CT-2 basin 06-LS-602", esc(ct2Txt), ct2Cls),
-            eqRow("Turbine oil cooling pump 06-P-604", "OP_P10"), eqRow("CT-2 fan OP-F602", "OP_F2"),
-            row("Fan logic", "Fan runs only when a pump of its tower runs · pumps stop at basin LL"),
-          ]), chip("OP_P7") + chip("OP_P3") + chip("OP_P11") + chip("OP_F1", "Fan-1") + chip("OP_P10") + chip("OP_F2", "Fan-2"),
-          ct1Cls === "bad" || ct2Cls === "bad" ? "warn" : "")}
+          secs([
+            ["Cooling tower 1", [row("Basin 06-LS-601", esc(ct1Txt), ct1Cls), eqRow("De-gasifier PHE pump 06-P-601", "OP_P7"),
+              eqRow("Dryer condenser pump 06-P-602", "OP_P3"), eqRow("Boiler cooling pump 06-P-603", "OP_P11"), eqRow("Fan OP-F601", "OP_F1")]],
+            ["Cooling tower 2", [row("Basin 06-LS-602", esc(ct2Txt), ct2Cls), eqRow("Turbine oil cooling pump 06-P-604", "OP_P10"), eqRow("Fan OP-F602", "OP_F2")]],
+            ["Logic", [row("Fan", "runs only when a pump of its tower runs"), row("Pumps", "stop at basin LL")]],
+          ]), "", ct1Cls === "bad" || ct2Cls === "bad" ? "warn" : "")}
         ${kpCard("", "kp-wtp", "Gravity tank & WTP / CTP", "07-LS-702 gravity tank → 07-P-704 → raw water tank CTP", `<b class="num">${esc(running("OP_P8") ? "Running" : "Stopped")}</b><small>07-P-704</small>`,
-          dl([
-            row("Gravity tank 07-LS-702", esc(gvTxt), gvCls),
-            eqRow("Gravity tank → WTP pump 07-P-704", "OP_P8"),
-            row("Pump logic", "Runs while gravity tank above LL and CTP raw tank below HH"),
-            row("CTP raw water tank 08-LS-801/802", esc(cRawTxt), cRawCls),
-            row("CTP pure water tank 08-LS-803/804", esc(cPureTxt), cPureCls),
-          ]), chip("OP_P8"), gvCls === "bad" ? "warn" : "")}
+          secs([
+            ["Equipment", [eqRow("Gravity tank → WTP pump 07-P-704", "OP_P8")]],
+            ["Tank levels", [row("Gravity tank 07-LS-702", esc(gvTxt), gvCls), row("CTP raw water tank 08-LS-801/802", esc(cRawTxt), cRawCls),
+              row("CTP pure water tank 08-LS-803/804", esc(cPureTxt), cPureCls)]],
+            ["Logic", [row("Pump runs while", "gravity tank above LL and CTP raw tank below HH")]],
+          ]), "", gvCls === "bad" ? "warn" : "")}
         ${kpCard("", "kp-pan", "Panel switches & linked panels", "OP panel push buttons and signals from the other plant panels", `<b class="num">${esc(swTxt(sw(SW.MODE), "Auto", "Manual"))}</b><small>system selector</small>`,
-          dl([
-            swRow("System auto start P.B.", "DI_Stm_Auto_St_Pb", "Pressed", "Released"),
-            swRow("Sequential shutdown P.B.", "DI_Squen_Stwn", "Pressed", "Released"),
-            swRow("Hooter accept P.B.", "DI_Htr_Acpt_Pb_With_lamp", "Pressed", "Released"),
-            swRow("Instrument air 04-PS-401", SW.AIR, "OK", "LOW", false),
-            ...panels.map(([n, p]) => row(`${n} panel signal 1 / 2`, `${pfdTxt(pfd(1, p))} / ${pfdTxt(pfd(2, p))}`, pfd(1, p) == null ? "unk" : "info")),
-            row("Air dryer / auto drain (cmd)", `${auxTxt("DO_Air_Compressure_Dryer")} / ${auxTxt("DO_Auto_Drain_Valve")}`),
+          secs([
+            ["OP panel", [row("System auto start P.B.", esc(swTxt(sw("DI_Stm_Auto_St_Pb"), "Pressed", "Released"))),
+              row("Sequential shutdown P.B.", esc(swTxt(sw("DI_Squen_Stwn"), "Pressed", "Released"))),
+              row("Hooter accept P.B.", esc(swTxt(sw("DI_Htr_Acpt_Pb_With_lamp"), "Pressed", "Released"))),
+              swRow("Instrument air 04-PS-401", SW.AIR, "OK", "LOW", false),
+              row("Air dryer / auto drain (cmd)", `${auxTxt("DO_Air_Compressure_Dryer")} / ${auxTxt("DO_Auto_Drain_Valve")}`)]],
+            ["Linked panels (signal 1 / 2)", panels.map(([n, p]) => row(`${n} panel`, `${pfdTxt(pfd(1, p))} / ${pfdTxt(pfd(2, p))}`, pfd(1, p) == null ? "unk" : "info"))],
           ]), "")}
       </div>`;
     box.querySelectorAll("[data-open]").forEach((el) => {
@@ -897,73 +896,21 @@
   }
 
   // ======================================================================================
-  // SELECTOR SWITCHES & SET VALUES (HMI selector screens) - view only
+  // SPARE & OTHER FIELD SIGNALS - only what is not shown anywhere else
+  // (motor CMD / RUN / TRIP are on each equipment card, level switches on Tank levels,
+  //  safety / tower light on the Overview strip, panel buttons + linked panels in the Overview panel card)
   // ======================================================================================
-  const PAIRS = [
-    { name: "UG sludge pumps → volute press", main: "OP_P1A", stby: "OP_P1B", pv: "LT_01",
-      sv: [["Pump start level", "SP_SLUDGE_PUMP_START"], ["Pump stop level", "SP_SLUDGE_PUMP_STOP"]] },
-    { name: "Filtrate tank pumps", main: "OP_P5A", stby: "OP_P5B", pv: "LT_02", sv: [] },
-    { name: "UG submersible pumps (raw water)", main: "OP_P6A", stby: "OP_P6B", sw: [["LS301_HL", "Tank HL"], ["LS301_LL", "Tank LL"]], sv: [] },
-    { name: "Make-up / transfer pumps (VFD)", main: "OP_P14", stby: "OP_P15", pv: "PT_01", sv: [] },
-  ];
-  const VALVES = [
-    { id: "MV_01", name: "Sludge feed valve", pv: "LT_01", sv: [["Valve open", "SP_SLUDGE_VALVE_OPEN"], ["Valve close", "SP_SLUDGE_VALVE_CLOSE"]] },
-    { id: "OP_SV1", name: "LP steam valve", pv: "T_04", sv: [["Valve open", "SP_LP_STEAM_OPEN"], ["Valve close", "SP_LP_STEAM_CLOSE"]] },
-    { id: "OP_SV2", name: "Process (de-gasifier outlet) valve", sw: [["LS701_HH", "LS-701 HH"], ["LS701_H", "LS-701 H"]], sv: [] },
-  ];
-  const amBadge = (e) => `<span class="sel-b ${e && e.auto === false ? "man" : e && e.auto ? "auto" : "nd"}">${e && e.auto != null ? (e.auto ? "AUTO" : "MANUAL") : "--"}</span>`;
-  function selRows(sv, pv) {
-    if (!sv.length && !pv) return "";
-    const t = pv ? tag(pv) : null;
-    return `<table class="sel-t"><tr><th>Description</th><th>Set value</th></tr>
-      ${sv.map(([l, id]) => `<tr><td>${esc(l)}</td><td class="num">${esc(auxTxt(id))}</td></tr>`).join("")}
-      ${t ? `<tr class="act"><td>Actual · ${esc(TAG_PID[t.id] || t.name)}</td><td class="num">${esc(fmt(t))} ${esc(t.unit || "")}</td></tr>` : ""}</table>`;
-  }
-  function renderSelectors() {
-    const box = $("selGrid");
-    if (!box) return;
-    const pairHTML = PAIRS.map((p) => {
-      const m = eq(p.main), s = eq(p.stby);
-      if (!m) return "";
-      return `<div class="sel">
-        <div class="sel-h">${esc(p.name)}</div>
-        <div class="sel-sw"><div><span>Auto / Manual</span>${amBadge(m)}</div>
-          <div><span>Main / Standby</span><span class="sel-b ms">${m.standby_selected == null ? "--" : m.standby_selected ? "STANDBY" : "MAIN"}</span></div></div>
-        ${selRows(p.sv, p.pv)}
-        ${(p.sw || []).map(([k, l]) => lampChip(SW[k], l)).join(" ")}
-        <div class="sel-eq">${[["Main", m], ["Standby", s]].map(([l, e]) => e ? `<div><span>${l} · ${esc(PID[e.id] || e.tag_no)}</span><span class="kp-eq ${eqCls(e)}"><i></i>${esc(STATE_TXT[e.status] || e.status)}</span></div>` : "").join("")}</div>
-      </div>`;
-    }).join("");
-    const valveHTML = VALVES.map((v) => {
-      const e = eq(v.id);
-      if (!e) return "";
-      return `<div class="sel"><div class="sel-h">${esc(v.name)} <small>${esc(PID[v.id] || "")}</small></div>
-        <div class="sel-sw"><div><span>Auto / Manual</span>${amBadge(e)}</div><div><span>Valve</span><span class="kp-eq ${eqCls(e)}"><i></i>${esc(STATE_TXT[e.status] || e.status)}</span></div></div>
-        ${selRows(v.sv, v.pv)}${(v.sw || []).map(([k, l]) => lampChip(SW[k], l)).join(" ")}</div>`;
-    }).join("");
-    const paired = new Set(PAIRS.flatMap((p) => [p.main, p.stby]).concat(VALVES.map((v) => v.id)));
-    const singles = live.equipment.filter((e) => !paired.has(e.id) && e.auto !== undefined && e.type === "motor");
-    box.innerHTML = pairHTML + valveHTML + `<div class="sel sel-wide"><div class="sel-h">Other equipment</div>
-      <table class="sel-t"><tr><th>Equipment</th><th>P&amp;ID</th><th>Mode</th><th>State</th></tr>
-      ${singles.map((e) => `<tr><td>${esc(e.name)}</td><td>${esc(PID[e.id] || e.tag_no || "")}</td><td>${amBadge(e)}</td>
-        <td><span class="kp-eq ${eqCls(e)}"><i></i>${esc(STATE_TXT[e.status] || e.status)}</span></td></tr>`).join("")}</table></div>`;
-  }
-
-  // ---------- field signals (HMI IO screens): ON / OFF by name, no PLC addresses ----------
-  const IO_TABS = { di: ["Digital inputs", ["Safety", "Panel controls", "Motor feedback", "Level switches", "Valve feedback", "Interlocks"]],
-    do: ["Digital outputs", ["Outputs", "Panel indication"]] };
-  let ioTab = "di";
+  const IO_OTHER = /spare|auto \(cmd\)|standby \(cmd\)/i;
   function renderIO() {
-    const seg = $("ioSeg"), box = $("ioGrid");
-    if (!seg || !box) return;
-    seg.innerHTML = Object.entries(IO_TABS).map(([k, [l]]) => `<button class="${k === ioTab ? "active" : ""}" data-k="${k}">${l}</button>`).join("");
-    seg.querySelectorAll("button").forEach((b) => (b.onclick = () => { ioTab = b.dataset.k; renderIO(); }));
+    const box = $("ioGrid");
+    if (!box) return;
     const aux = live.aux || {};
-    box.innerHTML = IO_TABS[ioTab][1].map((g) => {
-      const items = Object.entries(aux).filter(([, a]) => a.group === g);
+    const groups = [["Valves & spare valves", ["Valve feedback"]], ["Other PLC outputs", ["Outputs"]], ["Spare starters", ["Motor feedback"]]];
+    box.innerHTML = groups.map(([h, gs]) => {
+      const items = Object.values(aux).filter((a) => gs.includes(a.group) && IO_OTHER.test(a.name));
       if (!items.length) return "";
-      return `<div class="io-g"><h3>${esc(g)} <small>${items.filter(([, a]) => isOn(a.value)).length}/${items.length} ON</small></h3><div class="io-l">
-        ${items.map(([, a]) => `<span class="io ${a.value == null || a.quality === "NODATA" ? "nd" : isOn(a.value) ? "on" : ""}"><i></i>${esc(String(a.name).replace(/\s*\(cmd\)/i, ""))}</span>`).join("")}</div></div>`;
+      return `<div class="io-g"><h3>${esc(h)} <small>${items.filter((a) => isOn(a.value)).length}/${items.length} ON</small></h3><div class="io-l">
+        ${items.map((a) => `<span class="io ${a.value == null || a.quality === "NODATA" ? "nd" : isOn(a.value) ? "on" : ""}"><i></i>${esc(String(a.name).replace(/\s*\(cmd\)/i, " (command)"))}</span>`).join("")}</div></div>`;
     }).join("");
   }
 
@@ -1016,6 +963,27 @@
     { name: "Pure water tank (CTP)", pid: "08-LS-803/804", sw: [["LS803", "HH"], ["LS804", "LL"]] },
   ];
   const GY0 = 22, GH = 268;                              // gauge tank top / height (viewBox 0 0 270 312)
+  // vertical storage tank: domed roof, dished bottom, legs, inlet / outlet nozzles; liquid drawn inside the shell
+  function tankSVG(c) {
+    const id = c.id, B = GY0 + GH;
+    const shell = `M80 ${GY0} A50 13 0 0 1 180 ${GY0} V${B} A50 13 0 0 1 80 ${B} Z`;
+    const inner = `M83 ${GY0} A47 11 0 0 1 177 ${GY0} V${B} A47 11 0 0 1 83 ${B} Z`;
+    return `<defs>
+        <linearGradient id="shell_${id}" x1="0" x2="1"><stop offset="0" stop-color="#b9bdb3"/><stop offset=".3" stop-color="#f8f9f5"/><stop offset=".62" stop-color="#e2e4dc"/><stop offset="1" stop-color="#9ea296"/></linearGradient>
+        <linearGradient id="shade_${id}" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".22"/><stop offset=".3" stop-color="#fff" stop-opacity=".28"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
+        <clipPath id="clip_${id}"><path d="${inner}"/></clipPath></defs>
+      <rect class="lvg-leg" x="90" y="${B + 6}" width="6" height="${312 - B - 8}"/><rect class="lvg-leg" x="164" y="${B + 6}" width="6" height="${312 - B - 8}"/>
+      <rect class="lvg-noz" x="121" y="4" width="18" height="10"/><rect class="lvg-fl" x="117" y="1" width="26" height="4" rx="1"/>
+      <rect class="lvg-noz" x="180" y="${B - 16}" width="12" height="10"/><rect class="lvg-fl" x="191" y="${B - 19}" width="4" height="16" rx="1"/>
+      <path class="lvg-shell" d="${shell}" fill="url(#shell_${id})"/>
+      <g clip-path="url(#clip_${id})">
+        <rect class="lvg-fill ${c.fluid}" data-fill x="80" y="${B}" width="100" height="0"/>
+        <ellipse class="lvg-surf ${c.fluid}" data-surf cx="130" cy="${B}" rx="47" ry="5" style="display:none"/>
+        <path d="${inner}" fill="url(#shade_${id})" pointer-events="none"/>
+      </g>
+      <path class="lvg-seam" d="M80 ${GY0 + GH / 3} H180 M80 ${GY0 + (GH * 2) / 3} H180"/>
+      <path class="lvg-tank" d="${shell}"/>`;
+  }
   function lvStatus(t) {
     const v = num(t), lv = levelsOf(t);
     if (v == null || !lv) return ["nd", "No data"];
@@ -1034,9 +1002,7 @@
       <div class="card-head"><h2>${esc(c.name)} <span class="muted small">${esc(c.pid)} · level transmitter</span></h2><span class="lv-src" data-src></span></div>
       <div class="lvc-body">
         <svg class="lvg" viewBox="0 0 270 312" role="img" aria-label="${esc(c.name)} level gauge">
-          <rect class="lvg-tank" x="80" y="${GY0}" width="100" height="${GH}" rx="8"/>
-          <clipPath id="clip_${c.id}"><rect x="83" y="${GY0 + 3}" width="94" height="${GH - 6}" rx="6"/></clipPath>
-          <rect class="lvg-fill ${c.fluid}" data-fill clip-path="url(#clip_${c.id})" x="80" y="${GY0 + GH}" width="100" height="0"/>
+          ${tankSVG(c)}
           ${marks}${plcMarks}
           <text class="lvg-pct num" x="130" y="${GY0 + GH / 2}" text-anchor="middle" data-pct>--</text>
           <text class="lvg-end" x="76" y="${GY0 + GH + 4}" text-anchor="end">${esc(String(t.eng_min ?? 0))}</text>
@@ -1071,7 +1037,10 @@
       const lv = levelsOf(t), p = pct(t), [stc, stt] = lvStatus(t), d = t.decimals ?? 1;
       const yOf = (val) => GY0 + GH * (1 - (pct(t, val) ?? 0) / 100);
       const fh = GH * (p ?? 0) / 100, fill = el.querySelector("[data-fill]");
-      fill.setAttribute("y", GY0 + GH - fh); fill.setAttribute("height", fh);
+      // liquid fills the dished bottom too (+14); the surface ellipse sits on top of the liquid
+      fill.setAttribute("y", GY0 + GH - fh); fill.setAttribute("height", p ? fh + 14 : 0);
+      const surf = el.querySelector("[data-surf]");
+      surf.setAttribute("cy", GY0 + GH - fh); surf.style.display = p ? "" : "none";
       el.querySelector("[data-pct]").textContent = p == null ? "--" : `${Math.round(p)} %`;
       el.querySelector("[data-v]").textContent = fmt(t);
       const st = el.querySelector("[data-st]"); st.textContent = stt; st.className = `lvc-st ${stc}`;
@@ -1186,7 +1155,7 @@
       if (view === "levels") renderLevels();
       if (view === "mimic") renderMimic();
       if (view === "instruments") renderInstruments();
-      if (view === "equipment") { renderSelectors(); renderIO(); }
+      if (view === "equipment") renderIO();
       if (view === "datalog") renderDatalog(false);
     },
     show(view) {
