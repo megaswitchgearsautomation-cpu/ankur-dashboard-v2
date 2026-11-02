@@ -896,25 +896,6 @@
   }
 
   // ======================================================================================
-  // SPARE & OTHER FIELD SIGNALS - only what is not shown anywhere else
-  // (motor CMD / RUN / TRIP are on each equipment card, level switches on Tank levels,
-  //  safety / tower light on the Overview strip, panel buttons + linked panels in the Overview panel card)
-  // ======================================================================================
-  const IO_OTHER = /spare|auto \(cmd\)|standby \(cmd\)/i;
-  function renderIO() {
-    const box = $("ioGrid");
-    if (!box) return;
-    const aux = live.aux || {};
-    const groups = [["Valves & spare valves", ["Valve feedback"]], ["Other PLC outputs", ["Outputs"]], ["Spare starters", ["Motor feedback"]]];
-    box.innerHTML = groups.map(([h, gs]) => {
-      const items = Object.values(aux).filter((a) => gs.includes(a.group) && IO_OTHER.test(a.name));
-      if (!items.length) return "";
-      return `<div class="io-g"><h3>${esc(h)} <small>${items.filter((a) => isOn(a.value)).length}/${items.length} ON</small></h3><div class="io-l">
-        ${items.map((a) => `<span class="io ${a.value == null || a.quality === "NODATA" ? "nd" : isOn(a.value) ? "on" : ""}"><i></i>${esc(String(a.name).replace(/\s*\(cmd\)/i, " (command)"))}</span>`).join("")}</div></div>`;
-    }).join("");
-  }
-
-  // ======================================================================================
   // DATA LOG (HMI data log screens) - interval table from the dashboard historian
   // ======================================================================================
   const DL_GROUPS = [["Temperature", ["Temperature"]], ["Pressure", ["Pressure"]], ["Level & pH", ["Level", "Analysis"]]];
@@ -1155,7 +1136,6 @@
       if (view === "levels") renderLevels();
       if (view === "mimic") renderMimic();
       if (view === "instruments") renderInstruments();
-      if (view === "equipment") renderIO();
       if (view === "datalog") renderDatalog(false);
     },
     show(view) {
