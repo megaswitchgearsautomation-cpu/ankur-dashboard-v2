@@ -322,7 +322,8 @@
   // ---------- plant areas = mimic sheets ----------
   const AREAS = [
     { id: "overall", name: "Overall plant", eq: [], overall: true },
-    { id: "sludge", name: "Sludge & filtrate", eq: ["AGIT", "OP_P1A", "OP_P1B", "PCP", "MV_01", "OP_P5A", "OP_P5B"] },
+    { id: "sludge", name: "Sludge & filtrate", eq: ["AGIT", "OP_P1A", "OP_P1B", "MV_01", "OP_P5A", "OP_P5B"] },
+    { id: "volute", name: "Volute press", eq: ["PCP"] },
     { id: "raw", name: "Raw water", eq: ["OP_P6A", "OP_P6B", "OP_P14", "OP_P15"] },
     { id: "ct1", name: "Cooling tower 1", eq: ["OP_F1", "OP_P7", "OP_P3", "OP_P11"] },
     { id: "ct2", name: "Cooling tower 2 & hot water", eq: ["OP_F2", "OP_P10", "OP_P2"] },
@@ -443,7 +444,14 @@
         <circle cx="${x}" cy="${y}" r="13"/><text class="tx-i" x="${x}" y="${y + 4}" text-anchor="middle">${esc(label.split("-")[0])}</text>
         <rect class="tx-box" x="${x - 44}" y="${y + 17}" width="88" height="22" rx="5"/>
         <text class="tx-v num" x="${x}" y="${y + 32}" text-anchor="middle" data-val="${id}">--</text>
-        <text class="tx-n" x="${x}" y="${y - 18}" text-anchor="middle">${esc(TAG_PID[id] || label)}</text></g>`;
+        <text class="tx-n" x="${x}" y="${y - 18}" text-anchor="middle">${esc(TAG_PID[id] || label)}</text>
+        <text class="tx-sp" x="${x}" y="${y + 51}" text-anchor="middle" data-spv="alm:${id}" data-pre="alarm SP "></text></g>`;
+    },
+    // set points read from the PLC (entered on the HMI); key: lv:<LT>:<hh|h|l|ll> · aux:<tag> · alm:<tag> (its _ALM_SP)
+    spCard(x, y, title, rows) {
+      return `<g class="spc"><rect x="${x}" y="${y}" width="200" height="${26 + rows.length * 15}" rx="6"/>
+        <text class="sp-h" x="${x + 8}" y="${y + 16}">${esc(title)}</text>
+        ${rows.map(([l, k], i) => `<text class="sp-l" x="${x + 8}" y="${y + 33 + i * 15}">${esc(l)}</text><text class="sp-v num" x="${x + 192}" y="${y + 33 + i * 15}" text-anchor="end" data-spv="${k}">--</text>`).join("")}</g>`;
     },
     box(x, y, w, h, text, kind = "") {
       const lines = String(text).split("\n");
@@ -480,6 +488,165 @@
       return `<g class="chip" data-tag="${ids[0]}" tabindex="0"><rect x="${x - w / 2}" y="${y - 11}" width="${w}" height="22" rx="6"/>
         <text class="ch-l" x="${x - w / 2 + 7}" y="${y + 4}">${esc(label)}</text>
         <text class="ch-v num" x="${x + w / 2 - 7}" y="${y + 4}" text-anchor="end" data-vals="${ids.join(",")}">--</text></g>`;
+    },
+
+    // ---------- P&ID detail symbols (area sheets follow the client P&ID R1, 12-12-2025) ----------
+    // package equipment (Norsen / PAR scope) is not wired to this panel: it is drawn with data-run, i.e. shown
+    // running while the listed panel motors run (indicative only, said in its tooltip)
+    head(id, cls, run, why) {
+      if (id) return `class="eq ${cls}" data-eq="${id}" tabindex="0"`;
+      return `class="pk ${cls}" data-run="${(run || []).join(",")}" data-why="${esc(why || "")}"`;
+    },
+    hv(x, y, vert = false) {                          // manual valve (bow-tie) sitting on the pipe
+      const d = vert ? `M${x - 6} ${y - 7} L${x + 6} ${y - 7} L${x - 6} ${y + 7} L${x + 6} ${y + 7} Z`
+        : `M${x - 7} ${y - 6} L${x - 7} ${y + 6} L${x + 7} ${y - 6} L${x + 7} ${y + 6} Z`;
+      return `<path class="hv" d="${d}"><title>Manual valve</title></path>`;
+    },
+    nrv(x, y, dir = "r") {                            // non-return valve, triangle points the flow direction
+      const rot = { r: 0, d: 90, l: 180, u: 270 }[dir] || 0;
+      return `<g class="nrv" transform="rotate(${rot} ${x} ${y})"><path d="M${x - 7} ${y - 6} L${x + 4} ${y} L${x - 7} ${y + 6} Z"/>
+        <line x1="${x + 5}" y1="${y - 7}" x2="${x + 5}" y2="${y + 7}"/><title>Non-return valve</title></g>`;
+    },
+    strn(x, y) {                                       // Y-strainer
+      return `<g class="strn"><path d="M${x - 8} ${y - 5} L${x + 8} ${y - 5} L${x + 8} ${y + 5} L${x - 8} ${y + 5} Z M${x - 2} ${y + 5} L${x + 5} ${y + 14} L${x + 9} ${y + 11} L${x + 4} ${y + 5}"/><title>Strainer</title></g>`;
+    },
+    gauge(x, y, tagNo, kind = "PG", down = false) {  // local gauge (PG / TG / PI) - read on site, no PLC signal
+      const sy = down ? y - 10 : y + 10, ey = down ? y - 24 : y + 24;
+      return `<g class="gauge"><line x1="${x}" y1="${sy}" x2="${x}" y2="${ey}"/><circle cx="${x}" cy="${y}" r="10"/>
+        <path class="g-nd" d="M${x} ${y} L${x + 5} ${y - 5}"/><text class="g-k" x="${x}" y="${y + 7}" text-anchor="middle">${kind}</text>
+        <text class="g-n" x="${x}" y="${down ? y + 22 : y - 14}" text-anchor="middle">${esc(tagNo)}</text>
+        <title>${tagNo ? `${esc(tagNo)} - ` : ""}local ${kind === "TG" ? "temperature" : "pressure"} gauge, read on site (no signal to the PLC)</title></g>`;
+    },
+    pkInst(x, y, kind, label) {                       // package instrument bubble (FT, LT, LS) without a signal here
+      return `<g class="gauge pki"><circle cx="${x}" cy="${y}" r="12"/><text class="g-k" x="${x}" y="${y + 3.5}" text-anchor="middle">${kind}</text>
+        ${label ? `<text class="g-n" x="${x}" y="${y - 16}" text-anchor="middle">${esc(label)}</text>` : ""}<title>${esc(kind)} - package instrument, not wired to this panel</title></g>`;
+    },
+    // top-mounted agitator standing on a tank roof at (x, y): motor, gearbox, shaft, propeller at y + depth.
+    // The two blade pairs squash in turn, which reads as a propeller turning when seen from the side.
+    agit(x, y, depth, o = {}) {
+      const py = y + depth, bl = (cls) => `<g class="prop ${cls}" style="transform-origin:${x}px ${py}px"><path class="ag-bl" d="M${x} ${py} C${x + 6} ${py - 8} ${x + 19} ${py - 7} ${x + 21} ${py} C${x + 19} ${py + 7} ${x + 6} ${py + 8} ${x} ${py} Z M${x} ${py} C${x - 6} ${py - 8} ${x - 19} ${py - 7} ${x - 21} ${py} C${x - 19} ${py + 7} ${x - 6} ${py + 8} ${x} ${py} Z"/></g>`;
+      return `<g ${P.head(o.id, "agit", o.run, o.why)}>
+        <rect class="ag-mot" x="${x - 11}" y="${y - 48}" width="22" height="27" rx="4"/>
+        <line class="ag-fin" x1="${x - 8}" y1="${y - 40}" x2="${x + 8}" y2="${y - 40}"/><line class="ag-fin" x1="${x - 8}" y1="${y - 34}" x2="${x + 8}" y2="${y - 34}"/><line class="ag-fin" x1="${x - 8}" y1="${y - 28}" x2="${x + 8}" y2="${y - 28}"/>
+        <rect class="ag-gb" x="${x - 8}" y="${y - 21}" width="16" height="13" rx="2"/><rect class="ag-fl" x="${x - 15}" y="${y - 8}" width="30" height="6" rx="1"/>
+        <line class="shaft" x1="${x}" y1="${y - 2}" x2="${x}" y2="${py}"/>${bl("p1")}${bl("p2")}<circle class="ag-hub" cx="${x}" cy="${py}" r="3.5"/>
+        ${o.label ? `<text class="eq-t" x="${x + 16}" y="${y - 32}">${esc(o.label)}</text>` : ""}${o.sub ? `<text class="eq-n" x="${x + 16}" y="${y - 22}">${esc(o.sub)}</text>` : ""}
+        ${o.id ? "" : `<title>${esc(o.why || "")}</title>`}</g>`;
+    },
+    // side-entry propeller mixer through the right-hand tank wall at (x, y) (P&ID sheet 1: F1 / OP-A1)
+    sideMix(x, y, o = {}) {
+      const px = x - 46, bl = (cls) => `<g class="prop v ${cls}" style="transform-origin:${px}px ${y}px"><path class="ag-bl" d="M${px} ${y} C${px - 8} ${y - 6} ${px - 7} ${y - 19} ${px} ${y - 21} C${px + 7} ${y - 19} ${px + 8} ${y - 6} ${px} ${y} Z M${px} ${y} C${px - 8} ${y + 6} ${px - 7} ${y + 19} ${px} ${y + 21} C${px + 7} ${y + 19} ${px + 8} ${y + 6} ${px} ${y} Z"/></g>`;
+      return `<g ${P.head(o.id, "agit side", o.run, o.why)}>
+        <line class="shaft" x1="${px}" y1="${y}" x2="${x + 4}" y2="${y}"/>${bl("p1")}${bl("p2")}<circle class="ag-hub" cx="${px}" cy="${y}" r="3.5"/>
+        <rect class="ag-fl" x="${x + 2}" y="${y - 14}" width="6" height="28" rx="1"/><rect class="ag-gb" x="${x + 8}" y="${y - 8}" width="12" height="16" rx="2"/>
+        <rect class="ag-mot" x="${x + 20}" y="${y - 11}" width="30" height="22" rx="4"/>
+        <line class="ag-fin" x1="${x + 27}" y1="${y - 8}" x2="${x + 27}" y2="${y + 8}"/><line class="ag-fin" x1="${x + 34}" y1="${y - 8}" x2="${x + 34}" y2="${y + 8}"/><line class="ag-fin" x1="${x + 41}" y1="${y - 8}" x2="${x + 41}" y2="${y + 8}"/>
+        <circle class="pm-led" cx="${x + 35}" cy="${y - 17}" r="3"/>
+        ${o.label ? `<text class="eq-t" x="${x + 56}" y="${y - 2}">${esc(o.label)}</text>` : ""}${o.sub ? `<text class="eq-n" x="${x + 56}" y="${y + 10}">${esc(o.sub)}</text>` : ""}</g>`;
+    },
+    // screw conveyor / screw press drum (volute press): trough x..x+w on centre line y, drive on the right,
+    // feed hopper top-right, cake drops out at the left end; the flights travel towards the cake end while running
+    screw(x, y, w, o = {}) {
+      let fl = "";
+      for (let i = -24; i < w + 24; i += 12) fl += `M${x + i} ${y - 10} L${x + i + 8} ${y + 10} `;
+      const cid = `sc${x}_${y}`;
+      return `<g ${P.head(o.id, "sc", o.run, o.why)}>
+        <clipPath id="${cid}"><rect x="${x + 2}" y="${y - 10}" width="${w - 4}" height="20" rx="3"/></clipPath>
+        <path class="sc-hop" d="M${x + w - 40} ${y - 30} L${x + w - 8} ${y - 30} L${x + w - 16} ${y - 12} L${x + w - 32} ${y - 12} Z"/>
+        <rect class="sc-tr" x="${x}" y="${y - 12}" width="${w}" height="24" rx="5"/>
+        <g clip-path="url(#${cid})"><line class="sc-sh" x1="${x}" y1="${y}" x2="${x + w}" y2="${y}"/><path class="flights" d="${fl}"/></g>
+        <path class="sc-out" d="M${x + 4} ${y + 12} L${x + 24} ${y + 12} L${x + 20} ${y + 22} L${x + 8} ${y + 22} Z"/>
+        <rect class="ag-gb" x="${x + w}" y="${y - 8}" width="12" height="16" rx="2"/><rect class="ag-mot" x="${x + w + 12}" y="${y - 11}" width="30" height="22" rx="4"/>
+        <circle class="pm-led" cx="${x + w + 27}" cy="${y - 17}" r="3"/>
+        ${o.spray ? `<g class="spray"><path d="M${x + o.spray - 10} ${y - 22} l-4 8 M${x + o.spray} ${y - 22} l0 8 M${x + o.spray + 10} ${y - 22} l4 8"/></g><rect class="sc-noz" x="${x + o.spray - 12}" y="${y - 27}" width="24" height="5" rx="2"/>` : ""}
+        <text class="eq-t" x="${o.labelAt ? o.labelAt[0] : x + w / 2 - 10}" y="${o.labelAt ? o.labelAt[1] : y + 30}" text-anchor="${o.labelAt ? o.labelAt[2] : "middle"}">${esc(o.label || "")}</text>
+        <text class="eq-n" x="${x + w + 27}" y="${y + 24}" text-anchor="middle">${esc(o.drive ?? "VFD F/R")}</text>
+        ${o.id ? "" : `<title>${esc(o.why || "")}</title>`}</g>`;
+    },
+    // progressive cavity pump on centre line y: discharge flange at the left end (x - 66), suction housing
+    // with the inlet port on top at x + 42, drive on the right; the rotor wave travels while running
+    pcp(x, y, id, o = {}) {
+      let rw = `M${x - 84} ${y}`;
+      for (let i = 0; i < 9; i++) rw += ` q6 -7 12 0 q6 7 12 0`;
+      const cid = `pc${x}_${y}`;
+      return `<g ${P.head(id, "pump pcp", o.run, o.why)}>
+        <clipPath id="${cid}"><rect x="${x - 58}" y="${y - 8}" width="86" height="16"/></clipPath>
+        <rect class="pm-base" x="${x - 66}" y="${y + 13}" width="170" height="5" rx="1"/>
+        <rect class="pm-noz" x="${x - 68}" y="${y - 11}" width="8" height="22" rx="1"/>
+        <rect class="pc-st" x="${x - 60}" y="${y - 10}" width="90" height="20" rx="4"/>
+        <g clip-path="url(#${cid})"><path class="rotor" d="${rw}"/></g>
+        <rect class="pc-hs" x="${x + 30}" y="${y - 13}" width="26" height="26" rx="3"/><rect class="pm-noz" x="${x + 36}" y="${y - 22}" width="14" height="9" rx="1"/>
+        <rect class="ag-gb" x="${x + 56}" y="${y - 8}" width="12" height="16" rx="2"/>
+        <rect class="pm-motor" x="${x + 68}" y="${y - 11}" width="34" height="22" rx="4"/>
+        <circle class="pm-led" cx="${x + 85}" cy="${y - 17}" r="3.2"/>
+        <text class="eq-t" x="${x + 10}" y="${y + 34}" text-anchor="middle">${esc(o.label ?? PID[id] ?? "")}</text>
+        <text class="eq-n" x="${x + 10}" y="${y + 45}" text-anchor="middle">Progressive cavity pump</text></g>`;
+    },
+    // centrifugal exhaust blower at (x, y): motor on the left, scroll casing, discharge on top (to the vent duct)
+    blower(x, y, id, o = {}) {
+      return `<g ${P.head(id, "pump blower")}>
+        <rect class="pm-base" x="${x - 52}" y="${y + 24}" width="90" height="6" rx="1"/>
+        <rect class="pm-motor" x="${x - 50}" y="${y - 11}" width="28" height="22" rx="4"/><rect class="pm-cpl" x="${x - 22}" y="${y - 3}" width="6" height="6"/>
+        <path class="bw-cs" d="M${x} ${y - 24} L${x + 30} ${y - 24} L${x + 30} ${y - 14} A24 24 0 1 1 ${x} ${y - 24} Z"/>
+        <circle class="pm-vol" cx="${x}" cy="${y}" r="14"/>
+        <g class="spin" style="transform-origin:${x}px ${y}px"><path class="pm-imp" d="M${x} ${y} l9 -5 M${x} ${y} l0 10 M${x} ${y} l-9 -5 M${x} ${y} l9 5 M${x} ${y} l-9 5 M${x} ${y} l0 -10"/></g>
+        <circle class="pm-led" cx="${x - 36}" cy="${y - 17}" r="3.2"/>
+        <text class="eq-t" x="${x - 8}" y="${y + 46}" text-anchor="middle">${esc(o.label ?? PID[id] ?? id)}</text>
+        ${o.sub ? `<text class="eq-n" x="${x - 8}" y="${y + 57}" text-anchor="middle">${esc(o.sub)}</text>` : ""}</g>`;
+    },
+    // package pump (no panel signal): same picture as P.pump, state follows the listed panel motors
+    pkPump(x, y, label, run, why) {
+      const s = P.pump(x, y, "", { label }).replace(/class="eq pump" data-eq="" tabindex="0"/, `class="eq pump pk" data-run="${(run || []).join(",")}"`);
+      return `${s.slice(0, -4)}<title>${esc(why || "")}</title></g>`;
+    },
+    // plate heat exchanger: frame, plate pack, two connections each side
+    phe(x, y, w, h, label, sub) {
+      let pl = "";
+      for (let i = 10; i < w - 8; i += 5) pl += `M${x + i} ${y + 8} L${x + i} ${y + h - 8} `;
+      return `<g class="phe"><rect class="ph-fr" x="${x}" y="${y}" width="${w}" height="${h}" rx="3"/><path class="ph-pl" d="${pl}"/>
+        <rect class="ph-end" x="${x}" y="${y}" width="8" height="${h}" rx="2"/><rect class="ph-end" x="${x + w - 8}" y="${y}" width="8" height="${h}" rx="2"/>
+        <text class="t-lbl" x="${x + w / 2}" y="${y + h + 17}" text-anchor="middle">${esc(label)}</text>
+        ${sub ? `<text class="note" x="${x + w / 2}" y="${y + h + 31}" text-anchor="middle">${esc(sub)}</text>` : ""}</g>`;
+    },
+    // radiator: finned core with its cooling fan
+    radiator(x, y, run, why) {
+      let fin = "";
+      for (let i = 6; i < 90; i += 6) fin += `M${x + i} ${y + 4} L${x + i} ${y + 56} `;
+      return `<g class="pk rad" data-run="${(run || []).join(",")}"><rect class="rd-core" x="${x}" y="${y}" width="96" height="60" rx="3"/><path class="rd-fin" d="${fin}"/>
+        <circle class="rd-ring" cx="${x + 48}" cy="${y + 30}" r="22"/>
+        <g class="spin" style="transform-origin:${x + 48}px ${y + 30}px"><path class="rd-fan" d="M${x + 48} ${y + 30} l0 -18 a7 7 0 0 1 7 7 Z M${x + 48} ${y + 30} l18 0 a7 7 0 0 1 -7 7 Z M${x + 48} ${y + 30} l0 18 a7 7 0 0 1 -7 -7 Z M${x + 48} ${y + 30} l-18 0 a7 7 0 0 1 7 -7 Z"/></g>
+        <text class="t-lbl" x="${x + 48}" y="${y + 78}" text-anchor="middle">Radiator</text><title>${esc(why || "")}</title></g>`;
+    },
+    // static vessel for package tanks (no level signal): fill shown as an indicative working level
+    vessel(x, y, w, h, o = {}) {
+      const cid = `vs${x}_${y}`, fh = h * (o.fill ?? 0.6);
+      return `<g class="vs"><clipPath id="${cid}"><rect x="${x + 3}" y="${y + 3}" width="${w - 6}" height="${h - 6}" rx="3"/></clipPath>
+        <rect class="t-body" x="${x}" y="${y}" width="${w}" height="${h}" rx="${o.r ?? 5}"/>
+        <rect class="t-fill vs-fill ${o.fluid || "water"}" clip-path="url(#${cid})" x="${x}" y="${y + h - fh}" width="${w}" height="${fh}"/>
+        ${(o.parts || []).map((px) => `<line class="vs-part" x1="${px}" y1="${y}" x2="${px}" y2="${y + h}"/>`).join("")}
+        ${o.label ? `<text class="t-lbl" x="${x + w / 2}" y="${y + h + (o.labelDy ?? 18)}" text-anchor="middle">${esc(o.label)}</text>` : ""}
+        ${o.sub ? `<text class="note" x="${x + w / 2}" y="${y + h + (o.labelDy ?? 18) + 14}" text-anchor="middle">${esc(o.sub)}</text>` : ""}</g>`;
+    },
+    // chemical powder tank with cone bottom (vibrator + timer on the cone)
+    hopperTank(x, y, w, label) {
+      return `<g class="vs"><path class="t-body" d="M${x} ${y} L${x + w} ${y} L${x + w} ${y + 46} L${x + w / 2 + 8} ${y + 78} L${x + w / 2 - 8} ${y + 78} L${x} ${y + 46} Z"/>
+        <path class="vs-pow" d="M${x + 4} ${y + 22} L${x + w - 4} ${y + 22} L${x + w - 4} ${y + 46} L${x + w / 2 + 7} ${y + 75} L${x + w / 2 - 7} ${y + 75} L${x + 4} ${y + 46} Z"/>
+        <text class="t-lbl" x="${x + w + 8}" y="${y + 18}">${esc(label)}</text></g>`;
+    },
+    // pressure / gravity filter vessel (sand, carbon) with the multiport auto valve on top
+    filterV(x, y, label) {
+      return `<g class="fv"><rect class="fv-av" x="${x + 22}" y="${y - 16}" width="26" height="14" rx="2"/><text class="note" x="${x + 35}" y="${y - 22}" text-anchor="middle">auto valve</text>
+        <path class="fv-body" d="M${x} ${y + 26} Q${x} ${y} ${x + 35} ${y} Q${x + 70} ${y} ${x + 70} ${y + 26} L${x + 70} ${y + 150} L${x} ${y + 150} Z"/>
+        <path class="fv-st" d="M${x + 4} ${y + 70} L${x + 66} ${y + 44} M${x + 4} ${y + 110} L${x + 66} ${y + 84} M${x + 4} ${y + 146} L${x + 66} ${y + 124}"/>
+        <path class="fv-leg" d="M${x + 6} ${y + 150} Q${x + 35} ${y + 132} ${x + 64} ${y + 150} L${x + 70} ${y + 162} L${x + 52} ${y + 162} Q${x + 35} ${y + 150} ${x + 18} ${y + 162} L${x} ${y + 162} Z"/>
+        <text class="t-lbl" x="${x + 35}" y="${y + 180}" text-anchor="middle">${esc(label)}</text></g>`;
+    },
+    // link box to another sheet (click to open it)
+    link(x, y, w, h, text, goto, kind = "") {
+      const lines = String(text).split("\n");
+      return `<g class="dest link ${kind}" data-goto="${goto}" tabindex="0"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>${lines.map((l, i) =>
+        `<text x="${x + w / 2 - 6}" y="${y + h / 2 + 4 + (i - (lines.length - 1) / 2) * 14}" text-anchor="middle">${esc(l)}</text>`).join("")}
+        <text class="lk-go" x="${x + w - 9}" y="${y + h / 2 + 5}" text-anchor="middle">›</text><title>Open this sheet</title></g>`;
     },
   };
   const LS = (id, at, label) => ({ id: SW[id], at, label });
@@ -561,121 +728,264 @@
         P.pipe("M1395 800 L1395 945 L15 945 L15 50 L245 50 L245 58", "ctp", []), CL(700, 945, "treated water from WTP / CTP back to the raw water tank", "middle"),
       ],
     },
+    // ---- area sheets drawn from the client P&ID R1 (12-12-2025): every pump, valve, strainer, gauge and agitator
     sludge: {
-      name: "Sludge & filtrate", note: "Feed valve opens at LL, closes at HH · Mixer starts 60 s before the sludge pump",
+      name: "Sludge storage tank & filtrate tank (P&ID sheet 1)",
+      note: "MV-101 opens at LL, closes at HL · Pumps start at NL, stop at VLL (auto) · Mixer starts before and stops after the sludge pump",
+      vb: [1240, 680],
       draw: () => [
-        // P&ID sheet 1: both pump pairs are submersible, standing on the tank floor; discharge risers leave through the tank top
-        P.box(10, 240, 90, 36, "Sludge in"), P.pipe("M100 258 L148 258", "sludge", ["MV_01"]), P.valve(124, 258, "MV_01", { label: "01-MV-101" }),
-        P.tank(150, 150, 300, 260, { level: "LT_01", fluid: "sludge", label: "Sludge storage tank", readX: 205 }),
-        P.mixer(405, 385, "AGIT", "OP-A1"),
-        P.pipe("M190 352 L190 112 M260 352 L260 112 M190 112 L520 112 L520 250 L530 250", "sludge", ["OP_P1A", "OP_P1B"]),
-        P.subPump(190, 404, "OP_P1A", { side: "left" }), P.subPump(260, 404, "OP_P1B"),
-        P.pump(560, 250, "PCP", { label: "OP-P201" }),
-        P.pipe("M588 250 L605 250 L605 120 L618 120", "sludge", ["PCP"]),
-        P.box(620, 95, 140, 50, "Volute press\n(screw press)", "dest-proc"),
-        P.pipe("M690 145 L690 200 L720 200 L720 228", "water", ["PCP"]), P.text(696, 192, "filtrate"),
-        P.tank(690, 230, 230, 200, { level: "LT_02", fluid: "water", label: "Filtrate tank", readX: 105 }),
-        P.pipe("M740 374 L740 172 M850 374 L850 172 M740 172 L960 172 L960 60 L860 60", "water", ["OP_P5A", "OP_P5B"]),
-        P.subPump(740, 424, "OP_P5A", { side: "left" }), P.subPump(850, 424, "OP_P5B", { side: "left" }),
-        P.box(760, 40, 100, 40, "To client\n(reuse)"),
+        P.box(10, 296, 110, 46, "Raw sludge in\nSL-200NB uPVC"),
+        P.pipe("M120 320 L250 320", "sludge", ["MV_01"]), P.valve(180, 320, "MV_01", { label: "01-MV-101" }),
+        P.text(128, 362, "LL: opens · HL: closes"),
+        `<g class="scr"><rect class="t-body" x="250" y="262" width="120" height="120" rx="4"/><path class="scr-c" d="M268 272 L300 372"/><path class="scr-f" d="M318 272 L350 372"/>
+          <text class="t-lbl" x="310" y="254" text-anchor="middle">Screening chamber</text>
+          <text class="note" x="300" y="398" text-anchor="middle">coarse cum magnetic screen</text><text class="note" x="330" y="412" text-anchor="middle">+ fine screen</text></g>`,
+        P.pipe("M370 330 L398 330", "sludge", ["MV_01"]),
+        P.pipe("M470 474 L470 130 M620 474 L620 130 M470 130 L620 130 M545 130 L545 80 L660 80", "sludge", ["OP_P1A", "OP_P1B"]),
+        P.tank(400, 200, 380, 330, { level: "LT_01", fluid: "sludge", label: "Sludge storage tank", readX: 300 }),
+        P.text(672, 258, "01-LT-101"),
+        P.hv(470, 178, true), P.hv(620, 178, true), P.nrv(470, 156, "u"), P.nrv(620, 156, "u"),
+        P.gauge(510, 106, "01-PG-101"),
+        P.subPump(470, 524, "OP_P1A"), P.subPump(620, 524, "OP_P1B"),
+        P.sideMix(780, 465, { id: "AGIT", label: "OP-A1 (F1)", sub: "propeller mixer" }),
+        P.link(660, 58, 170, 44, "To volute press\n(sheet 2)", "volute", "dest-proc"),
+        P.spCard(20, 430, "Sludge tank set points (HMI)", [
+          ["HH level", "lv:LT_01:hh"], ["H level", "lv:LT_01:h"], ["L level", "lv:LT_01:l"], ["LL level", "lv:LT_01:ll"],
+          ["Pump start (NL)", "aux:SP_SLUDGE_PUMP_START"], ["Pump stop (VLL)", "aux:SP_SLUDGE_PUMP_STOP"],
+          ["Valve open (LL)", "aux:SP_SLUDGE_VALVE_OPEN"], ["Valve close (HL)", "aux:SP_SLUDGE_VALVE_CLOSE"], ["Level alarm", "alm:LT_01"]]),
+        // filtrate tank
+        P.pipe("M1105 84 L1105 248", "water", ["OP_P1A", "OP_P1B", "PCP"]),
+        P.link(1020, 40, 170, 44, "From volute press\n(filtrate, sheet 2)", "volute"),
+        P.pipe("M940 474 L940 200 M1060 474 L1060 200 M940 200 L1060 200 M1000 200 L1000 140 L982 140", "water", ["OP_P5A", "OP_P5B"]),
+        P.tank(900, 250, 260, 280, { level: "LT_02", fluid: "water", label: "Filtrate tank", readX: 200 }),
+        P.text(1072, 308, "01-LT-102"),
+        P.hv(940, 236, true), P.hv(1060, 236, true), P.nrv(940, 218, "u"), P.nrv(1060, 218, "u"),
+        P.gauge(1030, 176, "01-PG-102"),
+        P.subPump(940, 524, "OP_P5A"), P.subPump(1060, 524, "OP_P5B"),
+        P.box(880, 120, 100, 40, "To client\n(reuse)"),
+        P.spCard(900, 566, "Filtrate tank set points (HMI)", [
+          ["HH level", "lv:LT_02:hh"], ["H level", "lv:LT_02:h"], ["L level", "lv:LT_02:l"], ["LL level", "lv:LT_02:ll"], ["Level alarm", "alm:LT_02"]]),
       ],
     },
-    raw: {
-      name: "Raw water distribution", note: "UG pumps fill on LL, stop on HL · Transfer pumps (VFD) hold header ≥ 3 bar, stop on LL",
+    volute: {
+      name: "Volute press - flocculation & dewatering (P&ID sheet 2)",
+      note: "Package (Norsen scope): only the PC pump OP-P201 is wired to this panel · other machines are shown running while the sludge feed / PC pump runs (indicative) · low water flow stops the chemical feeder",
+      vb: [1240, 730],
       draw: () => {
-        const dests = ["Boiler RO + DM make-up", "Boiler wet scrubber conveyor", "Cooling tower-1 make-up", "Cooling tower-2 make-up",
-          "Vacuum pump & KO drum", "Volute press", "Sludge screen", "Hot water tank make-up"];
+        const run = ["OP_P1A", "OP_P1B", "PCP"];
+        const why = "Volute press package (Norsen scope) - not wired to this panel. Shown running while the sludge feed pump or the PC pump runs (indicative only).";
         return [
-          P.pump(60, 480, "OP_P6A"), P.pump(170, 480, "OP_P6B"),
-          P.pipe("M88 480 L110 480 L110 430 M140 480 L110 480", "water", ["OP_P6A", "OP_P6B"]),
-          P.pipe("M110 430 L110 160 L200 160", "water", ["OP_P6A", "OP_P6B"]),
-          P.lamp(30, 330, SW.FLOW, "FS"), P.text(22, 356, "03-FS-301 flow"), P.pipe("M60 330 L110 330", "ctp"),
-          P.box(30, 60, 130, 40, "From CTP plant"), P.pipe("M95 100 L95 130 L200 130 L200 160", "ctp"),
-          P.tank(200, 140, 260, 220, { fluid: "water", label: "Raw water storage tank (03-LS-301)", sw: [LS("LS301_HL", 0.18, "HL"), LS("LS301_LL", 0.85, "LL")] }),
-          P.pipe("M460 320 L520 320", "water", ["OP_P14", "OP_P15"]),
-          P.pipe("M520 320 L520 250 L560 250 M520 320 L520 390 L560 390", "water", ["OP_P14", "OP_P15"]),
-          P.pump(575, 250, "OP_P14"), P.pump(575, 390, "OP_P15"),
-          P.pipe("M590 250 L640 250 L640 390 L590 390 M640 320 L700 320", "water", ["OP_P14", "OP_P15"]),
-          P.tx(670, 268, "PT_01", "PT-301"),
-          P.pipe(`M700 ${50} L700 ${50 + 64 * 7}`, "water", ["OP_P14", "OP_P15"]),
-          ...dests.map((d, i) => P.pipe(`M700 ${50 + 64 * i} L760 ${50 + 64 * i}`, "water", ["OP_P14", "OP_P15"]) + P.box(760, 30 + 64 * i, 210, 40, d)),
-          P.box(240, 420, 200, 40, "Wash room & general purpose"), P.pipe("M200 380 L200 440 L240 440", "water"),
+          // water: raw water main -> dilution tank inlet + screw spray
+          P.pipe("M1100 442 L110 442 L110 150 L230 150 L230 178", "water", run),
+          P.pipe("M110 442 L110 566 L290 566 L290 572 M110 486 L290 486 L290 492", "water", run),
+          P.link(1100, 420, 130, 44, "Raw water\n(sheet 3)", "raw"),
+          P.strn(1085, 442), P.gauge(1062, 418, "PI"), P.pkInst(700, 442, "FT", "flow transmitter"),
+          P.text(118, 140, "water inlet"),
+          // chemical powder -> screw feeder -> dilution tank (3 compartments, 3 agitators)
+          P.hopperTank(371, 6, 90, "Chemical tank"), P.text(469, 38, "vibrator + timer"),
+          P.lamp(469, 58, "", "LS"), P.text(505, 62, "level switch"),
+          P.pipe("M304 134 L304 178", "chem", run),
+          P.screw(290, 112, 150, { run, why, label: "Chemical screw feeder", drive: "VFD", labelAt: [282, 116, "end"] }),
+          P.pipe("M270 320 L270 370 M410 320 L410 370 M550 320 L550 370 M270 370 L972 370", "chem", run),
+          P.pipe("M270 370 L150 370", "chem"), P.text(118, 366, "drain"),
+          P.vessel(200, 180, 420, 140, { fluid: "chem", parts: [340, 480], label: "Chemical dilution tank", sub: "3 compartments - polymer solution", fill: 0.62 }),
+          P.agit(270, 180, 105, { run, why }), P.agit(410, 180, 105, { run, why }), P.agit(550, 180, 105, { run, why }),
+          P.pkInst(600, 160, "LT"),
+          P.hv(270, 345, true), P.hv(410, 345, true), P.hv(550, 345, true), P.hv(175, 370),
+          // dosing pump -> flocculation tank
+          P.pipe("M1028 370 L1060 370 L1060 470 L960 470 L960 488", "chem", run),
+          P.pkPump(1000, 370, "Chemical dosing pump", run, why),
+          P.pipe("M1040 601 L1002 601", "sludge", ["OP_P1A", "OP_P1B"]), P.hv(1022, 601),
+          P.link(1040, 578, 170, 46, "Raw sludge from\n01-P-101 / 102", "sludge"),
+          P.pipe("M790 520 L737 520", "sludge", run),
+          P.vessel(790, 490, 210, 150, { fluid: "sludge", label: "Flocculation tank", fill: 0.7 }),
+          P.agit(895, 490, 110, { run, why, label: "VFD agitator" }),
+          // sludge collecting tank -> PC pump -> screw 1 / 2
+          P.pipe("M680 580 L680 627", "sludge", ["PCP"]),
+          P.vessel(625, 500, 110, 80, { fluid: "sludge", label: "Sludge collecting tank", labelDy: -88, fill: 0.55 }),
+          P.pipe("M572 650 L520 650 L520 480 L376 480 L376 489 M520 556 L376 556 L376 569", "sludge", ["PCP"]),
+          P.pcp(640, 650, "PCP", { label: "OP-P201" }),
+          P.pipe("M380 532 L380 540 L450 540 L450 658 M380 612 L380 620 L450 620", "water", run),
+          P.pipe("M214 542 L214 552 L160 552 L160 640 M214 622 L214 632 L160 632", "sludge", run),
+          P.screw(200, 520, 200, { run, why, label: "Screw-1", spray: 90 }),
+          P.screw(200, 600, 200, { run, why, label: "Screw-2", spray: 90 }),
+          P.link(400, 660, 130, 34, "Filtrate tank (sh. 1)", "sludge"),
+          `<g class="vs"><path class="t-body" d="M90 640 L230 640 L200 700 L120 700 Z"/><path class="t-fill sludge" d="M100 662 L220 662 L200 698 L120 698 Z"/>
+            <text class="t-lbl" x="160" y="720" text-anchor="middle">Sludge storage hopper (cake)</text></g>`,
+          P.text(560, 462, "low water flow → chemical feeder stops"),
+        ];
+      },
+    },
+    raw: {
+      name: "Raw water storage & distribution (P&ID sheet 3)",
+      note: "03-P-301 / 302 fill the tank: start at LL, stop at HL · 03-P-303 / 304 (VFD) start above LL, speed reduced above 3 kg/cm²",
+      vb: [1240, 660],
+      draw: () => {
+        const both = ["OP_P14", "OP_P15"], ug = ["OP_P6A", "OP_P6B"];
+        const dests = [["Boiler DM plant make-up tank\n(PAR scope)", "CW-25NB"], ["Boiler wet scraper conveyor\n(PAR scope)", "CW-25NB"],
+          ["OP cooling tower-2 make-up", "CW-20NB", "ct2"], ["OP cooling tower-1 make-up", "CW-20NB", "ct1"],
+          ["OP vacuum pump & knock-out drum\n(PAR scope)", "CW-25NB"], ["Volute press: dosing make-up\n& screw spray", "CW-25NB", "volute"],
+          ["Sludge screen", "CW-40NB", "sludge"], ["Hot water tank make-up", "CW-40NB", "ct2"]];
+        return [
+          P.pipe("M228 600 L250 600 L250 560 L130 560 M98 600 L130 600 L130 160 L298 160", "water", ug),
+          P.pipe("M130 440 L415 440 L415 468", "water", ug), P.hv(200, 440), P.box(300, 470, 230, 40, "Wash room & general purpose tank"),
+          P.pipe("M220 250 L220 200 L298 200", "ctp"), P.hv(220, 226, true), P.link(160, 250, 120, 44, "From CTP\nplant", "wtp"),
+          P.hv(114, 600), P.hv(250, 580, true), P.nrv(130, 520, "u"),
+          P.lamp(115, 380, SW.FLOW, "FS"), P.text(150, 384, "03-FS-301"),
+          P.pump(70, 600, "OP_P6A"), P.pump(200, 600, "OP_P6B"),
+          P.tank(300, 140, 260, 260, { fluid: "water", label: "Raw water storage tank (03-LS-301)", sw: [LS("LS301_HL", 0.12, "HL"), LS("LS301_LL", 0.85, "LL")] }),
+          // transfer pumps (VFD): valve - strainer - valve - pump - NRV - valve
+          P.pipe("M560 380 L620 380 L620 300 L692 300", "water", ["OP_P14"]), P.pipe("M620 380 L620 460 L692 460", "water", ["OP_P15"]),
+          P.pipe("M748 300 L830 300 L830 380", "water", ["OP_P14"]), P.pipe("M748 460 L830 460 L830 380", "water", ["OP_P15"]),
+          ...[300, 460].map((y) => P.hv(638, y) + P.strn(664, y) + P.nrv(770, y) + P.hv(800, y)),
+          P.pump(720, 300, "OP_P14"), P.pump(720, 460, "OP_P15"),
+          P.pipe("M830 380 L900 380", "water", both), P.pipe("M900 380 L900 60 M900 380 L900 550", "water", both),
+          P.gauge(865, 356, "03-PG-301"),
+          `<path class="tx-leg" d="M863 200 L900 200"/>`, P.tx(850, 200, "PT_01", "PT-301"),
+          ...dests.map(([d, sz, go], i) => {
+            const y = 60 + i * 70;
+            return P.pipe(`M900 ${y} L1000 ${y}`, "water", both) + P.hv(950, y) + `<text class="psz" x="912" y="${y - 6}">${sz}</text>` +
+              (go ? P.link(1000, y - 22, 230, 44, d, go) : P.box(1000, y - 22, 230, 44, d));
+          }),
         ];
       },
     },
     ct1: {
-      name: "Cooling tower 1", note: "CT pumps run when 06-LS-601 above L, stop at LL · Fan runs only with a CT-1 pump",
-      draw: () => [
-        P.box(30, 400, 120, 40, "Make-up water"), P.pipe("M150 420 L200 420", "water"),
-        P.tower(200, 190, "Cooling tower-1 (06-LS-601)"), P.fan(260, 179, "OP_F1"),
-        P.lamp(330, 260, SW.LS601_HL, "HL"), P.lamp(330, 300, SW.LS601_LL, "LL"),
-        P.pipe("M308 320 L420 320 L420 120 L540 120", "water", ["OP_P7"]), P.pipe("M420 320 L420 290 L540 290", "water", ["OP_P3"]),
-        P.pipe("M420 320 L420 450 L540 450", "water", ["OP_P11"]),
-        P.pump(555, 120, "OP_P7"), P.pump(555, 290, "OP_P3"), P.pump(555, 450, "OP_P11"),
-        P.pipe("M570 120 L680 120", "water", ["OP_P7"]), P.box(680, 100, 170, 40, "De-gasifier PHE"),
-        P.pipe("M570 290 L680 290", "water", ["OP_P3"]), P.box(680, 270, 170, 40, "Dryer surface condenser"),
-        P.pipe("M570 450 L680 450", "water", ["OP_P11"]), P.box(680, 430, 170, 40, "Boiler cooling water"),
-        P.pipe("M850 120 L940 120 L940 60 L130 60 L130 230 L200 230", "water", ["OP_P7", "OP_P3", "OP_P11"]),
-        P.pipe("M850 290 L900 290 L900 60", "water", ["OP_P3"]), P.pipe("M850 450 L940 450 L940 120", "water", ["OP_P11"]),
-        P.text(500, 52, "warm return to tower"),
-      ],
+      name: "Cooling tower 1 (P&ID sheet 6)",
+      note: "CT pumps run when 06-LS-601 is above LL, stop at LL · Fan 06-F-601 runs only with a CT-1 pump",
+      vb: [1240, 620],
+      draw: () => {
+        const rows = [[150, "OP_P7", "De-gasifier PHE-1\n(sheet 7)", "degas"], [330, "OP_P3", "Dryer surface\ncondenser"], [510, "OP_P11", "Boiler cooling\nwater"]];
+        const ids = rows.map((r) => r[1]);
+        return [
+          P.pipe("M150 338 L194 338", "water"), P.hv(172, 338), P.link(20, 316, 130, 44, "Make-up water\n(sheet 3)", "raw"),
+          P.pipe("M326 330 L380 330 M380 330 L380 150 M380 330 L380 510", "water", ids),
+          ...rows.map(([y, id, d, go], i) => {
+            const rx = 920 + 25 * i, ty = 50 + 14 * i, lx = 120 + 14 * i, ey = 214 + 12 * i;
+            return P.pipe(`M380 ${y} L517 ${y}`, "water", [id]) + P.pipe(`M400 ${y} L400 ${y + 28} L500 ${y + 28} L500 ${y}`, "water") +
+              P.hv(412, y) + P.strn(450, y) + P.hv(488, y) + P.hv(450, y + 28) +
+              P.pipe(`M573 ${y} L660 ${y}`, "water", [id]) + P.gauge(600, y - 24, "", "PG") + P.nrv(630, y) +
+              P.pipe(`M850 ${y} L${rx} ${y} L${rx} ${ty} L${lx} ${ty} L${lx} ${ey} L202 ${ey}`, "water", [id]) + P.gauge(885, y - 24, "", "TG") +
+              P.pump(545, y, id) + (go ? P.link(660, y - 22, 190, 44, d, go) : P.box(660, y - 22, 190, 44, d, "dest-proc"));
+          }),
+          P.tower(200, 200, "Cooling tower-1"), P.fan(260, 189, "OP_F1", "06-F-601"),
+          P.lamp(160, 280, SW.LS601_HL, "HL"), P.lamp(160, 306, SW.LS601_LL, "LL"), P.text(152, 268, "06-LS-601"),
+          `<text class="band" x="1225" y="610" text-anchor="end">WARM RETURN WITH TG GAUGES → TOWER SPRAY HEADER</text>`,
+        ];
+      },
     },
     ct2: {
-      name: "Cooling tower 2 & hot water loop", note: "Hot water pump 06-P-605 runs above LL of 06-LS-603 · Fan OP-F602 runs with pump 06-P-604",
-      draw: () => [
-        P.tower(620, 60, "Cooling tower-2 (06-LS-602)"), P.fan(680, 49, "OP_F2"),
-        P.lamp(750, 130, SW.LS602_HL, "HL"), P.lamp(750, 170, SW.LS602_LL, "LL"),
-        P.pipe("M728 190 L830 190 L830 240", "water", ["OP_P10"]), P.pump(830, 255, "OP_P10", { label: "06-P-604" }),
-        P.pipe("M845 255 L900 255", "water", ["OP_P10"]), P.box(860, 270, 120, 40, "Turbine oil PHE"),
-        P.pipe("M920 270 L920 30 L600 30 L600 100 L632 100", "water", ["OP_P10"]),
-        P.tank(60, 380, 150, 110, { fluid: "hot", label: "Hot water tank (06-LS-603)", sw: [LS("LS603_HL", 0.2, "HL"), LS("LS603_LL", 0.8, "LL")] }),
-        P.pipe("M210 470 L290 470", "hot", ["OP_P2"]), P.pump(305, 470, "OP_P2"),
-        P.pipe("M320 470 L560 470 L560 380 L600 380", "hot", ["OP_P2"]),
-        P.tx(380, 420, "T_02", "TT-601"), P.tx(470, 420, "PT_03", "PT-601"),
-        P.box(600, 360, 120, 44, "Sludge dryer", "dest-proc"),
-        P.pipe("M660 360 L660 330 L560 330 L560 240 L470 240", "hot", ["OP_P2"]),
-        P.tx(500, 275, "PT_02", "PT-602"), P.tx(620, 275, "T_01", "TT-dryer"),
-        P.box(380, 220, 90, 40, "Radiator", "dest-proc"),
-        P.pipe("M380 240 L170 240 L170 300", "hot", ["OP_P2"]), P.tx(220, 185, "PT_04", "PT-603"), P.tx(330, 185, "T_03", "TT-rad"),
-        P.box(100, 300, 150, 40, "Surface condenser", "dest-proc"), P.pipe("M135 340 L135 380", "hot", ["OP_P2"]),
-        P.box(20, 230, 90, 34, "Turbine"), P.box(260, 300, 90, 34, "Boiler"),
-      ],
+      name: "Cooling tower 2 & hot water loop to dryer (P&ID sheet 6)",
+      note: "06-P-604 + fan 06-F-602 cool the turbine oil PHE · Hot water pump 06-P-605 runs above LL of 06-LS-603 · Radiator fan is held by PID on the outlet temperature",
+      vb: [1240, 720],
+      draw: () => {
+        const hot = ["OP_P2"];
+        return [
+          `<text class="band" x="1225" y="24" text-anchor="end">COOLING TOWER-2 · TURBINE OIL COOLING</text><text class="band" x="1225" y="324" text-anchor="end">HOT WATER LOOP · DRYER</text>`,
+          P.pipe("M130 240 L154 240", "water"), P.hv(142, 240), P.link(10, 218, 120, 44, "Make-up water\n(sheet 3)", "raw"),
+          P.pipe("M286 244 L442 244", "water", ["OP_P10"]), P.pipe("M340 244 L340 270 L400 270 L400 244", "water"),
+          P.hv(318, 244), P.strn(370, 244), P.hv(422, 244), P.hv(370, 270),
+          P.pipe("M498 244 L600 244", "water", ["OP_P10"]), P.gauge(525, 220, "", "PG"), P.gauge(560, 220, "", "TG"),
+          P.pipe("M710 244 L780 244 L780 60 L130 60 L130 140 L156 140", "water", ["OP_P10"]), P.nrv(130, 100, "d"), P.gauge(400, 36, "", "TG"),
+          P.phe(600, 214, 110, 60, "Turbine oil PHE"),
+          P.tower(160, 110, "Cooling tower-2"), P.fan(220, 99, "OP_F2", "06-F-602"),
+          P.lamp(300, 150, SW.LS602_HL, "HL"), P.lamp(300, 176, SW.LS602_LL, "LL"), P.text(336, 168, "06-LS-602"),
+          P.pump(470, 244, "OP_P10", { label: "06-P-604" }),
+          // hot water loop
+          P.pipe("M130 582 L176 582", "water"), P.hv(152, 582), P.link(10, 560, 120, 44, "Make-up water\n(sheet 3)", "raw"),
+          `<path class="tx-leg" d="M600 612 L600 625 M700 612 L700 625 M900 386 L900 400 M800 386 L800 400 M540 386 L540 400 M450 386 L450 400"/>`,
+          P.pipe("M318 625 L412 625", "hot", hot), P.hv(370, 625),
+          P.pipe("M468 625 L898 625", "hot", hot), P.gauge(515, 601, "", "PG"),
+          P.pipe("M1000 560 L1000 400 L698 400", "hot", hot), P.gauge(726, 376, "", "PG"),
+          P.pipe("M600 400 L382 400", "hot", hot),
+          P.pipe("M248 424 L248 518", "hot", hot),
+          P.pipe("M240 362 L240 378 M330 362 L330 378", "steam"),
+          P.tank(178, 520, 140, 120, { fluid: "hot", label: "Hot water tank (06-LS-603)", sw: [LS("LS603_HL", 0.2, "HL"), LS("LS603_LL", 0.8, "LL")] }),
+          P.pump(440, 625, "OP_P2", { label: "06-P-605" }),
+          P.tx(600, 556, "PT_03", "PT-601"), P.tx(700, 556, "T_02", "TT-601"),
+          `<g class="dest dest-proc"><rect x="900" y="560" width="200" height="110" rx="6"/><text class="dr-t" x="1000" y="620" text-anchor="middle">DRYER</text></g>`,
+          P.tx(900, 330, "PT_02", "PT-602"), P.tx(800, 330, "T_01", "TT"),
+          P.radiator(600, 370, hot, "Radiator fan - not wired to this panel; shown turning while hot water pump 06-P-605 runs (indicative). PID holds TT."),
+          P.tx(540, 330, "T_03", "TT"), P.tx(450, 330, "PT_04", "PT-603"),
+          P.box(180, 380, 200, 44, "Surface condenser", "dest-proc"), P.box(200, 332, 80, 30, "Boiler"), P.box(290, 332, 80, 30, "Turbine"),
+        ];
+      },
     },
     degas: {
-      name: "De-gasifier, pH dosing & gravity tank", note: "Acid starts ≤ 6.5 pH · Alkali starts ≥ 7.5 pH · Steam 07-XV-701 opens ≤ 70 °C, closes ≥ 90 °C",
+      name: "De-gasifier, pH dosing & gravity tank (P&ID sheet 7)",
+      note: "Steam 07-XV-701 opens ≤ open set point, closes ≥ close set point · Acid starts at low pH, alkali at high pH (never both) · Exhaust blower pulls air through the plated filter",
+      vb: [1240, 740],
       draw: () => [
-        P.box(20, 440, 170, 50, "Process condensate\nfrom dryer (T-101)"), P.pump(240, 465, "OP_P4"),
-        P.pipe("M190 465 L225 465 M255 465 L290 465 L290 300 L320 300", "water", ["OP_P4"]),
-        P.fan(120, 90, "OP_M1", "OP-M1 hot air blower"), P.pipe("M135 90 L340 90 L340 120", "air", ["OP_M1"]),
-        P.tank(320, 120, 160, 260, { fluid: "water", label: "De-gasifier (07-LS-701)", r: 14,
-          sw: [LS("LS701_HH", 0.1, "HH"), LS("LS701_H", 0.3, "H"), LS("LS701_L", 0.7, "L"), LS("LS701_LL", 0.9, "LL")] }),
-        P.pipe("M400 380 L400 470 L460 470", "water", ["OP_P9"]), P.pump(475, 470, "OP_P9"),
-        P.pipe("M490 470 L600 470 L600 310", "water", ["OP_P9"]), P.hx(578, 200, "PHE-1"),
-        P.pipe("M600 200 L600 160 L480 160", "water", ["OP_P9"]),
-        P.box(760, 60, 150, 36, "LP steam inlet"), P.pipe("M760 78 L700 78 L700 230 L622 230", "steam", ["OP_SV1"]),
-        P.valve(730, 78, "OP_SV1", { below: true }), P.tx(660, 300, "T_04", "TT-701"),
-        P.tx(535, 392, "PH_01", "AT-pH"),
-        P.box(560, 526, 100, 30, "Acid tank 80 L"), P.box(700, 526, 110, 30, "Alkali tank 80 L"),
-        P.pump(610, 505, "OP_P12", { below: false, name: false }), P.pump(755, 505, "OP_P13", { below: false, name: false }),
-        P.pipe("M610 490 L610 440 M755 490 L755 440 L540 440 L540 470", "chem", ["OP_P12", "OP_P13"]),
-        P.pipe("M480 250 L820 250 L820 300", "water", ["OP_SV2"]), P.valve(760, 250, "OP_SV2", { label: "07-XV-702 outlet" }),
-        P.tank(800, 300, 140, 110, { fluid: "water", label: "Gravity PP tank (07-LS-702)", sw: [LS("LS702_HL", 0.2, "HL"), LS("LS702_LL", 0.8, "LL")] }),
-        P.pipe("M870 410 L870 420 M870 436 L870 500 L900 500", "water", ["OP_P8"]), P.pump(915, 500, "OP_P8"),
-        P.pipe("M930 500 L975 500 L975 150", "water", ["OP_P8"]), P.box(905, 110, 90, 40, "To WTP"),
+        // air: plated filter -> 4" duct -> column -> 10" duct -> exhaust blower -> vent
+        P.pipe("M280 420 L378 420", "air", ["OP_M1"]), P.pipe("M440 170 L440 120 L176 120", "air", ["OP_M1"]), P.pipe("M165 96 L165 30", "air", ["OP_M1"]),
+        P.text(174, 40, "vent (3\" duct)"), P.text(250, 112, "10\" duct"), P.text(300, 412, "4\" duct"),
+        `<g class="vs"><rect class="t-body" x="236" y="380" width="44" height="110" rx="8"/><path class="pf-pl" d="M244 392 L272 392 M244 404 L272 404 M244 416 L272 416 M244 428 L272 428 M244 440 L272 440 M244 452 L272 452 M244 464 L272 464 M244 476 L272 476"/>
+          <text class="t-lbl" x="258" y="508" text-anchor="middle">Plated filter</text><text class="note" x="258" y="522" text-anchor="middle">(air in)</text></g>`,
+        P.blower(150, 120, "OP_M1", { label: "OP-M1", sub: "hot air exhaust blower" }),
+        // process condensate in
+        P.pipe("M180 615 L212 615", "water", ["OP_P4"]), P.pipe("M268 615 L300 615 L300 230 L378 230", "water", ["OP_P4"]), P.hv(330, 230),
+        P.box(10, 590, 170, 50, "Process condensate\nfrom dryer (T-101)"), P.pump(240, 615, "OP_P4"),
+        // column
+        `<path class="t-body" d="M384 462 L496 462 L452 500 L428 500 Z"/>`,
+        P.tank(380, 170, 120, 300, { fluid: "water", r: 30, sw: [LS("LS701_HH", 0.1, "HH"), LS("LS701_H", 0.3, "H"), LS("LS701_L", 0.7, "L"), LS("LS701_LL", 0.9, "LL")] }),
+        `<rect class="pack" x="388" y="250" width="104" height="80"/><text class="t-lbl" x="372" y="300" text-anchor="end">De-gasifier</text><text class="note" x="372" y="316" text-anchor="end">07-LS-701</text>`,
+        // recirculation through PHE-1 (steam heated)
+        P.pipe("M440 500 L440 640 L462 640", "water", ["OP_P9"]), P.pipe("M518 640 L540 640 L540 420 L620 420 L620 412", "water", ["OP_P9"]),
+        P.pipe("M620 330 L620 230 L502 230", "water", ["OP_P9"]), P.gauge(566, 396, "07-PG-701"), P.text(882, 492, "07-LS-702"),
+        `<path class="tx-leg" d="M573 270 L620 270"/>`, P.tx(560, 270, "T_04", "TT-701"),
+        P.pump(490, 640, "OP_P9"),
+        P.phe(590, 330, 60, 80, "PHE-1"),
+        P.pipe("M760 317 L700 317 L700 350 L652 350", "steam", ["OP_SV1"]), P.valve(722, 317, "OP_SV1", { label: "07-XV-701" }),
+        P.box(760, 300, 120, 34, "Steam inlet 25NB"), P.gauge(748, 341, "07-TG-701", "TG", true),
+        P.pipe("M650 395 L700 395 L700 430 L760 430", "steam"), P.nrv(730, 430), P.box(760, 414, 120, 34, "Cond. outlet"),
+        // hot water (70 °C) -> pH sensor -> process water valve -> gravity PP tank, acid / alkali dosing into the line
+        P.pipe("M440 540 L838 540", "water", ["OP_SV2"]), P.valve(600, 540, "OP_SV2", { label: "07-XV-702" }),
+        `<path class="tx-leg" d="M700 526 L700 540"/>`, P.tx(700, 470, "PH_01", "pH"),
+        P.pipe("M612 645 L612 600 L622 600", "chem", ["OP_P12"]), P.pipe("M732 645 L732 600 L742 600", "chem", ["OP_P13"]),
+        P.pipe("M678 600 L690 600 L690 542", "chem", ["OP_P12"]), P.pipe("M798 600 L810 600 L810 542", "chem", ["OP_P13"]),
+        P.pump(650, 600, "OP_P12", { below: false, name: false }), P.pump(770, 600, "OP_P13", { below: false, name: false }),
+        P.vessel(595, 645, 80, 50, { fluid: "chem", label: "Acid tank 80 L", labelDy: 16 }), P.vessel(715, 645, 80, 50, { fluid: "chem", label: "Alkali tank 80 L", labelDy: 16 }),
+        P.tank(840, 500, 150, 150, { fluid: "water", label: "Gravity PP tank 2000 L", sw: [LS("LS702_HL", 0.2, "HL"), LS("LS702_LL", 0.8, "LL")] }),
+        // gravity tank pump -> PHE-2 (cooled by CT water) -> WTP
+        P.pipe("M990 635 L1040 635", "water", ["OP_P8"]), P.pipe("M1096 635 L1120 635 L1120 420", "water", ["OP_P8"]), P.pipe("M1120 340 L1120 272", "water", ["OP_P8"]),
+        P.pump(1068, 635, "OP_P8"), P.phe(1090, 340, 60, 80, "PHE-2"), P.gauge(1150, 300, "07-TG-703", "TG"),
+        P.link(1060, 228, 150, 44, "To WTP / CTP\n(sheet 8)", "wtp"),
+        P.pipe("M1210 470 L1210 400 L1150 400", "water"), P.pipe("M1150 356 L1200 356 L1200 300", "water"),
+        P.link(1160, 470, 76, 40, "CW in\n(sh. 6)", "ct1"), P.text(1170, 292, "CW return"),
+        P.spCard(900, 60, "De-gasifier set points (HMI)", [
+          ["Steam valve open", "aux:SP_LP_STEAM_OPEN"], ["Steam valve close", "aux:SP_LP_STEAM_CLOSE"],
+          ["PHE-1 temp alarm", "alm:T_04"], ["pH alarm", "alm:PH_01"]]),
       ],
     },
     wtp: {
-      name: "WTP / CTP plant", note: "Packaged WTP: only the CTP tank float switches are wired to this panel",
+      name: "Condensate treatment plant - WTP / CTP (P&ID sheet 8)",
+      note: "Packaged plant (Norsen scope): only the four tank float switches are wired to this panel; pumps and filters here have no signal",
+      vb: [1240, 640],
       draw: () => {
-        const steps = ["Sand filter", "Carbon filter", "pH / antiscalant dosing", "Micron filter", "Booster pump", "RO / membrane", "UV sterilizer"];
+        const why = "Package pump (Norsen scope) - not wired to this panel, no state available.";
         return [
-          P.tank(40, 140, 130, 200, { fluid: "water", label: "Raw water tank CTP", sw: [LS("LS801", 0.15, "HH"), LS("LS802", 0.85, "LL")] }),
-          P.pipe("M170 300 L230 300 L230 110 L940 110 L940 330", "ctp"),
-          ...steps.map((s, i) => P.box(230 + i * 102, 150, 92, 70, s.replace(" / ", " /\n").replace(" filter", "\nfilter"), "dest-proc")),
-          P.pipe("M940 330 L940 420 L700 420", "ctp"),
-          P.tank(560, 340, 130, 170, { fluid: "pure", label: "Pure water tank CTP", sw: [LS("LS803", 0.15, "HH"), LS("LS804", 0.85, "LL")] }),
-          P.pipe("M560 450 L420 450", "water"), P.box(260, 430, 160, 40, "Drinking water tank"),
-          P.box(260, 330, 160, 40, "Mineral cartridge"), P.pipe("M420 350 L560 350", "water"),
+          P.pipe("M140 300 L187 300", "ctp"),
+          P.pipe("M243 300 L250 300 L250 70 L328 70 L328 92", "ctp"), P.pipe("M342 92 L342 58 L468 58 L468 92", "ctp"),
+          P.pipe("M482 92 L482 46 L660 46 L660 300 L672 300", "ctp"), P.pipe("M600 180 L600 120 L660 120", "chem"),
+          P.pipe("M728 300 L768 300", "ctp"), P.pipe("M814 230 L850 230 L850 300 L862 300", "ctp"),
+          P.pipe("M918 300 L950 300 L950 120 L978 120", "ctp"),
+          P.pipe("M1200 200 L1220 200 L1220 420 L902 420", "ctp"), P.pipe("M760 420 L640 420 L640 380 L530 380 L530 398", "water"),
+          P.pipe("M1200 120 L1232 120 L1232 560 L1152 560", "ctp"),
+          P.pipe("M590 510 L700 510", "water"), P.pipe("M810 510 L860 510 L860 558", "water"),
+          P.tank(30, 160, 110, 170, { fluid: "water", label: "Raw water tank", sw: [LS("LS801", 0.15, "HL"), LS("LS802", 0.7, "LL")] }),
+          P.pkPump(215, 300, "Raw water pump", [], why),
+          P.filterV(300, 110, "Sand filter"), P.filterV(440, 110, "Carbon filter"),
+          P.vessel(560, 180, 80, 120, { fluid: "chem", label: "pH dosing &", sub: "antiscalant", fill: 0.6 }),
+          P.pkPump(700, 300, "Raw water pump", [], why),
+          P.vessel(770, 200, 44, 110, { fluid: "water", label: "Micron filter", fill: 0.9, r: 14 }),
+          P.pkPump(890, 300, "Booster pump", [], why),
+          `<g class="ro">${[0, 1, 2, 3].map((i) => `<rect x="980" y="${100 + i * 32}" width="220" height="22" rx="11"/><circle cx="992" cy="${111 + i * 32}" r="5"/><circle cx="1188" cy="${111 + i * 32}" r="5"/>`).join("")}
+            <text class="t-lbl" x="1090" y="250" text-anchor="middle">RO module</text><text class="note" x="1226" y="112" text-anchor="end">reject</text></g>`,
+          `<g class="uv"><rect x="760" y="406" width="140" height="28" rx="14"/><rect x="744" y="410" width="16" height="20" rx="3"/><rect x="900" y="410" width="16" height="20" rx="3"/>
+            <text class="t-lbl" x="830" y="456" text-anchor="middle">UV sterilizer</text></g>`,
+          P.tank(470, 400, 120, 160, { fluid: "pure", label: "Pure water tank", sw: [LS("LS803", 0.15, "HL"), LS("LS804", 0.85, "LL")] }),
+          P.box(700, 490, 110, 40, "Mineral cartridge"), P.box(800, 560, 130, 40, "Drinking water tank"),
+          P.link(1000, 540, 150, 40, "Filtrate tank (sh. 1)", "sludge"),
         ];
       },
     },
@@ -759,6 +1069,27 @@
     });
     box.querySelectorAll("[data-vals]").forEach((el) => {
       el.textContent = el.dataset.vals.split(",").map((id) => { const t = tag(id); return t ? `${fmt(t)} ${t.unit || ""}`.trim() : "--"; }).join(" · ");
+    });
+    box.querySelectorAll("[data-spv]").forEach((el) => {       // set points from the PLC / HMI
+      const [k, id, lk] = el.dataset.spv.split(":");
+      let v = "--";
+      if (k === "aux") v = auxTxt(id);
+      else if (k === "alm") v = auxTxt(`${id}_ALM_SP`);
+      else if (k === "lv") {
+        const t = tag(id), lv = levelsOf(t);
+        if (lv && lv[lk] != null) v = `${Number(lv[lk]).toFixed(t.decimals ?? 0)} ${t.unit || ""}${plcLevels(t) ? "" : " *"}`.trim();
+      }
+      if (k === "alm" && el.dataset.pre) {
+        if (v === "--" && !((live.aux || {})[`${id}_ALM_SP`])) { el.textContent = ""; return; }
+        if (v !== "--" && !/[a-z%°]/i.test(v)) { const t = tag(id); if (t && t.unit) v += ` ${t.unit}`; }
+      }
+      el.textContent = (el.dataset.pre || "") + v;
+    });
+    box.querySelectorAll("[data-run]").forEach((g) => {        // package equipment: indicative state from the listed panel motors
+      const ids = g.dataset.run ? g.dataset.run.split(",") : [];
+      const on = ids.some(running);
+      g.classList.toggle("run", on);
+      g.classList.toggle("stop", !on);
     });
     box.querySelectorAll("[data-pct]").forEach((el) => { const p = pct(tag(el.dataset.pct)); el.textContent = p == null ? "" : `${Math.round(p)} %`; });
     box.querySelectorAll("[data-lvl]").forEach((r) => fillRect(r, pct(tag(r.dataset.lvl))));

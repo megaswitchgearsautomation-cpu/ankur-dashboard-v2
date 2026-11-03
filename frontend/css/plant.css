@@ -413,3 +413,77 @@ svg.mimic.big { min-width: 1000px; }
   .kp-sys, .kp-areas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kp-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- mimic: P&ID detail symbols ---------- */
+.mimic .hv { fill: #fff; stroke: #55554f; stroke-width: 1.4; }
+.mimic .nrv path { fill: #55554f; } .mimic .nrv line { stroke: #55554f; stroke-width: 2; }
+.mimic .strn path { fill: #fff; stroke: #55554f; stroke-width: 1.3; }
+.mimic .gauge line { stroke: #77776f; stroke-width: 1.4; } .mimic .gauge circle { fill: #fff; stroke: #77776f; stroke-width: 1.4; }
+.mimic .gauge .g-nd { stroke: #c43d3d; stroke-width: 1.4; }
+.mimic .gauge .g-k { font-size: 7.5px; font-weight: 800; fill: #55554f; } .mimic .gauge .g-n { font-size: 9.5px; font-weight: 700; fill: #6b6b66; }
+.mimic .gauge.pki circle { stroke-dasharray: 3 2; } .mimic .gauge.pki .g-k { font-size: 9px; }
+.mimic .psz { font-size: 9.5px; font-weight: 700; fill: #8a8a82; }
+.mimic .pk { cursor: default; }
+.mimic .ag-mot { fill: url(#gStop); stroke: #55554f; stroke-width: 1; }
+.mimic .run .ag-mot { fill: url(#gRun); stroke: #2b6a06; }
+.mimic .trip .ag-mot { fill: url(#gTrip); stroke: #8d1c1f; animation: kpBlink 1s steps(2) infinite; }
+.mimic .ag-fin { stroke: rgba(0, 0, 0, .22); stroke-width: 1; }
+.mimic .ag-gb, .mimic .ag-fl { fill: url(#gMetal); stroke: #6f6f68; stroke-width: .8; }
+.mimic .ag-bl { fill: #6d7a86; stroke: #3f4850; stroke-width: .8; }
+.mimic .prop.p2 .ag-bl { fill: #9aa6b1; }
+.mimic .eq circle.ag-hub, .mimic .ag-hub { fill: #3f4850; stroke: none; animation: none; }
+.mimic .agit circle.pm-led, .mimic .sc circle.pm-led { fill: #c9c9c3; stroke: #fff; stroke-width: 1; }
+.mimic .run circle.pm-led { fill: #5fe01a; filter: drop-shadow(0 0 2px #5fe01a); }
+/* propeller seen from the side: the two blade pairs squash in turn = turning */
+.mimic .run .prop { animation: mmProp .28s ease-in-out infinite alternate; }
+.mimic .run .prop.p2 { animation-delay: -.28s; }
+.mimic .run .prop.v { animation-name: mmPropV; }
+@keyframes mmProp { from { transform: scaleX(1); } to { transform: scaleX(.06); } }
+@keyframes mmPropV { from { transform: scaleY(1); } to { transform: scaleY(.06); } }
+/* screw conveyor / screw press */
+.mimic .sc-tr { fill: #e4e7e0; stroke: #6f6f68; stroke-width: 1.8; }
+.mimic .sc-sh { stroke: #6f6f68; stroke-width: 3; }
+.mimic .flights { fill: none; stroke: #4a5560; stroke-width: 2.2; }
+.mimic .run .flights { animation: mmScrew .7s linear infinite; }
+@keyframes mmScrew { to { transform: translateX(-12px); } }
+.mimic .sc-hop, .mimic .sc-out { fill: #d6d9d0; stroke: #6f6f68; stroke-width: 1.2; }
+.mimic .sc-noz { fill: #5aa0e0; stroke: #2f7fd1; stroke-width: 1; }
+.mimic .spray path { stroke: #5aa0e0; stroke-width: 1.6; fill: none; opacity: 0; }
+.mimic .run .spray path { animation: kpBlink .5s steps(2) infinite; opacity: 1; }
+/* progressive cavity pump */
+.mimic .pc-st { fill: url(#gMetal); stroke: #6f6f68; stroke-width: 1.2; }
+.mimic .pc-hs { fill: #cfd2ca; stroke: #6f6f68; stroke-width: 1.2; }
+.mimic .rotor { fill: none; stroke: #4a5560; stroke-width: 3; }
+.mimic .run .rotor { animation: mmRotor .8s linear infinite; }
+@keyframes mmRotor { to { transform: translateX(-24px); } }
+/* blower, PHE, radiator, vessels */
+.mimic .bw-cs { fill: url(#gMetal); stroke: #6f6f68; stroke-width: 1.4; }
+.mimic .eq.blower circle.pm-vol { fill: #e4e7e0; }
+.mimic .ph-fr { fill: #f4f4f1; stroke: #6f6f68; stroke-width: 1.6; } .mimic .ph-pl { stroke: #8a8a82; stroke-width: 1.2; }
+.mimic .ph-end { fill: #2f6fb0; }
+.mimic .rd-core { fill: #e4e7e0; stroke: #6f6f68; stroke-width: 1.6; } .mimic .rd-fin { stroke: #b0b4aa; stroke-width: 1; }
+.mimic .rd-ring { fill: rgba(255, 255, 255, .75); stroke: #6f6f68; stroke-width: 1.4; } .mimic .rd-fan { fill: #6d7a86; }
+.mimic .pk.run .spin { animation: mmSpin 1s linear infinite; }
+.mimic .t-fill.chem { fill: #cdb3ea; } .mimic .vs-fill { opacity: .7; }
+.mimic .vs-part { stroke: #8f8f86; stroke-width: 2; }
+.mimic .vs-pow { fill: #ece6d6; }
+.mimic .scr-c, .mimic .scr-f { stroke: #6f6f68; stroke-width: 4; stroke-dasharray: 3 3; fill: none; }
+.mimic .scr-f { stroke-dasharray: 1.5 2; }
+.mimic .pack { fill: url(#hatch); opacity: .35; stroke: #8f8f86; }
+.mimic .pf-pl { stroke: #8f8f86; stroke-width: 1.4; }
+.mimic .fv-body { fill: #eef6ea; stroke: #4f9a33; stroke-width: 2; } .mimic .fv-st { stroke: #4f9a33; stroke-width: 3; }
+.mimic .fv-leg { fill: #4f9a33; opacity: .8; } .mimic .fv-av { fill: #4f9a33; }
+.mimic .ro rect { fill: #f4f4f1; stroke: #4f9a33; stroke-width: 1.8; } .mimic .ro circle { fill: #fff; stroke: #4f9a33; }
+.mimic .uv rect { fill: #eef6ea; stroke: #4f9a33; stroke-width: 1.8; }
+.mimic .dest.link { cursor: pointer; } .mimic .dest.link rect { stroke-dasharray: 5 3; }
+.mimic .dest.link:hover rect, .mimic .dest.link:focus-visible rect { stroke: var(--ak-olive); stroke-width: 2.5; outline: none; }
+.mimic .dest.link:focus { outline: none; }
+.mimic .lk-go { font-size: 18px !important; font-weight: 800; fill: #8fa61c; }
+/* set points read from the PLC / HMI */
+.mimic .tx-sp { font-size: 10px; font-weight: 700; fill: #8a5800; }
+.mimic .spc rect { fill: #fffaf0; stroke: #e0b860; stroke-width: 1.4; }
+.mimic .sp-h { font-size: 11px; font-weight: 800; fill: #8a5800; }
+.mimic .sp-l { font-size: 11px; fill: #555; } .mimic .sp-v { font-size: 11.5px; font-weight: 800; fill: #222; }
+@media (prefers-reduced-motion: reduce) {
+  .mimic .run .prop, .mimic .run .flights, .mimic .run .rotor { animation: none; }
+}
