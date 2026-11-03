@@ -118,6 +118,68 @@ body.ankur { background: var(--fx-bg); color: var(--fx-ink); font-family: var(--
 /* mimic: lighter frame */
 .ankur .mm-wrap { background: #fff; border-radius: 16px; }
 
+/* ---- plant AI assistant (js/ai.js) ---- */
+.ai-fab { position: fixed; right: 26px; bottom: 26px; z-index: 60; display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px;
+  border: 0; border-radius: 999px; background: var(--fx-ink, #151515); color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .22); transition: transform .15s, box-shadow .15s; }
+.ai-fab svg { width: 18px; height: 18px; color: var(--fx-lime, #9fd243); }
+.ai-fab:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(0, 0, 0, .26); }
+.ai-box { position: fixed; right: 26px; bottom: 26px; z-index: 61; width: min(420px, calc(100vw - 32px)); height: min(640px, calc(100vh - 52px));
+  display: flex; flex-direction: column; background: #fff; border: 1px solid var(--fx-line, #ecece8); border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .22); overflow: hidden; font-size: 13.5px; color: var(--fx-ink, #151515); }
+.ai-box.hidden { display: none; }
+.ai-h { display: flex; align-items: center; gap: 8px; padding: 14px 14px 12px 18px; border-bottom: 1px solid var(--fx-line, #ecece8); }
+.ai-h > div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.ai-h b { font-size: 15px; }
+.ai-st { font-size: 11.5px; font-weight: 700; color: #8a8a85; }
+.ai-st.on { color: #3e6b00; } .ai-st.on::before { content: "● "; color: #6fbf1d; }
+.ai-st.off::before { content: "● "; color: #c9c9c3; }
+.ai-x { border: 1px solid var(--fx-line, #ecece8); background: #fff; border-radius: 999px; padding: 5px 11px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; color: #55554f; }
+.ai-x:hover { background: #f6f6f3; }
+.ai-log { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: var(--fx-app, #f4f4f1); }
+.ai-hello { background: #fff; border-radius: 16px; padding: 14px 16px; border: 1px solid var(--fx-line, #ecece8); }
+.ai-hello p { margin: 6px 0 0; color: #55554f; line-height: 1.45; }
+.ai-m { max-width: 88%; padding: 10px 13px; border-radius: 16px; line-height: 1.45; overflow-wrap: anywhere; }
+.ai-m.u { align-self: flex-end; background: var(--fx-ink, #151515); color: #fff; border-bottom-right-radius: 5px; white-space: pre-wrap; }
+.ai-m.a { align-self: flex-start; background: #fff; border: 1px solid var(--fx-line, #ecece8); border-bottom-left-radius: 5px; position: relative; }
+.ai-m.a p { margin: 0 0 6px; } .ai-m.a p:last-child { margin-bottom: 0; }
+.ai-m.a ul, .ai-m.a ol { margin: 4px 0 8px; padding-left: 20px; } .ai-m.a li { margin: 2px 0; }
+.ai-m.a h4 { margin: 8px 0 4px; font-size: 13.5px; }
+.ai-m.a code { background: #f1f1ed; border-radius: 5px; padding: 0 4px; font-size: 12.5px; }
+.ai-m.a b { color: #1d2a05; }
+.ai-m.err { border-color: #f3b6b8; background: #fff5f5; color: #8d1c1f; }
+.ai-src { display: inline-block; margin-top: 6px; font-size: 10.5px; font-weight: 700; color: #8a8a85; background: #f4f4f1; border-radius: 999px; padding: 1px 8px; }
+.ai-m.typing { display: flex; gap: 4px; padding: 13px 14px; }
+.ai-m.typing i { width: 7px; height: 7px; border-radius: 50%; background: #b9b9b2; animation: ai-dot 1s ease-in-out infinite; }
+.ai-m.typing i:nth-child(2) { animation-delay: .15s; } .ai-m.typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes ai-dot { 0%, 100% { opacity: .3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+.ai-sug { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px 0; background: #fff; }
+.ai-sug.hidden { display: none; }
+.ai-sug button { border: 1px solid var(--fx-line, #ecece8); background: #f6f6f3; border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 12px;
+  font-weight: 600; color: #333; cursor: pointer; text-align: left; }
+.ai-sug button:hover { background: var(--fx-lime-2, #dff2bf); border-color: #c9e39a; }
+.ai-in { display: flex; align-items: flex-end; gap: 8px; padding: 10px 14px; background: #fff; }
+.ai-in textarea { flex: 1; resize: none; border: 1px solid #dcdcd6; border-radius: 14px; padding: 9px 12px; font: inherit; font-size: 13.5px; max-height: 120px; }
+.ai-in textarea:focus { outline: none; border-color: var(--fx-lime, #9fd243); box-shadow: 0 0 0 3px rgba(159, 210, 67, .25); }
+.ai-send { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--fx-ink, #151515); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.ai-send svg { width: 18px; height: 18px; }
+.ai-send:disabled { opacity: .4; cursor: wait; }
+.ai-mic-wrap { flex: none; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.ai-mic-wrap.hidden { display: none; }
+.ai-mic { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #dcdcd6; background: #fff; color: var(--fx-ink, #151515);
+  display: grid; place-items: center; cursor: pointer; position: relative; }
+.ai-mic svg { width: 18px; height: 18px; }
+.ai-mic:hover { background: #f6f6f3; }
+.ai-mic.on { background: #e5484d; border-color: #e5484d; color: #fff; }
+.ai-mic.on::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid #e5484d; animation: ai-ping 1.2s ease-out infinite; }
+@keyframes ai-ping { from { transform: scale(.85); opacity: .9; } to { transform: scale(1.35); opacity: 0; } }
+.ai-lang { border: 0; background: #f1f1ed; border-radius: 999px; padding: 1px 7px; font: inherit; font-size: 10.5px; font-weight: 800; color: #55554f; cursor: pointer; }
+.ai-lang:hover { background: var(--fx-lime-2, #dff2bf); }
+@media (prefers-reduced-motion: reduce) { .ai-mic.on::after { animation: none; } }
+.ai-foot { padding: 0 14px 10px; font-size: 10.5px; color: #9a9a93; background: #fff; }
+.ankur .rail-btn.ai-rail svg { color: var(--fx-lime-ink, #3e6b00); }
+@media (prefers-reduced-motion: reduce) { .ai-m.typing i { animation: none; } }
+
 /* phones: rail becomes the top bar again, icons only */
 @media (max-width: 760px) {
   .ankur .shell { grid-template-columns: minmax(0, 1fr); margin: 0; border-radius: 0; }

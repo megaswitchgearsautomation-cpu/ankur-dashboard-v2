@@ -12,6 +12,7 @@ import threading
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
+from app.ai_assistant import Assistant  # noqa: E402
 from app.auth import Auth, DEFAULT_ADMIN, DEFAULT_CLIENT  # noqa: E402
 from app.config_store import ConfigStore  # noqa: E402
 from app.engine import Engine  # noqa: E402
@@ -26,6 +27,7 @@ class App:
         self.historian = Historian(os.path.join(data_dir, "history.sqlite3"))
         self.auth = Auth(self.store)
         self.engine = Engine(self.store, self.historian)
+        self.assistant = Assistant(data_dir)
         self.frontend_dir = frontend_dir
         self.verbose = verbose
 

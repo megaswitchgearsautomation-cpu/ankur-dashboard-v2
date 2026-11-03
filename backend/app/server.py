@@ -153,27 +153,20 @@ def make_handler(app):
             self._json({"site": {k: s["site"].get(k, "") for k in ("name", "panel")}, "server_time": time.time()})
 
         def api_live(self, q):
-            e = app.engine
-            active = e.active_alarms()
-            # previous operator notes for the same alarm source (tag + alarm type) - shown in the pop-up
-            notes = app.historian.alarm_notes([(a["tag"], a["kind"]) for a in active if not a.get("acked_at")], per_key=5)
-            alarms = []
-            for a in active:
-                c = client_alarm(a)
-                c["previous_notes"] = notes.get((a["tag"], a["kind"]), [])
-                alarms.append(c)
-            self._json({"server_time": time.time(), "status": client_status(e.connection()),
-                        "tags": [client_tag(t) for t in e.live()],
-                        # equipment with "show_on_dashboard": false (e.g. spare starters) is not sent to the client
-                        "equipment": [client_equipment(x) for x in e.equipment()
-                                      if x.get("id") not in {q["id"] for q in app.store.equipment if q.get("show_on_dashboard") is False}],
-                        "alarms": alarms,
-                        # plant states for the mimic / instruments pages (level switches, valve limits, air, flow,
-                        # PLC scaling block) - values only, keyed by tag id
-                        "aux": {t["id"]: {"value": t["value"], "quality": client_tag(t)["quality"], "name": t["name"],
-                                          "group": t["group"], "unit": t.get("unit", ""), "decimals": t.get("decimals", 1)}
-                                for t in e.live(include_hidden=True)
-                                if t["group"] in CLIENT_AUX_GROUPS or t["id"].endswith("_ALM_SP")}})
+            self._json(live_payload(app))
+
+        # -- AI assistant (read-only: answers from the same data the client dashboard shows) ---------
+        def api_ai_status(self, q):
+            self._json(app.assistant.status())
+
+        def api_ai_ask(self, q):
+            b = self._body()
+            if not app.assistant.rate_ok(self._token() or self.client_address[0]):
+                return self._err("Too many questions - please wait a minute.", 429)
+            res = app.assistant.ask(str(b.get("question") or ""), b.get("history"), live_payload(app))
+            if res.get("ok"):
+                app.historian.event("ai", f"question ({res.get('source')}): {str(b.get('question'))[:200]}")
+            self._json(res, 200 if res.get("ok") else 502)
 
         def api_trend(self, q):
             ids = [x for x in q.get("tags", "").split(",") if x][:8]
@@ -538,6 +531,8 @@ def make_handler(app):
         ("POST", "/api/client/scaling"): Handler.api_client_scaling,
         ("POST", "/api/client/levels"): Handler.api_client_levels,
         ("POST", "/api/client/write"): Handler.api_client_write,
+        ("GET", "/api/client/ai/status"): Handler.api_ai_status,
+        ("POST", "/api/client/ai/ask"): Handler.api_ai_ask,
         ("GET", "/api/report/tags"): Handler.api_report_tags,
         ("GET", "/api/report"): Handler.api_report,
         ("GET", "/api/report.xlsx"): Handler.api_report_xlsx,
@@ -576,6 +571,31 @@ CLIENT_ROUTES = {"/api/meta", "/api/live", "/api/trend", "/api/alarms",
 # ---------------------------------------------------------------------------------------------
 # Client (view-only) projections - strip PLC / network / address / diagnostic details.
 # ---------------------------------------------------------------------------------------------
+def live_payload(app):
+    """The client dashboard's live view (/api/live) - also the data the AI assistant answers from."""
+    e = app.engine
+    active = e.active_alarms()
+    # previous operator notes for the same alarm source (tag + alarm type) - shown in the pop-up
+    notes = app.historian.alarm_notes([(a["tag"], a["kind"]) for a in active if not a.get("acked_at")], per_key=5)
+    alarms = []
+    for a in active:
+        c = client_alarm(a)
+        c["previous_notes"] = notes.get((a["tag"], a["kind"]), [])
+        alarms.append(c)
+    hidden_eq = {q["id"] for q in app.store.equipment if q.get("show_on_dashboard") is False}
+    return {"server_time": time.time(), "status": client_status(e.connection()),
+            "tags": [client_tag(t) for t in e.live()],
+            # equipment with "show_on_dashboard": false (e.g. spare starters) is not sent to the client
+            "equipment": [client_equipment(x) for x in e.equipment() if x.get("id") not in hidden_eq],
+            "alarms": alarms,
+            # plant states for the mimic / instruments pages (level switches, valve limits, air, flow,
+            # PLC scaling block) - values only, keyed by tag id
+            "aux": {t["id"]: {"value": t["value"], "quality": client_tag(t)["quality"], "name": t["name"],
+                              "group": t["group"], "unit": t.get("unit", ""), "decimals": t.get("decimals", 1)}
+                    for t in e.live(include_hidden=True)
+                    if t["group"] in CLIENT_AUX_GROUPS or t["id"].endswith("_ALM_SP")}}
+
+
 def client_status(c):
     if c["mode"] == "simulation":
         state = "demo"
