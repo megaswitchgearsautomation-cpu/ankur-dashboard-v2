@@ -58,7 +58,8 @@ class Historian:
     def __init__(self, path: str):
         self.path = path
         self._lock = threading.Lock()
-        self._db = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
+        # wait up to 15 s for a lock (e.g. a backup or second reader) instead of failing after the 5 s default
+        self._db = sqlite3.connect(path, check_same_thread=False, isolation_level=None, timeout=15)
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA synchronous=NORMAL")
         self._db.executescript(SCHEMA)

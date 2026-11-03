@@ -129,7 +129,10 @@ class Engine:
                 self._reload_if_needed()
                 self._cycle(t0)
             except Exception as e:  # never let the loop die
-                self.hist.event("engine_error", repr(e))
+                try:                # logging goes to the same database - a locked DB must not kill the loop either
+                    self.hist.event("engine_error", repr(e))
+                except Exception:
+                    pass
             self._stop.wait(max(0.02, self.TICK - (time.time() - t0)))
 
     def _cycle(self, now):

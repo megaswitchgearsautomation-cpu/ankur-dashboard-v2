@@ -1,0 +1,130 @@
+/* v3 look: clean light dashboard (client reference: Shakuro "Finance Management" dashboard on Dribbble).
+   Only the skin changes - same pages, cards, values and features. Loaded last, overrides ankur-theme.css. */
+:root, :root[data-theme="dark"] {
+  --fx-bg: #e9e9e6;          /* page around the app */
+  --fx-app: #f4f4f1;         /* app background behind the cards */
+  --fx-card: #ffffff;
+  --fx-line: #ecece8;
+  --fx-ink: #151515; --fx-ink-2: #55554f; --fx-ink-3: #9a9a93;
+  --fx-lime: #9fd243; --fx-lime-2: #dff2bf; --fx-lime-ink: #3e6b00;
+  --fx-yellow: #f3df4f; --fx-orange: #f2a25a;
+  --card-border: 1px solid var(--fx-line);
+  --radius: 18px; --radius-sm: 12px;
+  --font: "Inter", "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --surface-2: #f6f6f3; --track: #efefeb; --line: var(--fx-line);
+}
+body.ankur { background: var(--fx-bg); color: var(--fx-ink); font-family: var(--font); }
+
+/* ---- app frame: one rounded light container on the grey page ---- */
+.ankur .shell { grid-template-columns: 228px minmax(0, 1fr); margin: 14px; min-height: calc(100vh - 28px); background: var(--fx-app);
+  border-radius: 26px; box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 12px 40px rgba(0, 0, 0, .05); }
+
+/* ---- sidebar: white, icon + label, active item = soft grey pill ---- */
+.ankur .rail { top: 14px; height: calc(100vh - 28px); background: #fff; border-right: 1px solid var(--fx-line); border-radius: 26px 0 0 26px;
+  align-items: stretch; padding: 22px 14px 18px; gap: 10px; }
+.ankur .rail-logo { width: auto; height: auto; display: flex; align-items: center; gap: 10px; padding: 0 10px 14px; background: transparent;
+  border-bottom: 1px solid var(--fx-line); border-radius: 0; text-decoration: none; }
+.ankur .rail-logo img { width: 34px; height: 34px; }
+.ankur .rail-logo::after { content: "Ankur FSTP-200"; font-size: 15.5px; font-weight: 800; color: var(--fx-ink); letter-spacing: -.01em; white-space: nowrap; }
+.ankur .rail-nav { gap: 3px; margin-top: 4px; }
+.ankur .rail-nav a, .ankur .rail-btn { width: auto; height: 42px; display: flex; align-items: center; justify-content: flex-start; gap: 12px; padding: 0 12px;
+  border-radius: 12px; border: 0; color: var(--fx-ink-2); font: inherit; font-size: 14px; font-weight: 600; background: transparent; }
+.ankur .rail-nav a::after, .ankur .rail-btn::after { content: attr(title); order: 1; white-space: nowrap; }
+.ankur .rail-nav a:hover, .ankur .rail-btn:hover { background: #f6f6f3; color: var(--fx-ink); }
+.ankur .rail-nav a.active { background: #f1f1ed; color: var(--fx-ink); font-weight: 700; box-shadow: none; border: 0; }
+.ankur .rail-nav a.active svg { color: var(--fx-lime-ink); }
+.ankur .rail-nav svg, .ankur .rail-btn svg { width: 19px; height: 19px; flex: none; }
+.ankur .rail-badge { position: static; order: 2; margin-left: auto; border: 0; }
+.ankur .rail-foot { gap: 4px; padding-top: 10px; border-top: 1px solid var(--fx-line); }
+
+/* ---- main area + header ---- */
+.ankur .content { background: transparent; margin: 0; border-radius: 0; padding: 18px 24px 28px; min-height: 0; }
+.ankur .head { background: transparent; background-image: none; border: 0; border-radius: 0; padding: 2px 0 6px; flex-wrap: nowrap; }
+.ankur .head-nav { display: none; }                 /* the labelled sidebar is the page menu now (same pages, shown once) */
+.ankur .head-ic { background: #fff; color: var(--fx-ink); box-shadow: none; border: 1px solid var(--fx-line); border-radius: 14px; }
+.ankur .head-title h1 { font-size: 25px; font-weight: 800; letter-spacing: -.02em; color: var(--fx-ink); }
+.ankur .head-title .sub { color: var(--fx-ink-3); }
+.ankur .head-title .pin { color: var(--fx-lime-ink); }
+.ankur .head-right .conn, .ankur .brand-pair { background: #fff; border: 1px solid var(--fx-line); box-shadow: none; }
+.ankur .help-btn { background: #fff; border: 1px solid var(--fx-line); color: var(--fx-ink); }
+@media (max-width: 1800px) { .ankur .head { flex-wrap: wrap; } }
+
+/* ---- cards: white, soft corners, no heavy borders ---- */
+.ankur .card, .ankur .mini, .ankur .kp-card, .ankur .ps-strip, .ankur .eq-kpi, .ankur .al-kpi, .ankur .eqc, .ankur .eq-legend,
+.ankur .gauge-card, .ankur .chart-card { background: var(--fx-card); border: 1px solid var(--fx-line); border-radius: var(--radius); box-shadow: none; }
+.ankur .card { padding: 20px; }
+.ankur .card-head { margin: 0 0 14px; padding: 0; border: 0; background: transparent; border-radius: 0; }
+.ankur .card-head h2 { font-size: 16px; font-weight: 700; color: var(--fx-ink); letter-spacing: -.01em; }
+.ankur .card-head h2 .count { background: var(--fx-lime-2); color: var(--fx-lime-ink); }
+.ankur .muted { color: var(--fx-ink-3); }
+.ankur .link { color: var(--fx-lime-ink); }
+
+/* big numbers like the reference (bold, tight) */
+.ankur .mini .val, .ankur .eq-kpi b, .ankur .al-kpi .v { letter-spacing: -.03em; color: var(--fx-ink); }
+.ankur .mini .ic { background: var(--fx-lime-2); color: var(--fx-lime-ink); border: 0; border-radius: 10px; }
+.ankur .eq-kpi::before, .ankur .al-kpi::before { width: 4px; border-radius: 0 4px 4px 0; top: 14px; bottom: 14px; }
+
+/* hero card: white with a lime highlight instead of the dark olive block */
+.ankur .hero { background: var(--fx-card); color: var(--fx-ink); border: 1px solid var(--fx-line); box-shadow: none; }
+.ankur .hero .lbl { color: var(--fx-ink-3); opacity: 1; }
+.ankur .hero .big { letter-spacing: -.03em; }
+.ankur .hero .tag { background: var(--fx-lime); color: #1d2a05; }
+
+/* panel & safety summary: lime card */
+.ankur .ps-strip { padding: 10px; }
+.ankur .ps-sum { background: linear-gradient(135deg, #86c22e, #a6d855); color: #142000; }
+.ankur .ps-sum .sh { stroke: #142000; fill: rgba(255, 255, 255, .35); }
+.ankur .ps-sum .ok-mark { stroke: #142000; }
+.ankur .psd, .ankur .psx, .ankur .ps-tower { border: 1px solid var(--fx-line); border-radius: 12px; }
+
+/* process value tiles: white cards with a coloured icon chip (colour = group) */
+.ankur .pv, .ankur .pv.g-temperature, .ankur .pv.g-pressure, .ankur .pv.g-level, .ankur .pv.g-analysis {
+  background: var(--fx-card); background-image: none; border: 1px solid var(--fx-line); border-radius: 16px; box-shadow: none; }
+.ankur .pv-ic { background: color-mix(in srgb, var(--pc) 13%, #fff); box-shadow: none; }
+.ankur .pv .v { letter-spacing: -.03em; }
+.ankur .pv-tr { background: #f4f4f1; }
+.ankur .pv .bar { background: #efefeb; }
+
+/* key-point cards (overview); 8 plant areas on one row on wide screens */
+@media (min-width: 1400px) { .ankur .kp-areas { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+.ankur .kp-card:hover { border-color: #d9d9d3; }
+.ankur .kp-area { background: #fff; border: 1px solid var(--fx-line); border-top: 4px solid #d9d9d3; }
+
+/* tabs / segmented controls: soft grey track, white active pill */
+.ankur .seg { background: #efefeb; padding: 4px; gap: 2px; border-radius: 999px; }
+.ankur .seg a, .ankur .seg button { border: 0; border-radius: 999px; padding: 7px 16px; color: var(--fx-ink-2); }
+.ankur .seg a.active, .ankur .seg button.active { background: #fff; color: var(--fx-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .1); border: 0; }
+.ankur .mm-tabs { background: #efefeb; padding: 4px; border-radius: 14px; gap: 2px; }
+.ankur .mm-tabs button { border: 0; background: transparent; border-radius: 10px; color: var(--fx-ink-2); }
+.ankur .mm-tabs button:hover { background: rgba(255, 255, 255, .6); }
+.ankur .mm-tabs button.active { background: #fff; color: var(--fx-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
+.ankur .mm-tabs button.active b { background: var(--fx-lime); color: #1d2a05; }
+.ankur .mm-tabs button.all { border: 0; }
+
+/* buttons: dark pill primary like "Add widget" */
+.ankur .btn { border: 1px solid var(--fx-line); background: #fff; color: var(--fx-ink); }
+.ankur .btn:hover { border-color: #cfcfc8; }
+.ankur .btn.primary, .ankur .btn.amber { background: var(--fx-ink); border-color: var(--fx-ink); color: #fff; }
+
+/* bars / progress use the lime accent */
+.ankur .gauge-card .g-bar { background: #efefeb; border: 0; }
+.ankur .gauge-card .g-bar i, .ankur .rh-tr i, .ankur .eq-kpi .av-bar i { background-image: linear-gradient(90deg, #c9ec8a, #9fd243); }
+.ankur .rh-k, .ankur .eqc-stats > div { background: #f6f6f3; border: 0; }
+.ankur .eqc-tag { background: #f1f1ed; border: 0; color: var(--fx-ink); }
+
+/* tables */
+.ankur table th { color: var(--fx-ink-3); font-weight: 700; }
+
+/* mimic: lighter frame */
+.ankur .mm-wrap { background: #fff; border-radius: 16px; }
+
+/* phones: rail becomes the top bar again, icons only */
+@media (max-width: 760px) {
+  .ankur .shell { grid-template-columns: minmax(0, 1fr); margin: 0; border-radius: 0; }
+  .ankur .rail { top: 0; height: auto; border-radius: 0; padding: 8px 12px; gap: 8px; overflow-x: auto; min-width: 0; }
+  .ankur .rail-nav a, .ankur .rail-btn, .ankur .rail-logo { flex: none; }
+  .ankur .rail-logo { border: 0; padding: 0; }
+  .ankur .rail-logo::after, .ankur .rail-nav a::after, .ankur .rail-btn::after { display: none; }
+  .ankur .rail-nav a, .ankur .rail-btn { width: 38px; height: 38px; padding: 0; justify-content: center; }
+  .ankur .rail-foot { border: 0; padding: 0; }
+}

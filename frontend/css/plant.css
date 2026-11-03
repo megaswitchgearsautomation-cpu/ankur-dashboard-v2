@@ -479,7 +479,14 @@ svg.mimic.big { min-width: 1000px; }
 .mimic .dest.link:hover rect, .mimic .dest.link:focus-visible rect { stroke: var(--ak-olive); stroke-width: 2.5; outline: none; }
 .mimic .dest.link:focus { outline: none; }
 .mimic .lk-go { font-size: 18px !important; font-weight: 800; fill: #8fa61c; }
+.mimic .eq .pm-t { font-size: 14.4px; } .mimic .eq .pm-n { font-size: 10.8px; }
+/* instrument air switch 04-PS-401: ON = air healthy (green), OFF = air low (red) */
+.mimic .lamp[data-sw="DI_Pressure_Switch_for_Pneumatic_Air_Line"].on rect { fill: #7ccf3a; stroke: #2c6d07; }
+.mimic .lamp[data-sw="DI_Pressure_Switch_for_Pneumatic_Air_Line"].off rect { fill: #e5484d; stroke: #8d1c1f; }
+.mimic .lamp[data-sw="DI_Pressure_Switch_for_Pneumatic_Air_Line"].off text { fill: #fff; }
 /* set points read from the PLC / HMI */
+.mimic .chip.sp rect { fill: #fff; }
+.mimic .chip.sp .tx-sp { font-size: 9.5px; }
 .mimic .tx-sp { font-size: 10px; font-weight: 700; fill: #8a5800; }
 .mimic .spc rect { fill: #fffaf0; stroke: #e0b860; stroke-width: 1.4; }
 .mimic .sp-h { font-size: 11px; font-weight: 800; fill: #8a5800; }
