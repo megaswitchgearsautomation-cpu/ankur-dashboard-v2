@@ -80,6 +80,12 @@ class Historian:
             self._db.executemany("INSERT INTO samples(ts, tag, v, q, sim) VALUES (?,?,?,?,?)", rows)
             self._db.execute("COMMIT")
 
+    def sample_times(self, tag: str, t_from: float, t_to: float):
+        """Sorted time stamps of the stored samples of one tag (used to fill only real gaps)."""
+        with self._lock:
+            cur = self._db.execute("SELECT ts FROM samples WHERE tag=? AND ts>=? AND ts<=? ORDER BY ts", (tag, t_from, t_to))
+            return [r[0] for r in cur.fetchall()]
+
     def trend(self, tag: str, t_from: float, t_to: float, points: int = 300):
         points = max(10, min(2000, int(points)))
         span = max(1.0, t_to - t_from)

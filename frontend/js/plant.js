@@ -229,12 +229,8 @@
     const areas = $("kpAreas");
     if (areas) {                                      // plant areas row (own container so the overall drawing below it is not rebuilt)
       areas.innerHTML = `<div class="kp-areas">${AREAS.map((a) => areaChip(a)).join("")}</div>`;
-      areas.querySelectorAll("[data-sheet]").forEach((el) => (el.onclick = () => {
-        if (el.dataset.sheet === "overall" && $("ovMimicCard")) return $("ovMimicCard").scrollIntoView({ behavior: "smooth", block: "start" });
-        setSheet(el.dataset.sheet); location.hash = "#mimic";
-      }));
+      areas.querySelectorAll("[data-sheet]").forEach((el) => (el.onclick = () => { setSheet(el.dataset.sheet); location.hash = "#mimic"; }));
     }
-    renderOvMimic();
     box.innerHTML = `
       <div class="kp-grid">
         ${lt1 ? kpCard("LT_01", "kp-lvl", "Sludge storage tank", "01-LT-101 radar · pumps send sludge to the volute press", valHTML(lt1),
@@ -1144,20 +1140,6 @@
       g.onclick = () => goto(g.dataset.goto);
       g.onkeydown = (ev) => { if (ev.key === "Enter") g.onclick(); };
     });
-  }
-  // overview page: the whole-plant drawing, same as Mimic > Overall plant; built once, live values patched each poll
-  function renderOvMimic() {
-    const box = $("ovMimicSvg");
-    if (!box) return;
-    if (!box._built) {
-      box._built = true;
-      box.innerHTML = sheetSVG(SHEETS.overall, "ov-");
-      bindSheet(box, (id) => { setSheet(id); location.hash = "#mimic"; }, "ovMimicPop");
-      const leg = $("ovMimicLegend");
-      if (leg) leg.innerHTML = legend();
-      if ($("ovMimicOpen")) $("ovMimicOpen").onclick = () => setSheet("overall");
-    }
-    patchMimic(box);
   }
   function patchMimic(box) {
     box.querySelectorAll("[data-eq]").forEach((g) => {

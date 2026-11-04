@@ -9,7 +9,7 @@ import random
 import threading
 import time
 
-from . import codec, config_store, delta_ah500
+from . import codec, config_store, delta_ah500, plc_buffer
 from .iot_link import IotLink, modbus_target
 from .modbus_tcp import ModbusError, ModbusException, ModbusTcpClient
 
@@ -63,6 +63,7 @@ class Engine:
         self._sim_trip = {}
         self._sim_override = {}          # demo mode: values "written" from the dashboard
         self.iot = IotLink()
+        self.backfill = plc_buffer.Backfiller(historian)   # history the PLC kept while no dashboard PC was on
         for a in historian.open_alarms():
             self._open_alarms[(a["tag"], a["kind"])] = a
 
@@ -146,6 +147,8 @@ class Engine:
                 self._poll(due, now)
             for t in due:
                 self.states[t["id"]].next_due = now + t.get("poll_ms", 1000) / 1000.0
+        if self.mode != "simulation" and self.stats["state"] == "CONNECTED" and self.backfill.due(now):
+            self._backfill(now)
         self._mark_stale(now)
         self._derive_equipment(now)
         self._evaluate_alarms(now)
@@ -259,6 +262,19 @@ class Engine:
                 return
             for t, ma in members:
                 self._apply(t, ma, data, start, now)
+
+    def _backfill(self, now):
+        """Read the PLC trend buffer (D20000...) and add what the historian is missing."""
+        max_regs = min(120, int(self.store.settings["plc"]["max_regs_per_read"]))
+        self.backfill.max_regs = max_regs
+        try:
+            self.backfill.run(lambda start, count: self._read(3, start, count), now)
+        except ModbusException as e:       # PLC answered "illegal address": buffer not in the program yet - look again in an hour
+            self.backfill.last_run = now + 3600 - plc_buffer.EVERY_S
+            self.backfill.info = {"state": "not available", "checked": now, "error": str(e)}
+        except (OSError, ModbusError):     # link dropped: try again in a minute
+            self.backfill.last_run = now - plc_buffer.EVERY_S + 60
+        self.stats["plc_buffer"] = self.backfill.info
 
     def _apply(self, t, ma, data, start, now):
         st = self.states[t["id"]]

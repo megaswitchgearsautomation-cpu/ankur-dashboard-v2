@@ -123,11 +123,6 @@ body.ankur { background: var(--fx-bg); color: var(--fx-ink); font-family: var(--
 /* mimic: lighter frame */
 .ankur .mm-wrap { background: #fff; border-radius: 16px; }
 
-/* ---- whole-plant drawing on the overview ---- */
-.ankur .ov-mimic { margin-bottom: 14px; }
-.ankur .ov-mimic .mm-wrap { position: relative; overflow-x: auto; }
-.ankur .ov-mimic #ovMimicLegend .mm-guide { display: none; }      /* short legend only on the front page */
-
 /* ---- process trend history (overview) ---- */
 .ov-date { display: inline-flex; align-items: center; gap: 6px; background: #efefeb; border-radius: 999px; padding: 3px 10px 3px 9px; cursor: pointer; }
 .ov-date svg { width: 15px; height: 15px; color: #55554f; flex: none; }
