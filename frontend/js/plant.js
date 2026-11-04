@@ -226,8 +226,16 @@
     const pfdTxt = (v) => (v == null ? "--" : v ? "ON" : "OFF");
     const loc = sw("DI_Submersible_Pump_Panel_Local_remote_Switch_in_Local"), rem = sw("DI_Submersible_Pump_Panel_Local_remote_Switch_in_Remote");
 
+    const areas = $("kpAreas");
+    if (areas) {                                      // plant areas row (own container so the overall drawing below it is not rebuilt)
+      areas.innerHTML = `<div class="kp-areas">${AREAS.map((a) => areaChip(a)).join("")}</div>`;
+      areas.querySelectorAll("[data-sheet]").forEach((el) => (el.onclick = () => {
+        if (el.dataset.sheet === "overall" && $("ovMimicCard")) return $("ovMimicCard").scrollIntoView({ behavior: "smooth", block: "start" });
+        setSheet(el.dataset.sheet); location.hash = "#mimic";
+      }));
+    }
+    renderOvMimic();
     box.innerHTML = `
-      <div class="kp-areas">${AREAS.filter((a) => !a.overall).map((a) => areaChip(a)).join("")}</div>
       <div class="kp-grid">
         ${lt1 ? kpCard("LT_01", "kp-lvl", "Sludge storage tank", "01-LT-101 radar · pumps send sludge to the volute press", valHTML(lt1),
           tankMini(lt1) + lvRow(lt1) + note(sNext, sNext.startsWith("Level is above") ? "warn" : "") + note(vNext) + secs([
@@ -305,7 +313,6 @@
       el.onclick = (ev) => { if (!ev.target.closest("a")) MD.openTag(el.dataset.open); };
       el.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); el.click(); } };
     });
-    box.querySelectorAll("[data-sheet]").forEach((el) => (el.onclick = () => { setSheet(el.dataset.sheet); location.hash = "#mimic"; }));
   }
   // HH / H / L / LL set points (from the HMI) on the overview level cards; the reached one is lit
   function lvRow(t) {
@@ -331,12 +338,13 @@
     { id: "wtp", name: "WTP / CTP", eq: [] },
   ];
   function areaChip(a) {
-    const list = a.eq.map(eq).filter(Boolean);
+    // the overall card counts every machine on the dashboard and opens the whole-plant mimic
+    const list = a.overall ? live.equipment : a.eq.map(eq).filter(Boolean);
     const motors = list.filter((e) => e.type === "motor");
     const run = motors.filter((e) => ["RUNNING", "STARTING"].includes(e.status)).length;
     const trip = list.filter((e) => ["TRIP", "FAULT"].includes(e.status)).length;
-    return `<button class="kp-area ${trip ? "trip" : run ? "run" : ""}" data-sheet="${a.id}">
-      <span class="ka-n">${esc(a.name)}</span>
+    return `<button class="kp-area ${trip ? "trip" : run ? "run" : ""}${a.overall ? " all" : ""}" data-sheet="${a.id}">
+      <span class="ka-n">${esc(a.overall ? "Plant overview" : a.name)}</span>
       <span class="ka-s">${motors.length ? `<b class="num">${run}</b>/${motors.length} running` : "Level switches"}${trip ? ` · <b class="t">${trip} tripped</b>` : ""}</span>
       <span class="ka-go">Mimic →</span></button>`;
   }
@@ -1089,10 +1097,21 @@
       box._sheet = sheet;
       const s = SHEETS[sheet];
       const [vw, vh] = s.vb || [W, H];                  // the overall sheet uses a larger drawing area
-      box.innerHTML = `<svg viewBox="0 0 ${vw} ${vh}" class="mimic${s.vb ? " big" : ""}" role="img" aria-label="${esc(s.name)} process mimic">
-        <defs>
-          ${[["water", "#2f7fd1"], ["hot", "#e8731a"], ["sludge", "#a8781e"], ["steam", "#c43d3d"], ["air", "#1fb5b5"], ["chem", "#8e44c9"], ["ctp", "#3a3f2a"]]
-            .map(([k, c]) => `<marker id="ar-${k}" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="${c}"/></marker>`).join("")}
+      box.innerHTML = sheetSVG(s);
+      $("mimicTitle").textContent = s.name;
+      $("mimicNote").textContent = s.note;
+      $("mimicLegend").innerHTML = legend();
+      bindSheet(box, (id) => { setSheet(id); renderMimic(); }, "mimicPop");
+    }
+    patchMimic(box);
+  }
+  // shared fills used by the stylesheet (url(#gRun) etc.): one always-rendered copy for every drawing on the page -
+  // gradients inside a hidden page section would not paint
+  function ensureDefs() {
+    if ($("mmDefs")) return;
+    const d = document.createElement("div");
+    d.innerHTML = `<svg id="mmDefs" class="mimic" width="0" height="0" aria-hidden="true" focusable="false"
+        style="position:absolute;width:0;height:0;overflow:hidden;min-width:0"><defs>
           <linearGradient id="gCT" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b9bdb4"/><stop offset=".35" stop-color="#eef0ea"/><stop offset=".7" stop-color="#d4d8cf"/><stop offset="1" stop-color="#a3a89d"/></linearGradient>
           <linearGradient id="gWater" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8cc4f0"/><stop offset="1" stop-color="#2f7fd1"/></linearGradient>
           <linearGradient id="gMetal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4f1"/><stop offset=".45" stop-color="#c9c9c3"/><stop offset="1" stop-color="#85857e"/></linearGradient>
@@ -1100,20 +1119,43 @@
           <linearGradient id="gStop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecece8"/><stop offset=".5" stop-color="#a9a9a2"/><stop offset="1" stop-color="#6f6f68"/></linearGradient>
           <linearGradient id="gTrip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb3b3"/><stop offset=".5" stop-color="#d93a3f"/><stop offset="1" stop-color="#8d1c1f"/></linearGradient>
           <linearGradient id="gWarn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe2a0"/><stop offset=".5" stop-color="#e09a12"/><stop offset="1" stop-color="#8a5800"/></linearGradient>
-          <pattern id="hatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="8" height="8" class="hatch-bg"/><line x1="0" y1="0" x2="0" y2="8" class="hatch-ln"/></pattern></defs>
+          <pattern id="hatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="8" height="8" class="hatch-bg"/><line x1="0" y1="0" x2="0" y2="8" class="hatch-ln"/></pattern></defs></svg>`;
+    document.body.prepend(d.firstElementChild);
+  }
+  // the drawing of one sheet (SVG string); idp prefixes the SVG ids (arrows, clip paths) so two drawings can be on the page at once
+  function sheetSVG(s, idp = "") {
+    ensureDefs();
+    const [vw, vh] = s.vb || [W, H];                  // the overall sheet uses a larger drawing area
+    let svg = `<svg viewBox="0 0 ${vw} ${vh}" class="mimic${s.vb ? " big" : ""}" role="img" aria-label="${esc(s.name)} process mimic">
+        <defs>
+          ${[["water", "#2f7fd1"], ["hot", "#e8731a"], ["sludge", "#a8781e"], ["steam", "#c43d3d"], ["air", "#1fb5b5"], ["chem", "#8e44c9"], ["ctp", "#3a3f2a"]]
+            .map(([k, c]) => `<marker id="ar-${k}" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="${c}"/></marker>`).join("")}</defs>
         ${s.draw().join("")}</svg>`;
-      $("mimicTitle").textContent = s.name;
-      $("mimicNote").textContent = s.note;
-      $("mimicLegend").innerHTML = legend();
-      box.querySelectorAll("[data-eq]").forEach((g) => {
-        g.onclick = () => eqPop(g.dataset.eq, g);
-        g.onkeydown = (ev) => { if (ev.key === "Enter") eqPop(g.dataset.eq, g); };
-      });
-      box.querySelectorAll("[data-tag]").forEach((g) => (g.onclick = () => MD.openTag(g.dataset.tag)));
-      box.querySelectorAll("[data-goto]").forEach((g) => {
-        g.onclick = () => { setSheet(g.dataset.goto); renderMimic(); };
-        g.onkeydown = (ev) => { if (ev.key === "Enter") g.onclick(); };
-      });
+    if (idp) svg = svg.replace(/(\s)id="/g, `$1id="${idp}`).replace(/url\(#/g, `url(#${idp}`);
+    return svg;
+  }
+  function bindSheet(box, goto, popId) {
+    box.querySelectorAll("[data-eq]").forEach((g) => {
+      g.onclick = () => eqPop(g.dataset.eq, g, popId, box);
+      g.onkeydown = (ev) => { if (ev.key === "Enter") eqPop(g.dataset.eq, g, popId, box); };
+    });
+    box.querySelectorAll("[data-tag]").forEach((g) => (g.onclick = () => MD.openTag(g.dataset.tag)));
+    box.querySelectorAll("[data-goto]").forEach((g) => {
+      g.onclick = () => goto(g.dataset.goto);
+      g.onkeydown = (ev) => { if (ev.key === "Enter") g.onclick(); };
+    });
+  }
+  // overview page: the whole-plant drawing, same as Mimic > Overall plant; built once, live values patched each poll
+  function renderOvMimic() {
+    const box = $("ovMimicSvg");
+    if (!box) return;
+    if (!box._built) {
+      box._built = true;
+      box.innerHTML = sheetSVG(SHEETS.overall, "ov-");
+      bindSheet(box, (id) => { setSheet(id); location.hash = "#mimic"; }, "ovMimicPop");
+      const leg = $("ovMimicLegend");
+      if (leg) leg.innerHTML = legend();
+      if ($("ovMimicOpen")) $("ovMimicOpen").onclick = () => setSheet("overall");
     }
     patchMimic(box);
   }
@@ -1202,9 +1244,9 @@
     r.setAttribute("height", fh);
   }
   // small equipment pop-over on the mimic
-  function eqPop(id, g) {
+  function eqPop(id, g, popId = "mimicPop", hostBox = $("mimicSvg")) {
     const e = eq(id);
-    const pop = $("mimicPop");
+    const pop = $(popId);
     if (!e || !pop) return;
     pop.innerHTML = `<div class="mp-h"><b>${esc(e.name)}</b><button class="btn sm" id="mpX" aria-label="Close">✕</button></div>
       <dl class="kv"><dt>P&amp;ID tag</dt><dd>${esc(PID[e.id] || e.tag_no || "-")}</dd>
@@ -1212,11 +1254,11 @@
       <dt>Mode (HMI)</dt><dd>${esc(modeTxt(e))}</dd>
       ${e.type === "motor" ? `<dt>Run hours</dt><dd class="num">${e.run_hours ?? "-"} h</dd>` : ""}
       ${e.kw ? `<dt>Rating</dt><dd>${esc(String(e.kw))} kW</dd>` : ""}</dl>`;
-    const r = g.getBoundingClientRect(), host = $("mimicSvg").getBoundingClientRect();
+    const r = g.getBoundingClientRect(), host = hostBox.getBoundingClientRect();
     pop.style.left = `${Math.min(host.width - 260, Math.max(0, r.left - host.left + r.width / 2 - 130))}px`;
     pop.style.top = `${r.bottom - host.top + 8}px`;
     pop.classList.remove("hidden");
-    $("mpX").onclick = () => pop.classList.add("hidden");
+    pop.querySelector("#mpX").onclick = () => pop.classList.add("hidden");
   }
 
   // ======================================================================================

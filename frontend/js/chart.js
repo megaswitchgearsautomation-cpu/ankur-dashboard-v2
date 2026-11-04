@@ -28,7 +28,7 @@ const MDChart = (() => {
   function timeLabel(t, span) {
     const d = new Date(t * 1000);
     const p = (n) => String(n).padStart(2, "0");
-    if (span > 2 * 86400) return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}h`;
+    if (span > 1.5 * 86400) return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}h`;
     return `${p(d.getHours())}:${p(d.getMinutes())}`;
   }
 
@@ -318,7 +318,10 @@ const MDChart = (() => {
           rows += `<div><i style="background:${s.color}"></i>${MD.esc(s.name)}: <b>${Number(p.avg).toFixed(o.decimals ?? 1)}</b> ${MD.esc(o.unit || "")}</div>`;
         } else dots[i].setAttribute("visibility", "hidden");
       });
-      tip.innerHTML = `<div class="muted">${new Date(best.t * 1000).toLocaleTimeString()}</div>${rows}` +
+      // past days / long ranges: show the date too, not only the time
+      const when = new Date(best.t * 1000);
+      const stamp = span > 20 * 3600 || Date.now() - best.t * 1000 > 20 * 3600 * 1000 ? when.toLocaleString() : when.toLocaleTimeString();
+      tip.innerHTML = `<div class="muted">${stamp}</div>${rows}` +
         (best.sim ? '<div><span class="q SIMULATED">DEMO DATA</span></div>' : "");
       tip.hidden = false;
       const bx = (x(best.t) / W) * r.width;

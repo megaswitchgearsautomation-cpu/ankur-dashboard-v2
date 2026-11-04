@@ -20,6 +20,7 @@
   let trendSel = loadSel();
   let lastTrendFetch = 0;
   let lastOvFetch = 0;
+  let ovHist = null;          // end of the past window being viewed (epoch s), null = live
 
   // ---------- theme ----------
   try { const t = localStorage.getItem("md-theme"); if (t) document.documentElement.dataset.theme = t; } catch (_) {}
@@ -63,7 +64,7 @@
       live = await api("/api/live");
       render();
       if (view === "trends" && Date.now() - lastTrendFetch > 5000) renderTrends(false);
-      if (view === "overview" && Date.now() - lastOvFetch > 5000) loadOvTrend(false);
+      if (view === "overview" && !ovHist && Date.now() - lastOvFetch > 5000) loadOvTrend(false);   // a past day is not refreshed
     } catch (e) {
       $("banner").innerHTML = `<div class="banner crit">${ICON.crit}<div><strong>Dashboard temporarily unavailable</strong>Reconnecting…</div></div>`;
     } finally {
@@ -797,7 +798,8 @@
     if (!tags.length) return;
     $("trendUnit").textContent = tags[0].unit ? `· ${tags[0].unit}` : "";
     try {
-      const r = await api(`/api/trend?tags=${encodeURIComponent(tags.map((t) => t.id).join(","))}&minutes=${$("ovRange").value}&points=160`);
+      const r = await api(`/api/trend?tags=${encodeURIComponent(tags.map((t) => t.id).join(","))}&minutes=${$("ovRange").value}&points=${ovHist ? 288 : 160}`
+        + (ovHist ? `&to=${ovHist}` : ""));
       ovLast = { r, tags };
       drawOvTrend(!!force);
     } catch (e) { if (force) toast(e.message, true); }
@@ -819,7 +821,9 @@
     const info = r.series.map((s, i) => {
       const pts = s.points.filter((p) => p.avg != null);
       const t = tagById(s.id) || {};
-      return { s, i, color: SERIES[i], now: t.value ?? (pts.at(-1) || {}).avg, first: (pts[0] || {}).avg, sp: t.setpoint_value, hidden: ovHidden.has(s.id) };
+      // past day: the chip shows the last value of that window, not today's live value
+      return { s, i, color: SERIES[i], now: ovHist ? (pts.at(-1) || {}).avg : t.value ?? (pts.at(-1) || {}).avg, first: (pts[0] || {}).avg,
+        sp: t.setpoint_value, hidden: ovHidden.has(s.id) };
     });
     const sim = r.series.some((s) => s.points.some((p) => p.sim));
     $("ovLegend").innerHTML = info.map((x) => {
@@ -849,8 +853,9 @@
     const shown = info.filter((x) => !x.hidden && x.now != null);
     const hiX = shown.reduce((a, x) => (!a || x.now > a.now ? x : a), null), loX = shown.reduce((a, x) => (!a || x.now < a.now ? x : a), null);
     const short = (n) => esc(n.split(" ")[0]);
-    $("ovFoot").innerHTML = (hiX ? `<span><em>Highest now</em> <i style="background:${hiX.color}"></i>${short(hiX.s.name)} <b class="num">${fmt(hiX.now)} ${esc(unit)}</b></span>` : "") +
-      (loX && loX !== hiX ? `<span><em>Lowest now</em> <i style="background:${loX.color}"></i>${short(loX.s.name)} <b class="num">${fmt(loX.now)} ${esc(unit)}</b></span>` : "") +
+    const when = ovHist ? "at end of day" : "now";
+    $("ovFoot").innerHTML = (hiX ? `<span><em>Highest ${when}</em> <i style="background:${hiX.color}"></i>${short(hiX.s.name)} <b class="num">${fmt(hiX.now)} ${esc(unit)}</b></span>` : "") +
+      (loX && loX !== hiX ? `<span><em>Lowest ${when}</em> <i style="background:${loX.color}"></i>${short(loX.s.name)} <b class="num">${fmt(loX.now)} ${esc(unit)}</b></span>` : "") +
       (sps.length > 1 ? `<span><em>Alarm set points</em> ${sps.map(fmt).join(" / ")} ${esc(unit)}</span>` : "") +
       (sim ? '<span class="q SIMULATED">DEMO DATA</span>' : "") + gapNote(r);
   }
@@ -865,13 +870,39 @@
     const t = (s) => fmtTime(s).replace(/:\d\d$/, "");
     const txt = !ts.length ? "No data was recorded in this period"
       : `No data ${gaps.slice(0, 2).map(([a, b]) => `${t(a)} - ${t(b)}`).join(", ")}${gaps.length > 2 ? " and more" : ""}`;
-    return `<span class="ov-gap" title="History is saved by the dashboard server. While it is not running nothing is recorded.">⚠ ${txt}: the dashboard server was not running. Choose 8h / 24h for earlier history.</span>`;
+    return `<span class="ov-gap" title="History is saved by the dashboard server. While it is not running nothing is recorded.">⚠ ${txt}: the dashboard server was not running.</span>`;
   }
-  $("ovRangeSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => {
-    $("ovRangeSeg").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
-    $("ovRange").value = b.dataset.m;
+  // live ranges (30m ... 7d) and history (a whole past day picked in the calendar)
+  function setOvLive(minutes) {
+    ovHist = null;
+    $("ovDate").value = "";
+    $("ovLiveBtn").classList.add("hidden");
+    $("ovLiveBadge").innerHTML = '<span class="dot"></span>Live';
+    $("ovLiveBadge").classList.remove("hist");
+    $("ovRangeSeg").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x.dataset.m === String(minutes)));
+    $("ovRange").value = minutes;
     loadOvTrend(true);
-  }));
+  }
+  $("ovRangeSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => setOvLive(b.dataset.m)));
+  (() => {
+    const p = (n) => String(n).padStart(2, "0"), d = new Date(), iso = (x) => `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}`;
+    $("ovDate").max = iso(d);
+    $("ovDate").min = iso(new Date(d.getTime() - 400 * 86400000));
+  })();
+  $("ovDate").onchange = () => {
+    const v = $("ovDate").value;
+    if (!v) return setOvLive(60);
+    const [y, m, dd] = v.split("-").map(Number);
+    const start = new Date(y, m - 1, dd).getTime() / 1000;            // local midnight of the chosen day
+    ovHist = Math.min(start + 86400, Date.now() / 1000);
+    $("ovRange").value = String(Math.round((ovHist - start) / 60));
+    $("ovRangeSeg").querySelectorAll("button").forEach((x) => x.classList.remove("active"));
+    $("ovLiveBtn").classList.remove("hidden");
+    $("ovLiveBadge").textContent = `History · ${new Date(start * 1000).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })}`;
+    $("ovLiveBadge").classList.add("hist");
+    loadOvTrend(true);
+  };
+  $("ovLiveBtn").onclick = () => setOvLive(60);
 
   let eqStatusF = "all";
   let eqView = (() => { try { return localStorage.getItem("md-eq-view") || "cards"; } catch (_) { return "cards"; } })();

@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="css/ankur-theme.css?v=20261102d">
   <link rel="stylesheet" href="css/plant.css?v=20261103c">
   <!-- v3 look (client reference: clean light dashboard) - skin only -->
-  <link rel="stylesheet" href="css/fresh.css?v=20261103d">
+  <link rel="stylesheet" href="css/fresh.css?v=20261104c">
 </head>
 <body class="client ankur">
 <div class="shell">
@@ -72,19 +72,31 @@
         <div class="ps" id="panelStatus"></div>
         <span class="ps-chip" id="psChip" hidden></span>
       </div>
+      <div id="kpAreas"></div>
+      <!-- whole plant drawing on the front page (same as Mimic > Overall plant), live -->
+      <div class="card ov-mimic" id="ovMimicCard">
+        <div class="card-head"><h2>Plant overview <span class="muted">· whole plant, live (same as Mimic › Overall plant)</span></h2>
+          <a class="link" href="#mimic" id="ovMimicOpen">Open full mimic →</a></div>
+        <div class="mm-wrap" id="ovMimicHost"><div id="ovMimicSvg"></div><div class="mm-pop hidden" id="ovMimicPop"></div></div>
+        <div id="ovMimicLegend"></div>
+      </div>
       <div class="kp" id="keyPoints"></div>
       <!-- one dashboard: key points above; equipment running + process trend; process values + alarms + equipment
            (availability, tank-level, pH/pressure mini cards and the run-hours list were duplicates and are removed) -->
       <div class="ov-grid ov-one ov-trend-only">
         <div class="card chart-card">
           <div class="card-head ov-th">
-            <h2>Process trend <span class="muted" id="trendUnit"></span> <span class="tr-live sm" title="Updates automatically"><span class="dot"></span>Live</span></h2>
+            <h2>Process trend <span class="muted" id="trendUnit"></span> <span class="tr-live sm" id="ovLiveBadge" title="Updates automatically"><span class="dot"></span>Live</span></h2>
             <div class="seg sm" id="ovTrendSeg"></div>
             <div class="seg sm ov-rng" id="ovRangeSeg" role="group" aria-label="Time range">
-              <button data-m="30">30m</button><button data-m="60" class="active">1h</button><button data-m="480">8h</button><button data-m="1440">24h</button>
+              <button data-m="30">30m</button><button data-m="60" class="active">1h</button><button data-m="480">8h</button><button data-m="1440">24h</button><button data-m="2880">2d</button><button data-m="10080">7d</button>
             </div>
+            <!-- history: pick a past day (e.g. two days ago) - the trend shows that whole day and stops auto-updating -->
+            <label class="ov-date" title="Show a past day"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+              <input type="date" id="ovDate" aria-label="Show a past day"></label>
+            <button class="btn sm ov-back hidden" id="ovLiveBtn" type="button" title="Back to the live trend">● Back to live</button>
             <select id="ovRange" hidden aria-hidden="true">
-              <option value="30">30</option><option value="60" selected>60</option><option value="480">480</option><option value="1440">1440</option>
+              <option value="30">30</option><option value="60" selected>60</option><option value="480">480</option><option value="1440">1440</option><option value="2880">2880</option><option value="10080">10080</option>
             </select>
           </div>
           <div class="ov-chips" id="ovLegend"></div>
@@ -246,9 +258,9 @@
 <aside id="drawer" class="drawer hidden" aria-modal="true" role="dialog"></aside>
 
 <script src="js/common.js"></script>
-<script src="js/chart.js"></script>
-<script src="js/plant.js?v=20261103d"></script>
-<script src="js/dashboard.js?v=20261102d"></script>
+<script src="js/chart.js?v=20261104a"></script>
+<script src="js/plant.js?v=20261104c"></script>
+<script src="js/dashboard.js?v=20261104a"></script>
 <script src="js/ai.js?v=20261103b"></script>
 </body>
 </html>

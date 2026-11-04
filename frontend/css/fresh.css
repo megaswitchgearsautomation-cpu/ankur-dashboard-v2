@@ -87,6 +87,11 @@ body.ankur { background: var(--fx-bg); color: var(--fx-ink); font-family: var(--
 
 /* key-point cards (overview); 8 plant areas on one row on wide screens */
 @media (min-width: 1400px) { .ankur .kp-areas { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+/* "Plant overview" card (whole-plant mimic): dark card so it stands out first in the row */
+.ankur .kp-area.all { background: var(--fx-ink, #151515); border-color: var(--fx-ink, #151515); border-top-color: var(--fx-lime, #9fd243); color: #fff; }
+.ankur .kp-area.all .ka-s { color: #c9c9c3; } .ankur .kp-area.all .ka-s b { color: #fff; }
+.ankur .kp-area.all .ka-go { color: var(--fx-lime, #9fd243); }
+.ankur .kp-area.all.trip { border-top-color: #e5484d; }
 .ankur .kp-card:hover { border-color: #d9d9d3; }
 .ankur .kp-area { background: #fff; border: 1px solid var(--fx-line); border-top: 4px solid #d9d9d3; }
 
@@ -117,6 +122,19 @@ body.ankur { background: var(--fx-bg); color: var(--fx-ink); font-family: var(--
 
 /* mimic: lighter frame */
 .ankur .mm-wrap { background: #fff; border-radius: 16px; }
+
+/* ---- whole-plant drawing on the overview ---- */
+.ankur .ov-mimic { margin-bottom: 14px; }
+.ankur .ov-mimic .mm-wrap { position: relative; overflow-x: auto; }
+.ankur .ov-mimic #ovMimicLegend .mm-guide { display: none; }      /* short legend only on the front page */
+
+/* ---- process trend history (overview) ---- */
+.ov-date { display: inline-flex; align-items: center; gap: 6px; background: #efefeb; border-radius: 999px; padding: 3px 10px 3px 9px; cursor: pointer; }
+.ov-date svg { width: 15px; height: 15px; color: #55554f; flex: none; }
+.ov-date input { border: 0; background: transparent; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--fx-ink, #151515); cursor: pointer; }
+.ov-date input:focus { outline: none; }
+.ov-back.hidden { display: none; }
+.tr-live.hist { background: #fff1d1; color: #8a5a00; border-color: #f7d99a; }
 
 /* ---- plant AI assistant (js/ai.js) ---- */
 .ai-fab { position: fixed; right: 26px; bottom: 26px; z-index: 60; display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px;

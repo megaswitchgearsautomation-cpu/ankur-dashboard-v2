@@ -172,7 +172,10 @@ def make_handler(app):
             ids = [x for x in q.get("tags", "").split(",") if x][:8]
             minutes = max(1, min(60 * 24 * 31, int(q.get("minutes", 60))))
             points = int(q.get("points", 300))
+            # optional "to" (epoch seconds): look at a past window, e.g. a whole day two days ago; never in the future
             t_to = time.time()
+            if q.get("to"):
+                t_to = max(t_to - 400 * 86400, min(t_to, float(q["to"])))
             t_from = t_to - minutes * 60
             tagmap = app.store.tag_map()
             series = []
