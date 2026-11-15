@@ -80,6 +80,43 @@ class Historian:
             self._db.executemany("INSERT INTO samples(ts, tag, v, q, sim) VALUES (?,?,?,?,?)", rows)
             self._db.execute("COMMIT")
 
+    def period_stats(self, tag: str, t_from: float, t_to: float, bucket_s: int = 60):
+        """min / max / avg of the valid samples, and how many bucket_s slots of the period have data (gaps)."""
+        with self._lock:
+            mn, mx, avg, n = self._db.execute(
+                "SELECT MIN(v), MAX(v), AVG(v), COUNT(v) FROM samples WHERE tag=? AND ts>=? AND ts<? AND v IS NOT NULL",
+                (tag, t_from, t_to)).fetchone()
+            slots = self._db.execute(
+                "SELECT COUNT(DISTINCT CAST((ts - ?) / ? AS INTEGER)) FROM samples WHERE tag=? AND ts>=? AND ts<? AND v IS NOT NULL",
+                (t_from, bucket_s, tag, t_from, t_to)).fetchone()[0]
+        return {"min": mn, "max": mx, "avg": avg, "samples": n, "slots_with_data": slots}
+
+    def on_seconds(self, tag: str, t_from: float, t_to: float, max_gap: float = 900):
+        """Seconds a logged BOOL tag was ON between t_from and t_to. A stretch longer than max_gap without
+        samples is not counted (no data = unknown, not running)."""
+        with self._lock:
+            prev = self._db.execute("SELECT ts, v FROM samples WHERE tag=? AND ts<? ORDER BY ts DESC LIMIT 1",
+                                    (tag, t_from)).fetchone()
+            rows = self._db.execute("SELECT ts, v FROM samples WHERE tag=? AND ts>=? AND ts<? ORDER BY ts",
+                                    (tag, t_from, t_to)).fetchall()
+        pts = ([(t_from, prev[1])] if prev and t_from - prev[0] <= max_gap else []) + rows
+        total = 0.0
+        for i, (ts, v) in enumerate(pts):
+            end = pts[i + 1][0] if i + 1 < len(pts) else min(t_to, time.time())
+            if v and v >= 0.5:
+                total += max(0.0, min(end, ts + max_gap) - ts)
+        return total
+
+    def series(self, tag: str, t_from: float, t_to: float, before_s: float = 900):
+        """Raw (ts, value, simulated) samples of one tag in [t_from, t_to], plus the last one before t_from
+        (if within before_s) so a state that started earlier is known."""
+        with self._lock:
+            prev = self._db.execute("SELECT ts, v, sim FROM samples WHERE tag=? AND ts<? ORDER BY ts DESC LIMIT 1",
+                                    (tag, t_from)).fetchone()
+            rows = self._db.execute("SELECT ts, v, sim FROM samples WHERE tag=? AND ts>=? AND ts<=? ORDER BY ts",
+                                    (tag, t_from, t_to)).fetchall()
+        return ([tuple(prev)] if prev and t_from - prev[0] <= before_s else []) + [tuple(r) for r in rows]
+
     def sample_times(self, tag: str, t_from: float, t_to: float):
         """Sorted time stamps of the stored samples of one tag (used to fill only real gaps)."""
         with self._lock:
@@ -118,6 +155,43 @@ class Historian:
             for tag, b, avg, mn, mx, n, sim in cur.fetchall():
                 out[tag][float(b)] = (avg, mn, mx, n, bool(sim))
         return out
+
+    def period_buckets(self, tags, t_from: float, t_to: float, interval_s: float):
+        """Buckets aligned to t_from (e.g. hours of an IST day): {tag: {index: (avg, min, max, n)}}."""
+        out = {t: {} for t in tags}
+        if not tags:
+            return out
+        marks = ",".join("?" * len(tags))
+        with self._lock:
+            cur = self._db.execute(
+                f"""SELECT tag, CAST((ts - ?) / ? AS INTEGER) AS b, AVG(v), MIN(v), MAX(v), COUNT(v)
+                    FROM samples WHERE tag IN ({marks}) AND ts >= ? AND ts < ? AND v IS NOT NULL
+                    GROUP BY tag, b""", (t_from, interval_s, *tags, t_from, t_to))
+            for tag, b, avg, mn, mx, n in cur.fetchall():
+                out[tag][int(b)] = (avg, mn, mx, n)
+        return out
+
+    def minutes_at_or_above(self, tag: str, t_from: float, t_to: float, limit: float) -> int:
+        """Minutes of the period in which the value reached the limit at least once."""
+        with self._lock:
+            return self._db.execute(
+                """SELECT COUNT(*) FROM (SELECT MAX(v) AS m FROM samples WHERE tag=? AND ts>=? AND ts<? AND v IS NOT NULL
+                   GROUP BY CAST((ts - ?) / 60 AS INTEGER)) WHERE m >= ?""",
+                (tag, t_from, t_to, t_from, limit)).fetchone()[0]
+
+    def rising_edges(self, tag: str, t_from: float, t_to: float) -> int:
+        """How many times a BOOL tag went OFF -> ON inside the period (machine starts)."""
+        with self._lock:
+            return self._db.execute(
+                """SELECT COUNT(*) FROM (SELECT v, LAG(v) OVER (ORDER BY ts) AS p FROM samples
+                   WHERE tag=? AND ts>=? AND ts<? AND v IS NOT NULL) WHERE v >= 0.5 AND p IS NOT NULL AND p < 0.5""",
+                (tag, t_from, t_to)).fetchone()[0]
+
+    def first_sample_ts(self):
+        """Oldest stored sample (epoch s) or None - the date pickers never offer history that is not there."""
+        with self._lock:
+            r = self._db.execute("SELECT MIN(ts) FROM samples").fetchone()
+        return r[0] if r and r[0] is not None else None
 
     def purge(self, retention_days: int):
         cutoff = time.time() - retention_days * 86400

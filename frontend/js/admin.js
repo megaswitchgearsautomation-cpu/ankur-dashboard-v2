@@ -37,6 +37,7 @@
     document.querySelectorAll("[data-section]").forEach((s) => s.classList.toggle("hidden", s.dataset.section !== v));
     document.querySelectorAll("#nav a[data-view]").forEach((a) => a.classList.toggle("active", a.dataset.view === v));
     if (v === "log") loadLog();
+    if (window.AdminExtra) AdminExtra.show(v);
   }
   window.addEventListener("hashchange", route);
 
@@ -47,7 +48,7 @@
       const c = r.connection;
       $("connStrip").innerHTML = `${connPill(c)}<span>Quality <b>${c.quality_pct == null ? "-" : c.quality_pct + "%"}</b></span>
         <span>Last update <b>${fmtTime(c.last_update)}</b></span>`;
-      $("connDetail").innerHTML = `<dt>Mode</dt><dd>${c.mode === "simulation" ? '<span class="q SIMULATED">SIMULATION</span>' : "Modbus TCP client"}</dd>
+      $("connDetail").innerHTML = `<dt>Mode</dt><dd>${c.mode === "simulation" ? '<span class="q SIMULATED">SIMULATION</span>' : c.mode === "gateway_api" ? "Gateway HTTP API (read-only GET)" : "Modbus TCP client"}</dd>
         <dt>Target</dt><dd class="code">${esc(c.plc)}</dd><dt>State</dt><dd>${connPill(c)}</dd>
         <dt>Last good read</dt><dd>${c.last_ok ? fmtTime(c.last_ok, true) + " (" + ago(c.last_ok) + ")" : "-"}</dd>
         <dt>Success rate</dt><dd>${c.quality_pct == null ? "-" : c.quality_pct + " %"}</dd>
@@ -145,6 +146,8 @@
     });
     $("iotSecret").value = "";
     $("iotSecret").placeholder = settings.iot && settings.iot.has_token_secret ? "•••••••• (stored)" : "";
+    $("gwKey").value = "";
+    $("gwKey").placeholder = settings.gateway_api && settings.gateway_api.has_auth_value ? "•••••••• (stored)" : "";
     const s = settings.source;
     $("verifiedAt").textContent = s.comm_verified ? `Verified ${fmtTime(s.verified_at, true)} by ${s.verified_by}` : "Not verified yet.";
     syncSimple();
@@ -157,6 +160,7 @@
     $("viaIp").classList.toggle("hidden", iot);
     $("step2Label").textContent = iot ? "Access key" : "PLC address";
     document.querySelectorAll("#modeSeg button").forEach((b) => b.classList.toggle("active", b.dataset.mode === $("modeSel").value));
+    $("gwBox").classList.toggle("hidden", $("modeSel").value !== "gateway_api");
   }
   $("viaSeg").onclick = (ev) => {
     const b = ev.target.closest("button[data-via]");
@@ -181,7 +185,9 @@
     });
     if (out.source.mode === "modbus" && settings.source.mode !== "modbus" &&
       !confirm("Switch to MODBUS mode?\n\nThe backend will start reading the PLC (read-only: FC01/02/03/04). Simulated values and alarms are cleared.")) return;
-    if (out.source.mode === "simulation" && settings.source.mode === "modbus" &&
+    if (out.source.mode === "gateway_api" && settings.source.mode !== "gateway_api" &&
+      !confirm("Switch to GATEWAY API mode?\n\nThe backend will GET the readings URL every poll interval (read-only). Simulated values and alarms are cleared.")) return;
+    if (out.source.mode === "simulation" && settings.source.mode !== "simulation" &&
       !confirm("Switch to SIMULATION? The dashboard will show generated values (labelled SIMULATED).")) return;
     try {
       await api("/api/admin/settings", { method: "PUT", body: { settings: out } });
@@ -193,6 +199,8 @@
   };
   $("testConnBtn").onclick = async () => {
     const f = $("commForm");
+    if ($("modeSel").value === "gateway_api")
+      return toast("Gateway API: save, then watch 'Live connection' (state, last good read, last error)", true);
     // the IoT link runs from saved settings, so a changed connection must be saved before it can be tested
     if (settings && (f["iot.enabled"].checked !== !!settings.iot.enabled ||
         (f["iot.enabled"].checked && f["iot.access_key"].value.trim() !== (settings.iot.access_key || ""))))
@@ -534,6 +542,8 @@
           <label class="field">Group<input name="group" value="${esc(t.group || "")}" list="groupList"><span class="hint">Temperature / Pressure / Level / Analysis show as process values</span></label>
           <label class="field">Area<input name="area" value="${esc(t.area || "")}"></label>
           <label class="field">PLC symbol (ISPSoft)<input name="plc_tag" value="${esc(t.plc_tag || "")}"></label>
+          <label class="field">Gateway source ID<input name="source_id" value="${esc(t.source_id || "")}" placeholder="blank = PLC symbol, then tag ID"><span class="hint">Gateway API mode: the reading's id in the gateway reply</span></label>
+          <label class="field" style="grid-column:1/-1">Description<input name="description" value="${esc(t.description || "")}"></label>
         </div>
         <datalist id="groupList">${[...new Set(rows.map((r) => r.tag.group))].map((g) => `<option value="${esc(g)}">`).join("")}</datalist>
 
@@ -586,6 +596,7 @@
           <label class="check"><input type="checkbox" name="trend" ${t.trend !== false ? "checked" : ""}> Trendable</label>
           <label class="check"><input type="checkbox" name="log" ${t.log !== false ? "checked" : ""}> Log to history</label>
           <label class="check"><input type="checkbox" name="kpi" ${t.kpi ? "checked" : ""}> KPI tile</label>
+          <label class="check" title="Operators / admin may write this value to the PLC (FC16) from the Set points / Tank levels pages. Tick only after the address AND data type are confirmed on the HMI."><input type="checkbox" name="writable" ${t.writable ? "checked" : ""}> <b>Writable from dashboard</b></label>
         </div>
 
         <div class="section-title">Alarm</div>
@@ -626,7 +637,7 @@
       const v = (n) => f.elements[n];
       const num = (n) => (v(n).value === "" ? null : Number(v(n).value));
       const out = JSON.parse(JSON.stringify(t));
-      ["id", "name", "group", "area", "plc_tag", "device", "data_type", "word_order", "unit", "source_ref", "notes"].forEach((k) => (out[k] = v(k).value.trim()));
+      ["id", "name", "group", "area", "plc_tag", "source_id", "description", "device", "data_type", "word_order", "unit", "source_ref", "notes"].forEach((k) => (out[k] = v(k).value.trim()));
       out.invert = v("invert").checked;
       out.decimals = num("decimals") ?? 1;
       out.eng_min = num("eng_min");
@@ -635,7 +646,8 @@
       out.trend_max = num("trend_max");
       out.poll_ms = num("poll_ms") ?? 1000;
       out.setpoint_tag = v("setpoint_tag").value || null;
-      ["show_on_dashboard", "trend", "log", "kpi", "mapping_verified"].forEach((k) => (out[k] = v(k).checked));
+      ["show_on_dashboard", "trend", "log", "kpi", "mapping_verified", "writable"].forEach((k) => (out[k] = v(k).checked));
+      if (out.writable && !t.writable && !confirm(`Allow writing ${out.id} (${out.device}, ${out.data_type}) to the PLC from the dashboard?\n\nOnly if the address and data type are confirmed on the HMI - a wrong type writes a wrong value into the PLC.`)) out.writable = false;
       const custom = f.querySelector('input[name="ov.mode"]:checked').value === "custom";
       out.address_override = { enabled: custom, function_code: Number(v("ov.function_code").value),
         address: num("ov.address") ?? 0, base: v("ov.base").value, bit: num("ov.bit") };

@@ -1,0 +1,139 @@
+/* v3-mimic - v3 brief 14-11-2026 (SC04 mimic readability, zoom / pan / full screen, alerts; SC05 valve states).
+   Loaded after plant.css / fresh.css. Drawing rules are scoped to #mimicSvg so they win over the older .mimic rules.
+   Label sizes are in SVG units × --fs (set per sheet: 1 on the 1240-unit area sheets, 1.3 on the 1600-unit overall sheet):
+   15 units at fit on a 1366 px window ≈ 12.1 px on screen. Zoom-only details (12 units) show once they reach 12 px. */
+
+/* ---------- heading: title + note left, 2D / 3D switch right ---------- */
+#mimicCard .mm-tabs button { font-size: 14px; min-height: 40px; }
+#mimicCard .mm-head { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 16px; margin: 16px 0 8px; }
+#mimicCard .mm-ht { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+#mimicCard .mm-head h2 { font-size: 20px; font-weight: 600; margin: 0; }
+#mimicCard .mm-head .muted { font-size: 14px; line-height: 1.45; }
+#mimicCard .mm-dim { flex: none; margin-left: auto; }
+#mimicCard .mm-dim button { min-width: 56px; min-height: 36px; font-weight: 600; }
+
+/* ---------- bar above the drawing: sheet alerts (left) + view toolbar (top-right of the mimic) ---------- */
+.mm-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 8px; }
+.mm-alerts { flex: 1 1 320px; min-width: 0; min-height: 40px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 4px 12px; border-radius: 8px; background: #f4f4f5; font-size: 14px; line-height: 1.4; }
+.mm-alerts.has { background: var(--st-alarm-bg, #fdecec); }
+.mm-al-ok { display: inline-flex; align-items: center; gap: 8px; color: #3f3f46; }
+.mm-al-ok i { width: 10px; height: 10px; border-radius: 50%; background: var(--st-on, #15803D); flex: none; }
+.mm-al-n { font-weight: 600; color: #3f3f46; }
+.mm-al { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 4px 8px; border: 1px solid currentColor;
+  border-radius: 6px; background: #fff; font-weight: 500; }
+.mm-al b { font-size: 12px; }
+.mm-al.red { color: var(--st-alarm, #B91C1C); }
+.mm-al.yel { color: var(--st-warn, #B45309); }
+.mm-al.ack { opacity: .8; border-style: dashed; }
+.mm-al-more { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+
+.mm-tools { position: relative; z-index: 50; display: flex; align-items: center; gap: 4px; margin-left: auto; padding: 4px;
+  border: 1px solid #e4e4e7; border-radius: 12px; background: #fff; }
+.mm-tb { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 0;
+  border: 1px solid transparent; border-radius: 8px; background: transparent; color: #27272a; cursor: pointer; }
+.mm-tb svg { width: 20px; height: 20px; }
+.mm-tb:hover { background: #f4f4f5; border-color: #d4d4d8; }
+.mm-tb:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 1px; }
+.mm-tb:disabled { opacity: .4; cursor: default; }
+.mm-tb[aria-pressed="true"] { background: #f4f4f5; border-color: #a1a1aa; }
+.mm-pct { min-width: 64px; text-align: center; font-size: 14px; font-weight: 600; color: #3f3f46; font-variant-numeric: tabular-nums; }
+#mimicCard.is-3d .mm-z { display: none; }           /* 3D has its own orbit controls: only full screen here */
+
+/* ---------- canvas: the sheet fills it; the view (zoom / pan) is the svg viewBox ---------- */
+#mimicCard #mimicHost { position: relative; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+#mimicCard #mimicHost.dragging { cursor: grabbing; }
+#mimicCard #mimicHost:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 2px; }
+#mimicCard.is-3d #mimicHost { touch-action: auto; cursor: default; }
+#mimicSvg { width: 100%; height: 100%; }
+#mimicSvg svg.mimic, #mimicSvg svg.mimic.big { display: block; width: 100%; height: 100%; min-width: 0; }
+#mimicCard .mm-pop { z-index: 60; font-size: 14px; }
+#mimicCard .mm-pop .kv dd, #mimicCard .mm-pop .kv dt { font-size: 14px; }
+
+/* full screen: app chrome hidden, the sheet alert strip stays at the top */
+#mimicCard:fullscreen { display: flex; flex-direction: column; gap: 0; padding: 16px; background: #fff; overflow: auto; }
+#mimicCard:fullscreen #mimicHost { flex: 1 1 auto; min-height: 0; height: auto !important; }
+#mimicCard:fullscreen #mimicLegend { display: none; }
+#mimicCard:fullscreen .mm-head { margin-top: 8px; }
+#mimicCard:fullscreen .p3-wrap { height: 100%; min-height: 0; }
+
+/* ---------- label sizes (≥ 12 px on screen at fit) ---------- */
+#mimicSvg svg.mimic text { font-size: calc(15px * var(--fs, 1)); }
+#mimicSvg svg.mimic .t-lbl { font-size: calc(16px * var(--fs, 1)); font-weight: 800; }
+#mimicSvg svg.mimic .eq .eq-t, #mimicSvg svg.mimic .eq .pm-t, #mimicSvg svg.mimic .eq-t { font-size: calc(15px * var(--fs, 1)); font-weight: 800; }
+#mimicSvg svg.mimic .note { font-size: calc(15px * var(--fs, 1)); fill: #52525b; }
+#mimicSvg svg.mimic .dest text { font-size: calc(15px * var(--fs, 1)); font-weight: 700; }
+#mimicSvg svg.mimic .dest text.dr-t { font-size: calc(16px * var(--fs, 1)); font-weight: 800; }
+#mimicSvg svg.mimic .lk-go { font-size: calc(18px * var(--fs, 1)) !important; }
+#mimicSvg svg.mimic .tx-v, #mimicSvg svg.mimic .tx-n { font-size: calc(15px * var(--fs, 1)); font-weight: 800; }
+#mimicSvg svg.mimic .tx-n { fill: #3f3f46; }
+#mimicSvg svg.mimic .tr-v { font-size: calc(20px * var(--fs, 1)); font-weight: 800; fill: #18181b; }
+#mimicSvg svg.mimic .tr-p { font-size: calc(16px * var(--fs, 1)); font-weight: 700; fill: #3f3f46; }
+#mimicSvg svg.mimic .t-read rect { fill: rgba(255, 255, 255, .94); stroke: #71717a; stroke-width: 1.4; }
+#mimicSvg svg.mimic .ch-l { font-size: calc(15px * var(--fs, 1)); font-weight: 700; fill: #52525b; }
+#mimicSvg svg.mimic .ch-v { font-size: calc(15px * var(--fs, 1)); font-weight: 800; }
+#mimicSvg svg.mimic .lamp text { font-size: calc(15px * var(--fs, 1)); font-weight: 800; }
+#mimicSvg svg.mimic .cl text { font-size: calc(15px * var(--fs, 1)); font-weight: 700; }
+#mimicSvg svg.mimic .band { font-size: calc(15px * var(--fs, 1)); font-weight: 800; letter-spacing: 1.5px; }
+#mimicSvg svg.mimic .dtxt, #mimicSvg svg.mimic .fan-l { font-size: calc(15px * var(--fs, 1)); font-weight: 700; }
+#mimicSvg svg.mimic .sp-h, #mimicSvg svg.mimic .sp-v { font-size: calc(15px * var(--fs, 1)); font-weight: 800; }
+#mimicSvg svg.mimic .sp-l { font-size: calc(15px * var(--fs, 1)); font-weight: 400; }
+#mimicSvg svg.mimic .am-b text { font-size: calc(15px * var(--fs, 1)); font-weight: 800; letter-spacing: .02em; }
+/* zoom-only details: descriptive pump names, gauge tags, pipe sizes, alarm set points, level-line letters, bubble letters */
+#mimicSvg svg.mimic :is(.eq-n, .g-n, .psz, .tx-sp, .lod, .gnd text) { font-size: calc(12px * var(--fs, 1)); }
+#mimicSvg svg.mimic .lv-ln text { font-size: calc(12px * var(--fs, 1)); }
+#mimicSvg svg.mimic .tx-i { font-size: 11px; }
+#mimicSvg svg.mimic .gauge .g-k { font-size: 8px; }
+#mimicSvg svg.mimic.lod-hide :is(.eq-n, .g-n, .g-k, .psz, .tx-sp, .lod, .gnd text, .tx-i, .lv-ln text) { display: none; }
+#mimicSvg svg.mimic.lbl-hide text { display: none; }   /* zoomed out past fit: symbols and colours only */
+
+/* ---------- flow-direction chevrons ---------- */
+#mimicSvg .pa { stroke: #fff; stroke-width: 1.2; stroke-linejoin: round; opacity: .95; }
+#mimicSvg .pa.k-water { fill: var(--ln-water, #2f7fd1); } #mimicSvg .pa.k-hot { fill: var(--ln-hot, #e8731a); }
+#mimicSvg .pa.k-sludge { fill: var(--ln-sludge, #a8781e); } #mimicSvg .pa.k-steam { fill: var(--ln-steam, #c43d3d); }
+#mimicSvg .pa.k-air { fill: var(--ln-air, #1fb5b5); } #mimicSvg .pa.k-chem { fill: var(--ln-chem, #8e44c9); } #mimicSvg .pa.k-ctp { fill: var(--ln-ctp, #3a3f2a); }
+
+/* ---------- SC05 valves: confirmed (filled) / commanded (outline + "cmd") / unknown (dashed + "?") ---------- */
+#mimicSvg .eq.valve .v-body, #mimicSvg .eq.valve .act { stroke-width: 2.2; transition: fill .3s; }
+#mimicSvg .eq.valve.v-open .v-body, #mimicSvg .eq.valve.v-open .act { fill: var(--st-on); stroke: #14532d; }
+#mimicSvg .eq.valve.v-closed .v-body, #mimicSvg .eq.valve.v-closed .act { fill: var(--st-off); stroke: #3f3f46; }
+#mimicSvg .eq.valve.v-cmd-open .v-body, #mimicSvg .eq.valve.v-cmd-open .act { fill: #fff; stroke: var(--st-on); stroke-width: 3; }
+#mimicSvg .eq.valve.v-cmd-closed .v-body, #mimicSvg .eq.valve.v-cmd-closed .act { fill: #fff; stroke: var(--st-off); stroke-width: 3; }
+#mimicSvg .eq.valve.v-unk .v-body, #mimicSvg .eq.valve.v-unk .act { fill: #fff; stroke: var(--st-unknown); stroke-width: 2; stroke-dasharray: 4 3; }
+#mimicSvg .eq.valve.v-conf .v-body, #mimicSvg .eq.valve.v-conf .act { fill: var(--st-warn); stroke: #78350f; }
+#mimicSvg .eq.valve .v-cue { font-size: calc(15px * var(--fs, 1)); font-weight: 800; fill: var(--st-unknown); }
+#mimicSvg .eq.valve.v-cmd-open .v-cue { fill: var(--st-on); }
+#mimicSvg .eq.valve.v-conf .v-cue { fill: var(--st-warn); }
+.lg-v { width: 40px; height: 18px; flex: none; overflow: visible; }
+.lg-v.lg-v-w { width: 58px; }
+#mimicDim[hidden] { display: none !important; }      /* 2D / 3D switch only on Overall plant */
+.lg-v path { stroke-width: 2; }
+.lg-v text { font-size: 12px; font-weight: 800; fill: #52525b; }
+.lg-v.v-open path { fill: var(--st-on); stroke: #14532d; }
+.lg-v.v-closed path { fill: var(--st-off); stroke: #3f3f46; }
+.lg-v.v-cmd-open path { fill: #fff; stroke: var(--st-on); stroke-width: 2.6; }
+.lg-v.v-cmd-open text { fill: var(--st-on); }
+.lg-v.v-cmd-closed path { fill: #fff; stroke: var(--st-off); stroke-width: 2.6; }
+.lg-v.v-unk path { fill: #fff; stroke: var(--st-unknown); stroke-dasharray: 3 2; }
+.lg-v.v-conf path { fill: var(--st-warn); stroke: #78350f; }
+.lg-v.v-conf text { fill: var(--st-warn); }
+.mm-vp.v-open i { background: var(--st-on); } .mm-vp.v-closed i { background: var(--st-off); }
+.mm-vp.v-cmd-open i { background: #fff; box-shadow: inset 0 0 0 2px var(--st-on); }
+.mm-vp.v-cmd-closed i { background: #fff; box-shadow: inset 0 0 0 2px var(--st-off); }
+.mm-vp.v-unk i { background: #fff; outline: 2px dashed var(--st-unknown); outline-offset: -2px; }
+.mm-vp.v-conf i { background: var(--st-warn); }
+
+/* legend: readable size */
+#mimicCard .mm-guide, #mimicCard .mm-legend { font-size: 14px; gap: 8px 16px; }
+#mimicCard .mm-vlg { padding-top: 8px; border-top: 1px solid #e4e4e7; }
+
+@media (max-width: 760px) {
+  #mimicCard .mm-head { flex-wrap: wrap; }
+  .mm-tools { margin-left: 0; }
+}
+/* reduced motion: nothing moves; colour, chevrons and icons still show the state */
+@media (prefers-reduced-motion: reduce) {
+  #mimicSvg .pf.on, #mimicSvg .spin, #mimicSvg .prop, #mimicSvg .flights, #mimicSvg .rotor, #mimicSvg .spray path,
+  #mimicSvg .eq.trip *, #mimicSvg .lamp * { animation: none !important; }
+  #mimicSvg .eq.valve .v-body { transition: none; }
+}

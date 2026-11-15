@@ -1,0 +1,26 @@
+{
+  "_EXAMPLE_ONLY": "Illustrative layout - NOT the real gateway API. The gateway's actual URL, auth and JSON layout are still needed. Set Settings > Communication > Gateway API to match the real reply (readings path + field names).",
+  "_settings_for_this_example": {
+    "url": "https://<gateway-host>/<readings-path-from-gateway-docs>",
+    "auth_header": "Authorization",
+    "auth_value": "<kept on the server, entered on the Settings page>",
+    "values_path": "data.readings",
+    "id_field": "id",
+    "value_field": "value",
+    "ts_field": "ts",
+    "quality_field": "q"
+  },
+  "data": {
+    "readings": [
+      { "id": "AI_Dryer_To_Radiator_01", "value": 81.3, "ts": "2026-11-04T10:15:00+05:30", "q": "good" },
+      { "id": "T_02", "value": 0, "ts": 1793770000, "q": "good" },
+      { "id": "PT_01", "value": null, "ts": "2026-11-04T10:15:00+05:30", "q": "bad" }
+    ]
+  },
+  "_notes": [
+    "id is matched against each tag's Source ID (Tags page), then its PLC symbol, then its tag ID.",
+    "value 0 with good quality is a valid zero; null or bad quality marks the tag OFFLINE (last value kept, never shown as live).",
+    "ts may be epoch seconds, epoch milliseconds or ISO 8601; ISO without a zone is read as Asia/Kolkata. Blank ts field = time of the poll.",
+    "Also accepted: an object keyed by id, e.g. {\"T_01\": 81.3} or {\"T_01\": {\"value\": 81.3, \"ts\": 1793770000}}."
+  ]
+}

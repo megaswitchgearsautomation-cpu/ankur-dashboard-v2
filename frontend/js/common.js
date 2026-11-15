@@ -24,11 +24,29 @@ const MD = (() => {
   }
 
   const pad = (n) => String(n).padStart(2, "0");
+  // Plant time = Asia/Kolkata (UTC+05:30, no daylight saving). Every time on the dashboard is shown in IST,
+  // whatever the viewer's own computer clock zone is. Timestamps are stored as epoch seconds (UTC).
+  const IST_S = 19800;
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  function istParts(ts) {
+    const d = new Date((ts + IST_S) * 1000);
+    return { y: d.getUTCFullYear(), mo: d.getUTCMonth() + 1, d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes(),
+      s: d.getUTCSeconds(), wd: d.getUTCDay() };
+  }
   function fmtTime(ts, withDate = false) {
     if (!ts) return "-";
-    const d = new Date(ts * 1000);
-    const t = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-    return withDate ? `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()} ${t}` : t;
+    const p = istParts(ts);
+    const t = `${pad(p.h)}:${pad(p.mi)}:${pad(p.s)}`;
+    return withDate ? `${pad(p.d)}-${pad(p.mo)}-${p.y} ${t}` : t;
+  }
+  const istDate = (ts) => { const p = istParts(ts); return `${p.y}-${pad(p.mo)}-${pad(p.d)}`; };            // YYYY-MM-DD
+  const istLong = (ts) => { const p = istParts(ts); return `${WD[p.wd]}, ${pad(p.d)} ${MON[p.mo - 1]} ${p.y}`; };
+  const istDayStart = (iso) => { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d) / 1000 - IST_S; };
+  const istInput = (ts) => { const p = istParts(ts); return `${istDate(ts)}T${pad(p.h)}:${pad(p.mi)}`; };      // datetime-local value
+  function parseIstInput(v) {                       // "YYYY-MM-DDTHH:MM" read as IST -> epoch seconds
+    const m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(v || "");
+    return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) / 1000 - IST_S : null;
   }
   function ago(ts) {
     if (!ts) return "never";
@@ -90,14 +108,15 @@ const MD = (() => {
     if (!c) return '<span class="pill idle"><span class="dot"></span>...</span>';
     if (c.state === "SIMULATION") return `<span class="pill sim"><span class="dot"></span>SIMULATION</span>`;
     if (c.state === "CONNECTED") return c.comm_verified
-      ? `<span class="pill good"><span class="dot"></span>PLC ONLINE</span>`
-      : `<span class="pill warn"><span class="dot"></span>PLC ONLINE - UNVERIFIED</span>`;
-    if (c.state === "DISCONNECTED") return `<span class="pill crit"><span class="dot"></span>PLC OFFLINE</span>`;
+      ? `<span class="pill good"><span class="dot"></span>ONLINE</span>`
+      : `<span class="pill warn"><span class="dot"></span>ONLINE - UNVERIFIED</span>`;
+    if (c.state === "DISCONNECTED") return `<span class="pill crit"><span class="dot"></span>OFFLINE</span>`;
     return `<span class="pill idle"><span class="dot"></span>${esc(c.state)}</span>`;
   }
   async function logout() {
     try { await fetch("/api/logout", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: "{}" }); } catch (_) {}
     location.replace("/login?bye=1");
   }
-  return { esc, api, logout, fmtTime, ago, dur, fmtValue, qualityLabel, ICON, prio, toast, connPill };
+  return { esc, api, logout, fmtTime, ago, dur, fmtValue, qualityLabel, ICON, prio, toast, connPill,
+    istParts, istDate, istLong, istDayStart, istInput, parseIstInput, MON };
 })();

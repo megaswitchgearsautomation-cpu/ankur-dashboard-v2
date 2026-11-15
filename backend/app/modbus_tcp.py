@@ -1,8 +1,9 @@
 """Minimal Modbus TCP client (standard library only).
 
 Reads: FC01 Read Coils, FC02 Read Discrete Inputs, FC03 Read Holding Registers, FC04 Read Input Registers.
-Write: FC16 Write Multiple Registers only, and only through Engine.write_value(), which allows just the tags
-marked "writable" in the tag config (the HMI level set points). Everything else stays read-only.
+Write: FC16 Write Multiple Registers (set points) and FC05 Write Single Coil (HMI soft selectors, M bits), only
+through Engine.write_value(), which allows just the tags marked "writable" in the tag config. Everything else stays
+read-only.
 """
 from __future__ import annotations
 
@@ -109,6 +110,18 @@ class ModbusTcpClient:
         raddr, rcount = struct.unpack(">HH", resp[1:5])
         if raddr != address or rcount != len(values):
             raise ModbusError("FC16 reply does not match the request")
+
+    # -- write one coil (FC05) - HMI soft selectors (M bits), only via Engine.write_value -----------
+    def write_coil(self, address: int, on: bool):
+        """FC05 Write Single Coil at a zero-based coil address (ON = FF00, OFF = 0000)."""
+        if not 0 <= address <= 0xFFFF:
+            raise ModbusError(f"coil address {address} invalid")
+        val = 0xFF00 if on else 0x0000
+        resp = self._transact(struct.pack(">BHH", 5, address, val))
+        if resp[0] == 5 | 0x80:
+            raise ModbusException(5, resp[1] if len(resp) > 1 else 0)
+        if resp[0] != 5 or len(resp) < 5 or struct.unpack(">HH", resp[1:5]) != (address, val):
+            raise ModbusError("FC05 reply does not match the request")
 
     def _transact(self, pdu: bytes) -> bytes:
         with self._lock:

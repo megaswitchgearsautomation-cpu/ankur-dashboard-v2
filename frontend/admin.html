@@ -8,6 +8,18 @@
   <link rel="stylesheet" href="css/app.css">
   <style>
     .tag-table td, .tag-table th { padding: 6px 8px; font-size: 12.5px; }
+    .rtd-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 12px; margin-top: 12px; }
+    .rtd-slot { display: flex; gap: 8px; align-items: center; font-size: 12.5px; }
+    .rtd-slot span { width: 42px; font-weight: 700; color: var(--ink-3); flex: none; }
+    .rtd-slot select { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 5px 6px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12.5px; }
+    .shift-row { gap: 10px; align-items: end; margin-bottom: 8px; }
+    .shift-row .field { flex: 1; }
+    .tz-blk { border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; margin: 8px 0; background: var(--surface-2); }
+    .tz-blk .form-grid { margin-top: 6px; }
+    #gwBox .form-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    #gwBox .form-grid > * { min-width: 0; }
+    #gwBox .form-grid input { width: 100%; box-sizing: border-box; }
+    #gwBox .gw-wide { grid-column: 1 / -1; }
     .tag-table tr:hover td { background: var(--surface-2); }
     .warn-txt { color: var(--warn-ink); font-size: 11.5px; }
     .err-txt { color: var(--crit-ink); font-size: 12px; }
@@ -44,6 +56,9 @@
       <a href="#comm" data-view="comm">Communication</a>
       <a href="#tags" data-view="tags">Tags</a>
       <a href="#equipment" data-view="equipment">Equipment</a>
+      <a href="#display" data-view="display">Display &amp; reports</a>
+      <a href="#ai" data-view="ai">Plant Assistant</a>
+      <a href="#wa" data-view="wa">WhatsApp alerts</a>
       <a href="#log" data-view="log">Activity log</a>
       <a href="#account" data-view="account">Accounts</a>
     </nav>
@@ -89,8 +104,30 @@
             <div class="seg" id="modeSeg">
               <button type="button" data-mode="simulation">Demo data</button>
               <button type="button" data-mode="modbus">Live from PLC</button>
+              <button type="button" data-mode="gateway_api">Gateway API</button>
             </div>
-            <select name="source.mode" id="modeSel" hidden><option value="simulation">Simulation</option><option value="modbus">Modbus TCP</option></select>
+            <select name="source.mode" id="modeSel" hidden><option value="simulation">Simulation</option><option value="modbus">Modbus TCP</option><option value="gateway_api">Gateway HTTP API</option></select>
+
+            <!-- Gateway HTTP API: undocumented, so the URL and JSON layout are configured here; the key stays on the server -->
+            <div id="gwBox" class="mapbox hidden" style="margin-top:12px">
+              <div class="section-title" style="margin-top:0">Gateway HTTP API <span class="muted" style="font-weight:500">(read-only GET; layout from the gateway's API documentation)</span></div>
+              <div class="form-grid">
+                <label class="field" style="grid-column:1/-1">Readings URL<input name="gateway_api.url" placeholder="https://… (from the gateway API documentation)" spellcheck="false" autocomplete="off"></label>
+                <label class="field">Auth header name<input name="gateway_api.auth_header" placeholder="Authorization" spellcheck="false"></label>
+                <label class="field gw-wide">Auth header value (API key)<input name="gateway_api.auth_value" id="gwKey" type="password" autocomplete="new-password"><span class="hint" id="gwKeyHint">Kept on the server, never sent to the browser. Leave blank to keep the stored key.</span></label>
+                <label class="field">Poll every (s)<input name="gateway_api.poll_s" type="number" min="1" max="3600"></label>
+                <label class="field">Timeout (s)<input name="gateway_api.timeout_s" type="number" min="1" max="120"></label>
+                <label class="check gw-wide"><input type="checkbox" name="gateway_api.verify_tls"> Check HTTPS certificate</label>
+                <label class="field">Readings path<input name="gateway_api.values_path" placeholder="e.g. data.tags (blank = whole reply)" spellcheck="false"></label>
+                <label class="field">ID field<input name="gateway_api.id_field" placeholder="id" spellcheck="false"></label>
+                <label class="field">Value field<input name="gateway_api.value_field" placeholder="value" spellcheck="false"></label>
+                <label class="field">Time stamp field<input name="gateway_api.ts_field" placeholder="ts (blank = time of the poll)" spellcheck="false"></label>
+                <label class="field">Quality field<input name="gateway_api.quality_field" placeholder="blank = all readings good" spellcheck="false"></label>
+              </div>
+              <div class="hint muted" style="font-size:12px;margin-top:6px">Each tag is matched by its <b>Source ID</b> (Tags page), falling back to its PLC tag, then its tag id.
+                A tag missing from the reply shows CONFIG ERROR; a failed request marks every tag OFFLINE (last value kept, never shown as live).
+                Example layouts: <span class="code">docs/examples/gateway_api_response.example.json</span>.</div>
+            </div>
 
             <div class="row" style="margin-top:18px">
               <button class="btn primary" type="submit">Save</button>
@@ -223,6 +260,108 @@
       </div>
     </section>
 
+    <!-- DISPLAY & REPORTS: shifts (shift reports); all times are Asia/Kolkata -->
+    <section data-section="display" class="hidden">
+      <div class="grid cols-2" style="align-items:start">
+        <div class="panel">
+          <h2>Shifts (IST)</h2>
+          <p class="muted" style="margin-top:0;font-size:12.5px">Each shift runs from its start time to the next shift's start. Used by the shift reports.</p>
+          <div id="shiftRows"></div>
+          <button class="btn" type="button" id="addShift">+ Add shift</button>
+          <div class="form-grid" style="margin-top:8px">
+            <label class="field">Level noise threshold (mm)<input id="tzDb" type="number" min="1" max="500" step="1"><span class="hint">level changes smaller than this are sensor noise, not material (default 10)</span></label>
+            <label class="field">Warning band (% of alarm set point)<input id="warnBand" type="number" min="50" max="99" step="1"><span class="hint">live value turns amber from this % of a high-limit alarm set point and red at or above it (default 90)</span></label>
+          </div>
+          <h2 style="margin-top:22px">Time zone</h2>
+          <p class="muted" style="margin:0;font-size:12.5px"><b>Asia/Kolkata (IST, UTC+05:30)</b> for every time on the dashboard, trends, CSV and reports. Data is stored in UTC.</p>
+        </div>
+      </div>
+      <div class="row" style="margin-top:14px"><button class="btn primary" id="saveDisplay">Save display &amp; reports</button><span class="muted" id="displayMsg"></span></div>
+    </section>
+
+    <!-- PLANT ASSISTANT: Claude key (write-only, stays on this server), model, effort -->
+    <section data-section="ai" class="hidden">
+      <div class="grid cols-2" style="align-items:start">
+        <div class="panel">
+          <h2>Plant Assistant (AI)</h2>
+          <p class="muted" style="margin-top:0;font-size:12.5px">With an Anthropic API key the assistant answers any question in full, from the live plant data
+            and the plant knowledge (P&amp;ID, control rules, alarms). Without a key it runs in <b>basic mode</b> (fixed answers from the live data).
+            The key is stored only on this server (<span class="code">backend/data/ai_config.json</span>) and is never sent back to any browser.</p>
+          <div id="aiState" class="muted" style="margin:8px 0">Loading…</div>
+          <form id="aiForm" class="grid">
+            <label class="field"><span><input type="checkbox" name="enabled"> Use the AI (Claude)</span></label>
+            <label class="field">Anthropic API key<input type="password" name="api_key" autocomplete="off" spellcheck="false" placeholder="paste a new key (leave empty to keep the saved one)"></label>
+            <label class="field">Model<select name="model"></select><span class="hint">Opus = best answers · Sonnet = faster, cheaper · Haiku = cheapest</span></label>
+            <label class="field">Answer depth<select name="effort"><option value="low">Low (fast)</option><option value="medium">Medium (recommended)</option><option value="high">High (most thorough)</option></select></label>
+            <div class="row"><button class="btn primary" type="submit">Save</button>
+              <button class="btn" type="button" id="aiTest">Test connection</button>
+              <button class="btn danger" type="button" id="aiClear">Remove key</button></div>
+          </form>
+          <div id="aiMsg" class="muted" style="margin-top:8px"></div>
+        </div>
+        <div class="panel">
+          <h2>How to get a key</h2>
+          <ol class="muted" style="font-size:12.5px;line-height:1.6;margin-top:0">
+            <li>Sign in at <b>console.anthropic.com</b> with the company account and add billing credit.</li>
+            <li>API keys → Create key (name it e.g. "Ankur dashboard").</li>
+            <li>Paste it above, tick <b>Use the AI</b>, Save, then <b>Test connection</b>.</li>
+            <li>This PC needs internet access to <span class="code">api.anthropic.com</span>. If the internet drops, the assistant falls back to basic mode.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHATSAPP ALERTS: Meta WhatsApp Cloud API; token write-only (data/whatsapp.json) -->
+    <section data-section="wa" class="hidden">
+      <div class="grid cols-2" style="align-items:start">
+        <div class="panel">
+          <h2>WhatsApp alarm alerts</h2>
+          <p class="muted" style="margin-top:0;font-size:12.5px">When an alarm becomes active (and when it clears) the dashboard sends a WhatsApp message to the numbers below,
+            through the official <b>Meta WhatsApp Cloud API</b>. The access token stays on this server and is never shown again.</p>
+          <div id="waState" class="muted" style="margin:8px 0">Loading…</div>
+          <form id="waForm" class="grid">
+            <label class="field"><span><input type="checkbox" name="enabled"> Send WhatsApp alerts</span></label>
+            <label class="field">Recipients (one per line, with country code)<textarea name="recipients" rows="4" placeholder="+91 98765 43210"></textarea>
+              <span class="hint">10-digit Indian numbers get +91 automatically · at most 20</span></label>
+            <div class="form-grid">
+              <label class="field">Phone number ID<input name="phone_number_id" inputmode="numeric" autocomplete="off" placeholder="e.g. 1234567890123456"></label>
+              <label class="field">Graph API version<input name="api_version" placeholder="v21.0"></label>
+            </div>
+            <label class="field">Access token<input type="password" name="access_token" autocomplete="off" spellcheck="false" placeholder="paste a new token (leave empty to keep the saved one)"></label>
+            <div class="form-grid">
+              <label class="field">Message type<select name="mode"><option value="template">Approved template (recommended)</option><option value="text">Plain text (only within 24 h of the recipient's last message)</option></select></label>
+              <label class="field">Template name<input name="template" placeholder="plant_alarm"></label>
+              <label class="field">Template language<input name="language" placeholder="en"></label>
+              <label class="field">Hold repeats (minutes)<input name="repeat_min" type="number" min="0" max="1440"><span class="hint">same alarm is not sent again within this time</span></label>
+            </div>
+            <label class="field"><span><input type="checkbox" name="send_clear"> Also send when an alarm clears</span></label>
+            <label class="field"><span><input type="checkbox" name="only_red"> Critical alarms only</span></label>
+            <label class="field"><span><input type="checkbox" name="send_demo"> Also send demo (simulated) alarms - for testing only</span></label>
+            <div class="row"><button class="btn primary" type="submit">Save</button>
+              <input id="waTestNo" placeholder="test number (blank = all)" style="max-width:190px">
+              <button class="btn" type="button" id="waTest">Send test message</button>
+              <button class="btn danger" type="button" id="waClear">Remove token</button></div>
+          </form>
+          <div id="waMsg" class="muted" style="margin-top:8px"></div>
+        </div>
+        <div class="panel">
+          <h2>Setup (one time, in Meta)</h2>
+          <ol class="muted" style="font-size:12.5px;line-height:1.6;margin-top:0">
+            <li>At <b>developers.facebook.com</b> create an app → add <b>WhatsApp</b>, and link the company's Meta Business account and a phone number for the plant.</li>
+            <li>Copy the <b>Phone number ID</b> (not the phone number) and create a <b>permanent access token</b> (System user → token with <i>whatsapp_business_messaging</i>).</li>
+            <li>In WhatsApp Manager → Message templates, create a <b>Utility</b> template named <span class="code">plant_alarm</span>, language English, body:<br>
+              <span class="code" style="display:block;white-space:pre-wrap;margin:4px 0">⚠ {{1}}
+Alarm {{2}}: {{3}}
+Time: {{4}}</span>
+              Wait until Meta shows it as <b>Approved</b>.</li>
+            <li>Fill in the fields here, tick <b>Send WhatsApp alerts</b>, Save, then <b>Send test message</b>.</li>
+            <li>While the Meta app is in test mode, only numbers added to its test list receive messages.</li>
+          </ol>
+          <p class="muted" style="font-size:12.5px">Variables: {{1}} site name · {{2}} ACTIVE / CLEARED · {{3}} alarm text · {{4}} time (IST and UTC). This PC needs internet access to <span class="code">graph.facebook.com</span>. Every message is recorded in the Activity log.</p>
+        </div>
+      </div>
+    </section>
+
     <!-- LOG -->
     <section data-section="log" class="hidden">
       <div class="panel"><h2>Activity log</h2><div class="table-wrap"><table id="logTable"></table></div></div>
@@ -252,6 +391,18 @@
           </form>
         </div>
       </div>
+      <div class="panel" style="margin-top:16px">
+        <h2>All accounts &amp; roles</h2>
+        <p class="muted" style="margin-top:0;font-size:12.5px"><b>Admin</b>: dashboard + this Settings page · <b>Operator</b>: dashboard, may acknowledge alarms and edit set points / scaling ·
+          <b>Viewer</b>: dashboard read-only. The server enforces these rules; deleting or changing an account signs it out.</p>
+        <div class="table-wrap"><table id="userTable"></table></div>
+        <form id="userForm" class="form-grid" style="margin-top:12px">
+          <label class="field">Username<input name="username" autocomplete="off" maxlength="32" required></label>
+          <label class="field">Role<select name="role"><option value="viewer">Viewer (read-only)</option><option value="operator">Operator</option></select></label>
+          <label class="field">Password (min 8; blank = keep, when editing)<input name="password" type="password" autocomplete="new-password" minlength="8"></label>
+          <div class="row" style="align-self:end"><button class="btn primary" type="submit">Add / update account</button></div>
+        </form>
+      </div>
     </section>
   </main>
 </div>
@@ -260,6 +411,7 @@
 <aside id="drawer" class="drawer hidden" role="dialog" aria-modal="true"></aside>
 
 <script src="js/common.js"></script>
-<script src="js/admin.js"></script>
+<script src="js/admin.js?v=20261104b"></script>
+<script src="js/admin-extra.js?v=20261113a"></script>
 </body>
 </html>

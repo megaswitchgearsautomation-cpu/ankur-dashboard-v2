@@ -75,12 +75,26 @@
     if (typeof a.value === "boolean") return a.value ? "ON" : "OFF";
     return `${Number(a.value).toFixed(a.decimals ?? 1)} ${a.unit || ""}`.trim();
   }
+  // Level set points are entered on the HMI in % of the transmitter range (client philosophy: "% settable").
+  // The unit comes from the tag ("%"); for comparing with the level they are converted to the tank's unit (mm).
+  const spIsPct = (id) => ((live.aux || {})[id] || {}).unit === "%";
+  function spToLevel(t, id, v = auxNum(id)) {
+    if (v == null || !t || !spIsPct(id)) return v;
+    const lo = t.eng_min ?? 0, hi = t.eng_max ?? 100;
+    return lo + (v / 100) * (hi - lo);
+  }
+  function spTxt(t, id) {                               // "66.7 % (2400 mm)"
+    const v = auxNum(id);
+    if (v == null) return "--";
+    if (!spIsPct(id) || !t) return auxTxt(id);
+    return `${Number(v).toFixed(1)} % (${Math.round(spToLevel(t, id, v))} ${t.unit || "mm"})`;
+  }
   // HH / H / L / LL level set points of a level transmitter (set on the dashboard; default % of range)
   const LV_KEYS = [["hh", "HH"], ["h", "H"], ["l", "L"], ["ll", "LL"]];
   // HH / H / L / LL: the values set on the HMI "LT Set Point" screen (read from the PLC); fallback = dashboard / default
   function plcLevels(t) {
     if (!t || !live) return null;
-    const v = Object.fromEntries(LV_KEYS.map(([k]) => [k, auxNum(`${t.id}_${k.toUpperCase()}_SP`)]));
+    const v = Object.fromEntries(LV_KEYS.map(([k]) => [k, spToLevel(t, `${t.id}_${k.toUpperCase()}_SP`)]));
     return LV_KEYS.every(([k]) => v[k] != null) ? v : null;
   }
   function levelsOf(t) {
@@ -118,14 +132,23 @@
       <span class="kb-l">${esc(String(t.eng_min ?? ""))}</span><span class="kb-r">${esc(String(t.eng_max ?? ""))}</span></div>
       <div class="kb-cap"><span>${esc(opts.caption || "")}</span></div>`;
   }
+  // level as a slim horizontal bar (overview list rows)
   function tankMini(t) {
     const p = pct(t);
-    return `<div class="kp-tank"><span class="kt-fill" style="height:${p ?? 0}%"></span><b>${p == null ? "--" : Math.round(p) + "%"}</b></div>`;
+    return `<div class="kr-level ${t.id === "LT_01" ? "sludge" : "water"}"><span class="kr-bar"><i style="width:${Math.max(0, Math.min(100, p ?? 0))}%"></i></span>
+      <b class="num">${p == null ? "--" : Math.round(p) + "%"}</b></div>`;
   }
+  // which rows have their "Details" open - kept across the 1 s refreshes (the rows are rebuilt each time)
+  const kpOpen = new Set();
+  // one key value = one full-width row: status dot + name | big value | bar / status lines | Details (opens under the row)
   function kpCard(id, cls, title, sub, valueHTML, body, chips, state) {
-    return `<div class="kp-card ${cls} ${state || ""}" ${id ? `data-open="${esc(id)}" tabindex="0" role="button"` : ""}>
-      <div class="kp-h"><span class="kp-t">${esc(title)}</span><span class="kp-s">${esc(sub)}</span></div>
-      <div class="kp-v">${valueHTML}</div>${body}<div class="kp-eqs">${chips}</div></div>`;
+    const i = body.indexOf('<div class="kr-full');
+    const main = i < 0 ? body : body.slice(0, i), det = i < 0 ? "" : body.slice(i);
+    const st = /km-f bad/.test(det) ? "bad" : state === "warn" || /km-f warn/.test(det) ? "warn" : "ok";
+    return `<div class="kp-row kr-${cls} st-${st}" ${id ? `data-open="${esc(id)}" tabindex="0" role="button"` : ""}>
+      <div class="kr-top"><div class="kr-name"><span class="kr-dot"></span><div><span class="kp-t">${esc(title)}</span><span class="kp-s">${esc(sub)}</span></div></div>
+        <div class="kr-val kp-v">${valueHTML}</div></div>
+      ${main.trim() ? `<div class="kr-body">${main}</div>` : ""}${det}${chips ? `<div class="kp-eqs">${chips}</div>` : ""}</div>`;
   }
   const valHTML = (t) => `<b class="num">${esc(fmt(t))}</b><small>${esc(t ? t.unit : "")}</small>`;
   const swTxt = (v, on, off) => (v == null ? "No data" : v ? on : off);
@@ -140,9 +163,16 @@
     return `<div class="kd-r ${cls}"><span>${lab}</span><b>${v}</b></div>`;
   }
   // card details in titled groups: [["Equipment", rows], ["Set points & logic", rows], ["Alarms & safety", rows]]
-  const secs = (groups) => `<div class="kp-dl">${groups.filter(([, r]) => r.filter(Boolean).length)
-    .map(([h, r]) => `<div class="kd-sec"><div class="kd-h">${esc(h)}</div>${r.filter(Boolean).join("")}</div>`).join("")}</div>`;
-  const note = (txt, cls = "") => (txt ? `<div class="kp-next ${cls}"><b>${cls === "bad" || cls === "warn" ? "⚠" : "▶"}</b>${esc(txt)}</div>` : "");
+  // shown folded ("Details") so the card shows only its headline; a red mark on the fold if something inside is wrong
+  const secs = (groups) => {
+    const inner = groups.filter(([, r]) => r.filter(Boolean).length)
+      .map(([h, r]) => `<div class="kd-sec"><div class="kd-h">${esc(h)}</div>${r.filter(Boolean).join("")}</div>`).join("");
+    const bad = (inner.match(/kd-r bad/g) || []).length, warn = (inner.match(/kd-r warn/g) || []).length;
+    const flag = bad ? `<span class="km-f bad">${bad} need attention</span>` : warn ? `<span class="km-f warn">${warn} to check</span>` : '<span class="km-f ok">all normal</span>';
+    // full details always shown (no fold): equipment, set points & logic, alarms & safety
+    return `<div class="kr-full" data-st="${bad ? "bad" : warn ? "warn" : "ok"}">${flag}<div class="kp-dl">${inner}</div></div>`;
+  };
+  const note = (txt, cls = "") => (txt ? `<div class="kp-next ${cls}" title="${esc(txt)}"><b>${cls === "bad" || cls === "warn" ? "⚠" : "▶"}</b>${esc(txt)}</div>` : "");
   const tripped = (id) => { const e = eq(id); return !!e && ["TRIP", "FAULT"].includes(e.status); };
   const spNum = (id, d = 0) => { const v = auxNum(id); return v == null ? "--" : Number(v).toFixed(d); };
   const modeEm = (e) => (e && e.auto != null ? `<em>${e.auto ? "Auto" : "Manual"}</em>` : "");
@@ -182,141 +212,472 @@
     return ["Normal (between LL and HL)", "ok"];
   }
 
-  function renderKeyPoints() {
-    const box = $("keyPoints");
-    if (!box) return;
-    const lt1 = tag("LT_01"), lt2 = tag("LT_02"), pt1 = tag("PT_01"), ph = tag("PH_01"), t4 = tag("T_04"), t2 = tag("T_02"), pt3 = tag("PT_03");
-    const phv = num(ph), t4v = num(t4), pt1v = num(pt1);
-    const phState = phv == null ? "" : phv <= 6.5 ? "⚠ Too acidic - alkali being added" : phv >= 7.5 ? "⚠ Too alkaline - acid being added" : "✔ pH is OK";
-    const steamOpen = running("OP_SV1");
-    const air = sw(SW.AIR);
+  // ======================================================================================
+  // DASHBOARD PROCESS CARDS (v3, brief SC02 - replaces the text rows and the separate Tank levels page)
+  // One card per process area: pictorial tank / gauge / switch tanks, the ACTUAL values first, a short set point
+  // summary with a pencil that opens the matching section of Set points (editing stays there), equipment as symbols
+  // with state colour + icon + text, "Show more" for the secondary details and the trend. Cards can be dragged
+  // (or moved with the arrow buttons) into the user's own order, saved per user on the server.
+  // Built once, then patched every second, so open cards, trends, drag state and keyboard focus survive the refresh.
+  // Only the sludge (LT-01) and filtrate (LT-02) tanks have level transmitters; switch-only tanks show their switches.
+  // ======================================================================================
+  const EQ_LABEL = { MV_01: "Feed valve", AGIT: "Mixer", OP_SV1: "LP steam valve", OP_SV2: "Outlet valve", OP_M1: "Hot air blower",
+    OP_F1: "CT-1 fan", OP_F2: "CT-2 fan" };
+  const ST_IC = { ok: "✓", on: "✓", off: "■", warn: "⚠", alarm: "✕", unk: "?", info: "▶" };
+  const ST_TXT = { ok: "Normal", warn: "Check", alarm: "Needs attention", unk: "No data" };
+  const SYM = {        // one simple symbol per equipment type (P&ID style)
+    // centrifugal pump: base + volute casing with the outlet nozzle on top, impeller inside (turns while running)
+    pump: '<path class="b" d="M11 31 H29 L32 37 H8 Z"/><path class="b" d="M20 8 H34 V14.5 H29.9 A12 12 0 1 1 20 8 Z"/>'
+      + '<g class="r"><circle cx="20" cy="20" r="2.6"/>'
+      + [0, 90, 180, 270].map((a) => `<path transform="rotate(${a} 20 20)" d="M20 18.2 C21.5 14 24.5 11.6 28.4 12.2 C26 14 23.4 16.6 21.6 19.6 Z"/>`).join("") + "</g>",
+    valve: '<path class="b" d="M6 11 L34 29 V11 L6 29 Z"/>',
+    // top-entry mixer: tank, motor + gearbox on top, shaft with a two-blade propeller (turns while running)
+    mixer: '<rect class="b" x="6" y="14" width="28" height="22" rx="3"/><rect class="m" x="14.5" y="2.5" width="11" height="8" rx="1.5"/><rect class="m" x="18" y="10.5" width="4" height="3.5"/>'
+      + '<g class="r"><rect x="19.1" y="14" width="1.8" height="14.5"/><path d="M20 28.5 C16.5 25.6 11.5 26 10 28.6 C11.5 31.2 16.5 31.4 20 28.5 Z M20 28.5 C23.5 25.6 28.5 26 30 28.6 C28.5 31.2 23.5 31.4 20 28.5 Z"/></g>',
+    fan: '<circle class="b" cx="20" cy="20" r="14"/><g class="r"><path d="M20 20 C16 14 18 8 20 7 C22 8 24 14 20 20 Z"/><path d="M20 20 C27 18 31 23 31 25 C29 27 23 25 20 20 Z"/><path d="M20 20 C17 26 11 27 10 25 C10 23 14 18 20 20 Z"/></g>',
+  };
+  const GRIP = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
+  const ARW = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="${d}"/></svg>`;
+  const UP = ARW("M6 15l6-6 6 6"), DOWN = ARW("M6 9l6 6 6-6"), CHEV = ARW("M6 9l6 6 6-6");
+  const RANK = ["alarm", "unk", "warn", "ok"];
+  const worst = (list) => RANK.find((r) => list.includes(r)) || "ok";
+  function eqKind(id, e) {
+    if ((e && e.type === "valve") || /^(MV_|OP_SV)/.test(id)) return "valve";
+    if (id === "AGIT") return "mixer";
+    if (/^OP_(F\d|M1)$/.test(id)) return "fan";
+    return "pump";
+  }
+  function eqSt(e) {                                    // on / off / alarm / warn / unk
+    if (!e) return "unk";
+    const c = eqCls(e);
+    return c === "run" ? "on" : c === "stop" ? "off" : c === "trip" ? "alarm" : c === "warn" ? "warn" : "unk";
+  }
+  const eqStates = (ids) => ids.map((id) => { const s = eqSt(eq(id)); return s === "alarm" ? "alarm" : s === "warn" ? "warn" : "ok"; });
+  function eqItem(id) {                                 // symbol + tag + short name + state (icon + text) + Auto / Manual (read-only)
+    const e = eq(id), s = eqSt(e), kind = eqKind(id, e);
+    const txt = e ? STATE_TXT[e.status] || e.status : "No data";
+    const name = EQ_LABEL[id] || PUMP_NAME[id] || (e ? e.name : id);
+    return `<div class="dc-eq st-${s}" title="${esc(`${PID[id] || id} ${e ? e.name : ""} - ${txt}`)}">
+      <svg class="dc-sym k-${kind}" viewBox="0 0 40 40" role="img" aria-label="${esc(`${PID[id] || id} ${name}, ${txt}`)}">${SYM[kind]}</svg>
+      <span class="dc-eq-t"><b>${esc(PID[id] || id)}</b><span>${esc(name)}</span></span>
+      <span class="dc-eq-s"><span class="dc-st st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(txt)}</span>${e && e.auto != null ? `<em>${e.auto ? "Auto" : "Manual"}</em>` : ""}</span></div>`;
+  }
+  const chipHTML = (s, txt) => `<span class="dc-st big st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(txt || ST_TXT[s])}</span>`;
+  const stLine = (s, txt) => `<div class="dc-stl"><span class="dc-st st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(txt)}</span></div>`;
+  function dRow(label, val, st = "info") {             // one secondary detail: label | value (status icon when it is a state)
+    return `<div class="dc-r"><span class="dc-r-l">${esc(label)}</span><span class="dc-r-v">${st === "info" ? esc(val)
+      : `<span class="dc-st st-${st}"><i aria-hidden="true">${ST_IC[st]}</i>${esc(val)}</span>`}</span></div>`;
+  }
+  const dl = (rows) => `<div class="dc-dl">${rows.filter(Boolean).join("")}</div>`;
+  const notes = (list) => list.filter(([t]) => t).map(([t, s]) => `<div class="dc-note st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(t)}</div>`).join("");
+  function alRow(label, id) {                           // plant alarm bit of an instrument
+    const v = sw(id);
+    return dRow(label, v == null ? "No data" : v ? "Alarm" : "Normal", v == null ? "unk" : v ? "alarm" : "ok");
+  }
+  function swRow2(label, id, onTxt, offTxt, badWhen) {  // a digital input; badWhen = the state that is a problem
+    const v = sw(id);
+    return dRow(label, v == null ? "No data" : v ? onTxt : offTxt, v == null ? "unk" : badWhen != null && v === badWhen ? "warn" : "ok");
+  }
+  function pairSel(id) {                                // main / standby selection of a pump pair (read-only)
+    const e = eq(id);
+    return !e || e.standby_selected == null ? "-" : e.standby_selected ? "Standby selected" : "Main selected";
+  }
+  const airRow = (label, lowTxt) => { const a = sw(SW.AIR); return dRow(label, a == null ? "No data" : a ? "OK" : lowTxt, a == null ? "unk" : a ? "ok" : "alarm"); };
 
-    // sludge tank: what happens next (logic 3.A: valve opens at LL / closes at HH; pump starts at NL / stops at VLL)
-    const l1 = num(lt1), pStart = auxNum("SP_SLUDGE_PUMP_START"), pStop = auxNum("SP_SLUDGE_PUMP_STOP");
-    const vOpen = auxNum("SP_SLUDGE_VALVE_OPEN"), vClose = auxNum("SP_SLUDGE_VALVE_CLOSE");
-    const sPump = running("OP_P1A") || running("OP_P1B");
-    let sNext = "";
-    if (l1 != null && pStart != null && pStop != null) {
-      sNext = sPump ? `Sludge pump running - stops when level falls to ${pStop.toFixed(0)} mm`
-        : l1 >= pStart ? `Level is above pump start (${pStart.toFixed(0)} mm) - pump should be running: check Auto mode / trip`
-          : `Sludge pump starts when level reaches ${pStart.toFixed(0)} mm (mixer starts 60 s before)`;
-    }
-    let vNext = "";
-    if (vOpen != null && vClose != null) vNext = running("MV_01") ? `Feed valve open - closes at ${vClose.toFixed(0)} mm` : `Feed valve opens when level falls to ${vOpen.toFixed(0)} mm`;
-
-    // raw water: why the make-up pumps are (not) running (logic 4: stop at LS-301 LL, keep header > 3 kg/cm²)
-    const rawLL = sw(SW.LS301_LL), rawHL = sw(SW.LS301_HL);
-    const mkRun = running("OP_P14") || running("OP_P15"), ugRun = running("OP_P6A") || running("OP_P6B");
-    const rawNote = rawLL === false && !rawHL ? "Raw water tank below LL - supply pumps stopped (no dry running); borewell pump should be filling"
-      : mkRun ? "Supply pump running on VFD - keeps header pressure above 3 kg/cm²" : "";
-    const ugNote = ugRun ? "Borewell pump filling the raw water tank - stops at HL" : rawHL ? "Raw water tank full (HL) - borewell pumps off" : "";
-    const [rawTxt, rawCls] = floatTank(SW.LS301_HL, SW.LS301_LL);
-
-    // de-gasifier tank (4 switches)
-    const dg = ["LS701_HH", "LS701_H", "LS701_L", "LS701_LL"].map((k) => sw(SW[k]));
-    const dgTxt = dg.some((v) => v == null) ? ["No data", "unk"] : dg[0] ? ["HH - outlet valve opens", "warn"] : dg[1] ? ["H", "ok"]
-      : dg[2] ? ["L", "ok"] : dg[3] ? ["Between LL and L", "warn"] : ["Below LL - recirculation pump stops", "bad"];
-
-    const [ct1Txt, ct1Cls] = floatTank(SW.LS601_HL, SW.LS601_LL), [ct2Txt, ct2Cls] = floatTank(SW.LS602_HL, SW.LS602_LL);
-    const [hwTxt, hwCls] = floatTank(SW.LS603_HL, SW.LS603_LL), [gvTxt, gvCls] = floatTank(SW.LS702_HL, SW.LS702_LL);
-    const [cRawTxt, cRawCls] = floatTank(SW.LS801, SW.LS802), [cPureTxt, cPureCls] = floatTank(SW.LS803, SW.LS804);
-    const ct1Run = ["OP_P7", "OP_P3", "OP_P11"].filter(running).length;
-    const panels = [["Boiler", "Boiler"], ["Dryer", "Dryer"], ["Turbine", "Turbine"], ["Gasifier", "Gasifier"], ["Volute press", "Volute_Press"], ["WTP", "WTP"]];
-    const pfd = (n, p) => sw(`DI_Potential_Free_DI_${n}_From_${p}_Panel`);
-    const pfdTxt = (v) => (v == null ? "--" : v ? "ON" : "OFF");
-    const loc = sw("DI_Submersible_Pump_Panel_Local_remote_Switch_in_Local"), rem = sw("DI_Submersible_Pump_Panel_Local_remote_Switch_in_Remote");
-
-    const areas = $("kpAreas");
-    if (areas) {                                      // plant areas row (own container so the overall drawing below it is not rebuilt)
-      areas.innerHTML = `<div class="kp-areas">${AREAS.map((a) => areaChip(a)).join("")}</div>`;
-      areas.querySelectorAll("[data-sheet]").forEach((el) => (el.onclick = () => { setSheet(el.dataset.sheet); location.hash = "#mimic"; }));
-    }
-    box.innerHTML = `
-      <div class="kp-grid">
-        ${lt1 ? kpCard("LT_01", "kp-lvl", "Sludge storage tank", "01-LT-101 radar · pumps send sludge to the volute press", valHTML(lt1),
-          tankMini(lt1) + lvRow(lt1) + note(sNext, sNext.startsWith("Level is above") ? "warn" : "") + note(vNext) + secs([
-            ["Equipment", [pairRow("Sludge pumps 01-P-101/102", "OP_P1A", "OP_P1B"), eqRow("Feed valve 01-MV-101", "MV_01"),
-              eqRow("Mixer OP-A1", "AGIT"), eqRow("Cavity pump OP-P201", "PCP")]],
-            ["Set points & logic", [row("Pump start / stop", `${spNum("SP_SLUDGE_PUMP_START")} / ${spNum("SP_SLUDGE_PUMP_STOP")} mm`),
-              row("Valve open / close", `${spNum("SP_SLUDGE_VALVE_OPEN")} / ${spNum("SP_SLUDGE_VALVE_CLOSE")} mm`),
-              row("Mixer", "starts 60 s before pump · stops 60 s after")]],
-            ["Alarms & safety", [row("Instrument air (for valve)", air == null ? "No data" : air ? "OK" : "LOW - valve blocked", air == null ? "unk" : air ? "ok" : "bad"),
-              almRow("PLC level alarm", "LT_01_ALM")]],
-          ]), "", lvState(lt1)) : ""}
-        ${lt2 ? kpCard("LT_02", "kp-lvl", "Filtrate tank", "01-LT-102 radar · water squeezed out of the sludge", valHTML(lt2),
-          tankMini(lt2) + lvRow(lt2) + secs([
-            ["Equipment", [pairRow("Filtrate pumps 01-P-103/104", "OP_P5A", "OP_P5B")]],
-            ["Set points & logic", [row("Pump starts", "at normal level"), row("Pump stops", "at very low level (dry-run protection)")]],
-            ["Alarms & safety", [almRow("PLC level alarm", "LT_02_ALM")]],
-          ]), "", lvState(lt2)) : ""}
-        ${pt1 ? kpCard("PT_01", "kp-pr", "Water supply pressure", "03-PT-301 · water to the whole plant · should stay above 3.0 bar", valHTML(pt1),
-          band(pt1, 3, pt1.eng_max, { caption: pt1v == null ? "" : pt1v >= 3 ? "✔ Pressure is OK" : "⚠ Pressure is low (below 3.0 bar)" })
-          + note(rawNote, rawLL === false && !rawHL ? "bad" : "") + note(ugNote) + secs([
-            ["Equipment", [pairRow("Supply pumps (VFD) 03-P-303/304", "OP_P14", "OP_P15"), pairRow("Borewell pumps 03-P-301/302", "OP_P6A", "OP_P6B")]],
-            ["Tank & field signals", [row("Raw water tank 03-LS-301", esc(rawTxt), rawCls),
-              swRow("Borewell flow 03-FS-301", SW.FLOW, "Flow detected", "No flow", ugRun ? false : null),
-              row("Submersible panel", loc == null && rem == null ? "No data" : loc ? "LOCAL - PLC cannot start" : rem ? "REMOTE (PLC)" : "Neither", loc ? "warn" : rem ? "ok" : "unk")]],
-            ["Alarms & safety", [row("Pressure alarm set point", auxTxt("PT_01_ALM_SP")), almRow("PLC pressure alarm", "PT_01_ALM")]],
-          ]), "", pt1v != null && pt1v < 3 ? "warn" : "") : ""}
-        ${ph ? kpCard("PH_01", "kp-ph", "Process water pH", "Acid / alkali is added automatically to keep it 6.5 - 7.5", valHTML(ph),
-          band(ph, 6.5, 7.5, { caption: phState, cls: "ph" }) + secs([
-            ["Equipment", [eqRow("Acid dosing 07-P-702", "OP_P12"), eqRow("Alkali dosing 07-P-703", "OP_P13")]],
-            ["Set points & logic", [row("Acid starts / stops", "pH ≤ 6.5 / pH ≥ 7.0"), row("Alkali starts / stops", "pH ≥ 7.5 / pH ≤ 7.0")]],
-            ["Alarms & safety", [row("Never both together", running("OP_P12") && running("OP_P13") ? "BOTH RUNNING" : "OK", running("OP_P12") && running("OP_P13") ? "bad" : "ok"),
-              row("pH alarm set point", auxTxt("PH_01_ALM_SP")), almRow("PLC pH alarm", "PH_01_ALM")]],
-          ]), "", phv != null && (phv < 6.5 || phv > 7.5) ? "warn" : "") : ""}
-        ${t4 ? kpCard("T_04", "kp-tp", "De-gasifier water temperature", "07-TT-701 · steam heats the water · kept between 70 and 90 °C", valHTML(t4),
-          band(t4, 70, 90, { caption: `LP steam valve ${steamOpen ? "open" : "closed"}${t4v != null ? (t4v < 70 ? " · heating up" : t4v > 90 ? " · too hot" : " · ✔ OK") : ""}` }) + secs([
-            ["Equipment", [eqRow("LP steam valve 07-XV-701", "OP_SV1"), eqRow("Outlet valve 07-XV-702", "OP_SV2"), eqRow("Hot air blower OP-M1", "OP_M1"),
-              eqRow("Condensate pump 05-P-501", "OP_P4"), eqRow("Recirculation pump 07-P-701", "OP_P9")]],
-            ["Set points & logic", [row("Steam opens / closes", `${spNum("SP_LP_STEAM_OPEN")} / ${spNum("SP_LP_STEAM_CLOSE")} °C`),
-              row("De-gasifier tank 07-LS-701", esc(dgTxt[0]), dgTxt[1])]],
-            ["Alarms & safety", [row("Instrument air", air == null ? "No data" : air ? "OK" : "LOW - steam valve closed", air == null ? "unk" : air ? "ok" : "bad"),
-              row("Temp. alarm set point", auxTxt("T_04_ALM_SP")), almRow("PLC temperature alarm", "T_04_ALM")]],
-          ]), "") : ""}
-        ${t2 ? kpCard("T_02", "kp-hw", "Hot water to sludge dryer", "06-TT-601 · hot water that dries the sludge", valHTML(t2),
-          `<div class="kp-pair"><span>Pressure</span><b class="num">${esc(fmt(pt3))}</b> <small>${esc(pt3 ? pt3.unit : "")}</small></div>` + secs([
-            ["Equipment", [eqRow("Hot water pump (VFD) 06-P-605", "OP_P2")]],
-            ["Set points & logic", [row("Hot water tank 06-LS-603", esc(hwTxt), hwCls), row("Pump", "runs above LL · stops at LL (and at HH)")]],
-            ["Alarms & safety", [row("Temp. alarm set point", auxTxt("T_02_ALM_SP")), almRow("PLC temperature alarm", "T_02_ALM"),
-              row("Pressure alarm set point", auxTxt("PT_03_ALM_SP")), almRow("PLC pressure alarm", "PT_03_ALM")]],
-          ]), "") : ""}
-        ${kpCard("", "kp-ct", "Cooling towers", "CT-1: de-gasifier PHE, dryer condenser, boiler · CT-2: turbine oil", `<b class="num">${ct1Run}</b><small>/3 CT-1 pumps running</small>`,
-          secs([
-            ["Cooling tower 1", [row("Basin 06-LS-601", esc(ct1Txt), ct1Cls), eqRow("De-gasifier PHE pump 06-P-601", "OP_P7"),
-              eqRow("Dryer condenser pump 06-P-602", "OP_P3"), eqRow("Boiler cooling pump 06-P-603", "OP_P11"), eqRow("Fan OP-F601", "OP_F1")]],
-            ["Cooling tower 2", [row("Basin 06-LS-602", esc(ct2Txt), ct2Cls), eqRow("Turbine oil cooling pump 06-P-604", "OP_P10"), eqRow("Fan OP-F602", "OP_F2")]],
-            ["Logic", [row("Fan", "runs only when a pump of its tower runs"), row("Pumps", "stop at basin LL")]],
-          ]), "", ct1Cls === "bad" || ct2Cls === "bad" ? "warn" : "")}
-        ${kpCard("", "kp-wtp", "Gravity tank & WTP / CTP", "07-LS-702 gravity tank → 07-P-704 → raw water tank CTP", `<b class="num">${esc(running("OP_P8") ? "Running" : "Stopped")}</b><small>07-P-704</small>`,
-          secs([
-            ["Equipment", [eqRow("Gravity tank → WTP pump 07-P-704", "OP_P8")]],
-            ["Tank levels", [row("Gravity tank 07-LS-702", esc(gvTxt), gvCls), row("CTP raw water tank 08-LS-801/802", esc(cRawTxt), cRawCls),
-              row("CTP pure water tank 08-LS-803/804", esc(cPureTxt), cPureCls)]],
-            ["Logic", [row("Pump runs while", "gravity tank above LL and CTP raw tank below HH")]],
-          ]), "", gvCls === "bad" ? "warn" : "")}
-        ${kpCard("", "kp-pan", "Panel switches & linked panels", "OP panel push buttons and signals from the other plant panels", `<b class="num">${esc(swTxt(sw(SW.MODE), "Auto", "Manual"))}</b><small>system selector</small>`,
-          secs([
-            ["OP panel", [row("System auto start P.B.", esc(swTxt(sw("DI_Stm_Auto_St_Pb"), "Pressed", "Released"))),
-              row("Sequential shutdown P.B.", esc(swTxt(sw("DI_Squen_Stwn"), "Pressed", "Released"))),
-              row("Hooter accept P.B.", esc(swTxt(sw("DI_Htr_Acpt_Pb_With_lamp"), "Pressed", "Released"))),
-              swRow("Instrument air 04-PS-401", SW.AIR, "OK", "LOW", false),
-              row("Air dryer / auto drain (cmd)", `${auxTxt("DO_Air_Compressure_Dryer")} / ${auxTxt("DO_Auto_Drain_Valve")}`)]],
-            ["Linked panels (signal 1 / 2)", panels.map(([n, p]) => row(`${n} panel`, `${pfdTxt(pfd(1, p))} / ${pfdTxt(pfd(2, p))}`, pfd(1, p) == null ? "unk" : "info"))],
-          ]), "")}
-      </div>`;
-    box.querySelectorAll("[data-open]").forEach((el) => {
-      el.onclick = (ev) => { if (!ev.target.closest("a")) MD.openTag(el.dataset.open); };
-      el.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); el.click(); } };
+  // ---- level transmitter tanks: graphic (flat Mimic-style tank, reused from the former Tank levels page) ----
+  function lvFigHTML(c, t) {
+    const marks = LV_KEYS.map(([k, l]) => `<g class="lvg-ln ${k}" data-k="${k}"><line x1="78" x2="182" y1="0" y2="0"/><text x="188" y="5">${l}</text><text class="v num" x="214" y="5">--</text></g>`).join("");
+    const plcMarks = c.plc.map(([l, id]) => `<g class="lvg-plc" data-sp="${id}"><path d="M72 0 l-7 -5 v10 Z"/><text x="62" y="5" text-anchor="end">${esc(l)}</text></g>`).join("");
+    return `<svg class="lvg" viewBox="-28 0 298 312" role="img" aria-label="${esc(c.name)} level graphic">${tankSVG(c)}${marks}${plcMarks}
+      <text class="lvg-pct num" x="130" y="${GY0 + GH / 2}" text-anchor="middle" data-pct>--</text>
+      <text class="lvg-end" x="76" y="${GY0 + GH + 1}" text-anchor="end">${esc(String(t.eng_min ?? 0))}</text>
+      <text class="lvg-end" x="76" y="${GY0 + 9}" text-anchor="end">${esc(String(t.eng_max ?? ""))}</text></svg>`;
+  }
+  function lvFigUpdate(el, t, cfg) {                    // liquid, set point lines, inflow / outflow, mixer, filling / draining
+    if (!el || !t || !el.querySelector("[data-liq]")) return;
+    const lv = levelsOf(t), p = pct(t), [stc] = lvStatus(t);
+    const yOf = (val) => GY0 + GH * (1 - (pct(t, val) ?? 0) / 100);
+    const fh = GH * Math.max(0, Math.min(100, p ?? 0)) / 100, surfY = GY0 + GH - fh;
+    el.querySelector("[data-liq]").style.transform = `translateY(${(p ? surfY : GY0 + GH + 16).toFixed(1)}px)`;
+    const inflow = cfg.inlet ? running(cfg.inlet) : false, outflow = (cfg.outlet || []).some(running);
+    const pour = el.querySelector("[data-pour]");
+    pour.setAttribute("y2", surfY.toFixed(1)); pour.classList.toggle("on", inflow);
+    el.querySelector("[data-out]").classList.toggle("on", outflow && !!p);
+    const mix = el.querySelector("[data-mix]");
+    if (mix) mix.classList.toggle("on", running(cfg.mixer));
+    const now = Date.now(), hist = (el._lvHist = (el._lvHist || []).filter((h) => now - h[0] < 20000));
+    if (p != null) hist.push([now, p]);
+    const dp = hist.length > 1 ? hist[hist.length - 1][1] - hist[0][1] : 0;
+    el._lvDir = dp > 0.3 ? "up" : dp < -0.3 ? "down" : (Math.abs(dp) < 0.05 ? "" : el._lvDir || "");
+    const dir = el.querySelector("[data-dir]");
+    dir.setAttribute("class", `lvg-dir ${el._lvDir}`);
+    dir.querySelector("text").textContent = el._lvDir === "up" ? "▲ Filling" : el._lvDir === "down" ? "▼ Draining" : "";
+    el.querySelector("[data-shell]").setAttribute("class", `lvg-tank flat ${stc === "hh" || stc === "ll" ? "alarm" : stc === "h" || stc === "l" ? "warn" : ""}`);
+    el.querySelector("[data-pct]").textContent = p == null ? "--" : `${Math.round(p)} %`;
+    LV_KEYS.forEach(([k]) => {
+      const g = el.querySelector(`.lvg-ln[data-k="${k}"]`);
+      g.setAttribute("transform", `translate(0 ${yOf(lv[k]).toFixed(1)})`);
+      g.querySelector(".v").textContent = Number(lv[k]).toFixed(0);
+      g.classList.toggle("on", !!lvActive(t, k));
+    });
+    el.querySelectorAll(".lvg-plc").forEach((g) => {
+      const v = spToLevel(t, g.dataset.sp);
+      g.style.display = v == null ? "none" : "";
+      if (v != null) g.setAttribute("transform", `translate(0 ${yOf(v).toFixed(1)})`);
     });
   }
-  // HH / H / L / LL set points (from the HMI) on the overview level cards; the reached one is lit
-  function lvRow(t) {
-    const lv = levelsOf(t), d = 0;
-    return `<div class="kp-lvrow"><a class="kp-lvlink" href="#levels" title="Open Tank levels">Set points${plcLevels(t) ? " (HMI)" : ""}</a>
-      ${LV_KEYS.map(([k, l]) => `<span class="kp-lv ${lvActive(t, k) ? `on ${k}` : ""}">${l} <b class="num">${Number(lv[k]).toFixed(d)}</b></span>`).join("")}</div>`;
+  const lvSt = (t) => { const s = lvStatus(t)[0]; return s === "hh" || s === "ll" ? "alarm" : s === "h" || s === "l" ? "warn" : s === "nd" ? "unk" : "ok"; };
+  function lvAct(t) {
+    const p = pct(t), s = lvSt(t), cls = s === "alarm" ? "lv-alarm" : s === "warn" ? "lv-warn" : "";
+    return `<div class="dc-a"><span class="dc-lbl">Actual level</span><div class="dc-big"><b class="num ${cls}">${num(t) == null ? "--" : esc(fmt(t))}</b><small>${esc(t.unit || "")}</small></div>
+      <div class="dc-a2 num">${p == null ? "" : `${Math.round(p)} % of range`}</div></div>${stLine(s, lvStatus(t)[1])}`;
   }
-  const lvState = (t) => { const s = lvStatus(t)[0]; return s === "hh" || s === "ll" ? "warn" : ""; };
+  function lvSpTxt(t) {                                 // brief summary: HH 90 % · H 75 % · L 25 % · LL 10 %
+    const lv = levelsOf(t), plc = plcLevels(t);
+    const shown = (k) => { const id = `${t.id}_${k.toUpperCase()}_SP`; return plc && spIsPct(id) ? `${Number(auxNum(id)).toFixed(0)} %` : `${Number(lv[k]).toFixed(0)} ${t.unit || ""}`; };
+    return LV_KEYS.map(([k, l]) => `${l} ${shown(k)}`).join(" · ") + (plc ? "" : " (default - plant values not read)");
+  }
+  function lvTable(t) {                                 // HH / H / L / LL: set point, set delay, delay now, status
+    const lv = levelsOf(t), nd = num(t) == null;
+    return `<div class="dc-tw"><table class="dc-lt"><caption class="sr">${esc(t.name)} level set points</caption><thead><tr><th>Level</th><th>Set point</th><th>Set delay</th><th>Delay now</th><th>Status</th></tr></thead><tbody>${LV_KEYS.map(([k, l]) => {
+      const up = k.toUpperCase(), sid = `${t.id}_${up}_SP`, on = !!lvActive(t, k);
+      const actV = ((live.aux || {})[`${t.id}_${up}_ACT`] || {}).value, timing = !on && typeof actV === "number" && actV > 0;
+      const s = nd ? "unk" : on ? (k === "hh" || k === "ll" ? "alarm" : "warn") : timing ? "warn" : "ok";
+      return `<tr><td><b>${l}</b></td><td class="num">${esc(plcLevels(t) && spIsPct(sid) ? spTxt(t, sid) : `${Number(lv[k]).toFixed(t.decimals ?? 1)} ${t.unit || ""}`)}</td>
+        <td class="num">${esc(auxTxt(`${t.id}_${up}_DLY`))}</td><td class="num">${esc(auxTxt(`${t.id}_${up}_ACT`))}</td>
+        <td><span class="dc-st st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${nd ? "No data" : on ? "Reached" : timing ? "Timing" : "Normal"}</span></td></tr>`;
+    }).join("")}</tbody></table></div>`;
+  }
+  const lvLimits = (t) => { const lv = levelsOf(t); return lv ? LV_KEYS.map(([k, l]) => ({ v: lv[k], label: `${l} ${Number(lv[k]).toFixed(0)}` })) : []; };
+
+  // ---- switch-only tanks: outline + the switch positions (no level fill - these tanks have no level transmitter) ----
+  const swT = (pid) => SW_TANKS.find((x) => x.pid === pid);
+  function swInfo(tk) {
+    const st = tk.sw.map(([k, l]) => [l, sw(SW[k])]);
+    const top = st.find(([, v]) => v), nd = st.every(([, v]) => v == null);
+    return { st, s: nd ? "unk" : top ? "ok" : "warn",
+      txt: nd ? "No data" : top ? `Water at ${top[0]} switch or above` : `Below the ${st[st.length - 1][0]} switch` };
+  }
+  const swState = (tk) => (tk ? swInfo(tk).s : "ok");
+  function swTile(tk) {
+    if (!tk) return "";
+    const { st, s, txt } = swInfo(tk), n = st.length;
+    const marks = st.map(([l, v], i) => {
+      const y = n === 1 ? 50 : 16 + (68 * i) / (n - 1);
+      return `<g class="sw-m ${v == null ? "nd" : v ? "on" : ""}" transform="translate(0 ${y.toFixed(1)})"><line x1="12" x2="50" y1="0" y2="0"/><circle cx="50" cy="0" r="5"/><text x="60" y="5">${l}</text></g>`;
+    }).join("");
+    return `<div class="dc-sw">
+      <svg class="dc-swg" viewBox="0 0 92 100" role="img" aria-label="${esc(`${tk.name} ${tk.pid}: ${txt}`)}"><rect class="sw-tank" x="6" y="4" width="46" height="92" rx="6"/>${marks}</svg>
+      <div class="dc-sw-i"><b>${esc(tk.name)}</b><span class="dc-subt">${esc(tk.pid)} · level switches</span>
+        <div class="lsw-lamps">${st.map(([l, v]) => `<span class="lsw-l ${v == null ? "nd" : v ? "on" : ""}" title="${l} switch ${v == null ? "no data" : v ? "ON - water has reached it" : "OFF"}">${l}</span>`).join("")}</div>
+        <span class="dc-st st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(txt)}</span></div></div>`;
+  }
+
+  // ---- analog values: half-dial gauge with the warning band (90 % of the alarm set point) and alarm band ----
+  function dialSVG(t, o = {}) {
+    if (!t) return "";
+    const lo = t.eng_min ?? 0, hi = t.eng_max ?? 100, span = hi - lo || 1, v = num(t);
+    const R = 62, cx = 84, cy = 78;
+    const ang = (x) => Math.PI * (1 - clamp((x - lo) / span, 0, 1));
+    const P = (x, r = R) => `${(cx + r * Math.cos(ang(x))).toFixed(1)} ${(cy - r * Math.sin(ang(x))).toFixed(1)}`;
+    const arc = (a, b, cls, r = R) => (b > a ? `<path class="${cls}" d="M${P(a, r)} A${r} ${r} 0 0 1 ${P(b, r)}"/>` : "");
+    let bands = "";
+    if (o.sp != null && isFinite(o.sp)) {
+      const band = ((window.MD_META || {}).warn_band_pct ?? 90) / 100, warnAt = o.sp >= 0 ? o.sp * band : o.sp / band;
+      bands = arc(Math.max(lo, warnAt), Math.min(hi, o.sp), "dg-warn") + arc(Math.max(lo, Math.min(hi, o.sp)), hi, "dg-alarm");
+    }
+    const ctl = o.band ? arc(Math.max(lo, o.band[0]), Math.min(hi, o.band[1]), "dg-band", R - 13) : "";
+    const marks = (o.marks || []).map((m) => `<line class="dg-mark" x1="${P(m, R - 18).split(" ")[0]}" y1="${P(m, R - 18).split(" ")[1]}" x2="${P(m, R + 7).split(" ")[0]}" y2="${P(m, R + 7).split(" ")[1]}"/>`).join("");
+    const s = v == null ? "unk" : MD.v3.level(v, o.sp ?? null, "high") || "ok";
+    const needle = v == null ? "" : `<line class="dg-needle st-${s}" x1="${cx}" y1="${cy}" x2="${P(v, R - 10).split(" ")[0]}" y2="${P(v, R - 10).split(" ")[1]}"/>`;
+    return `<svg class="dc-dial" viewBox="0 0 168 100" role="img" aria-label="${esc(`${t.name}: ${v == null ? "no data" : `${fmt(t)} ${t.unit || ""}`}`)}">
+      ${arc(lo, hi, "dg-track")}${bands}${ctl}${marks}${needle}<circle class="dg-hub" cx="${cx}" cy="${cy}" r="5"/>
+      <text class="dg-end" x="${cx - R}" y="${cy + 18}" text-anchor="middle">${esc(String(lo))}</text><text class="dg-end" x="${cx + R}" y="${cy + 18}" text-anchor="middle">${esc(String(hi))}</text></svg>`;
+  }
+  const anSt = (t, spId) => { const v = num(t); if (v == null) return "unk"; const s = MD.v3.level(v, spId ? auxNum(spId) : null, "high"); return s === "alarm" || s === "warn" ? s : "ok"; };
+  function anAct(t, label, spId, small) {
+    if (!t) return "";
+    const s = anSt(t, spId), cls = s === "alarm" ? "lv-alarm" : s === "warn" ? "lv-warn" : "";
+    return `<div class="dc-a${small ? " sm" : ""}"><span class="dc-lbl">Actual · ${esc(label)}</span><div class="dc-big"><b class="num ${cls}">${num(t) == null ? "--" : esc(fmt(t))}</b><small>${esc(t.unit || "")}</small></div></div>`;
+  }
+  const bitSt = (id) => (sw(id) ? "alarm" : "ok");
+
+  // ---- the cards (default order); calc() returns what changes every second ----
+  const DC = [
+    { k: "sludge", title: "Sludge storage tank", sub: "01-LT-101 level transmitter · pumps send sludge to the volute press", tankId: "LT_01",
+      sp: { goto: "sp-tank-LT_01", what: "sludge tank level set points" }, sp2: { label: "Pump & valve levels", goto: "sp-process", what: "sludge pump and valve levels" },
+      trend: { tag: "LT_01", title: "Level trend", limits: () => lvLimits(tag("LT_01")) },
+      eqs: ["OP_P1A", "OP_P1B", "MV_01", "AGIT", "PCP"],
+      calc(c) {
+        const t = tag("LT_01");
+        if (!t) return null;
+        const l1 = num(t), pStart = spToLevel(t, "SP_SLUDGE_PUMP_START"), pStop = spToLevel(t, "SP_SLUDGE_PUMP_STOP");
+        const sPump = running("OP_P1A") || running("OP_P1B");
+        let next = "", nextSt = "info";
+        if (l1 != null && pStart != null && pStop != null) {
+          if (sPump) next = `Sludge pump running - stops when the level falls to ${spTxt(t, "SP_SLUDGE_PUMP_STOP")}`;
+          else if (l1 >= pStart) { next = `Level is above pump start ${spTxt(t, "SP_SLUDGE_PUMP_START")} - a pump should be running: check Auto mode / trip`; nextSt = "warn"; }
+          else next = `Sludge pump starts when the level reaches ${spTxt(t, "SP_SLUDGE_PUMP_START")} (mixer starts 60 s before)`;
+        }
+        const vNext = auxNum("SP_SLUDGE_VALVE_OPEN") == null ? "" : running("MV_01") ? `Feed valve open - closes at ${spTxt(t, "SP_SLUDGE_VALVE_CLOSE")}`
+          : `Feed valve opens when the level falls to ${spTxt(t, "SP_SLUDGE_VALVE_OPEN")}`;
+        return { st: worst([lvSt(t), ...eqStates(c.eqs), bitSt("LT_01_ALM"), sw(SW.AIR) === false ? "alarm" : "ok", nextSt === "warn" ? "warn" : "ok"]),
+          act: lvAct(t), sp: lvSpTxt(t),
+          sp2: `Pump start ${spTxt(t, "SP_SLUDGE_PUMP_START")} · stop ${spTxt(t, "SP_SLUDGE_PUMP_STOP")} · Valve open ${spTxt(t, "SP_SLUDGE_VALVE_OPEN")} · close ${spTxt(t, "SP_SLUDGE_VALVE_CLOSE")}`,
+          more: notes([[next, nextSt], [vNext, "info"]]) + dl([dRow("Sludge pump selection", pairSel("OP_P1A")),
+            dRow("Mixer OP-A1", "starts 60 s before the pump · stops 60 s after"), airRow("Instrument air (for the valve)", "Low - valve blocked"),
+            alRow("Level alarm", "LT_01_ALM")]) + lvTable(t) };
+      } },
+    { k: "filtrate", title: "Filtrate tank", sub: "01-LT-102 level transmitter · water squeezed out of the sludge", tankId: "LT_02",
+      sp: { goto: "sp-tank-LT_02", what: "filtrate tank level set points" },
+      trend: { tag: "LT_02", title: "Level trend", limits: () => lvLimits(tag("LT_02")) },
+      eqs: ["OP_P5A", "OP_P5B"],
+      calc(c) {
+        const t = tag("LT_02");
+        if (!t) return null;
+        return { st: worst([lvSt(t), ...eqStates(c.eqs), bitSt("LT_02_ALM")]), act: lvAct(t), sp: lvSpTxt(t),
+          more: dl([dRow("Filtrate pump selection", pairSel("OP_P5A")), dRow("Pump starts", "at normal level"),
+            dRow("Pump stops", "at very low level (dry-run protection)"), alRow("Level alarm", "LT_02_ALM")]) + lvTable(t) };
+      } },
+    { k: "raw", title: "Raw water & supply pressure", sub: "03-PT-301 supply header · 03-LS-301 raw water storage tank",
+      sp: { goto: "sp-alarm", what: "supply pressure alarm set point" },
+      trend: { tag: "PT_01", title: "Supply pressure trend", limits: () => [auxNum("PT_01_ALM_SP") != null ? { v: auxNum("PT_01_ALM_SP"), label: "Alarm" } : null, { v: 3, label: "Min 3.0" }].filter(Boolean) },
+      eqs: ["OP_P14", "OP_P15", "OP_P6A", "OP_P6B"],
+      calc(c) {
+        const t = tag("PT_01");
+        if (!t) return null;
+        const v = num(t), tk = swT("03-LS-301"), low = v != null && v < 3;
+        const rawLL = sw(SW.LS301_LL), rawHL = sw(SW.LS301_HL), lowTank = rawLL === false && !rawHL;
+        const mkRun = running("OP_P14") || running("OP_P15"), ugRun = running("OP_P6A") || running("OP_P6B");
+        const rawNote = lowTank ? "Raw water tank below LL - supply pumps stopped (no dry running); a borewell pump should be filling"
+          : mkRun ? "Supply pump running on VFD - keeps the header pressure above 3.0 bar" : "";
+        const ugNote = ugRun ? "Borewell pump filling the raw water tank - stops at HL" : rawHL ? "Raw water tank full (HL) - borewell pumps off" : "";
+        const loc = sw("DI_Submersible_Pump_Panel_Local_remote_Switch_in_Local"), rem = sw("DI_Submersible_Pump_Panel_Local_remote_Switch_in_Remote");
+        return { st: worst([anSt(t, "PT_01_ALM_SP"), bitSt("PT_01_ALM"), low ? "warn" : "ok", swState(tk), lowTank ? "alarm" : "ok", ...eqStates(c.eqs)]),
+          fig: dialSVG(t, { sp: auxNum("PT_01_ALM_SP"), marks: [3] }) + swTile(tk),
+          act: anAct(t, "Supply pressure", "PT_01_ALM_SP") + stLine(v == null ? "unk" : low ? "warn" : "ok", v == null ? "No data" : low ? "Below 3.0 bar - header pressure low" : "Above 3.0 bar"),
+          sp: `Alarm ${auxTxt("PT_01_ALM_SP")}`,
+          more: notes([[rawNote, lowTank ? "alarm" : "info"], [ugNote, "info"]]) + dl([dRow("Supply pump selection (VFD)", pairSel("OP_P14")),
+            dRow("Borewell pump selection", pairSel("OP_P6A")), swRow2("Borewell flow 03-FS-301", SW.FLOW, "Flow detected", "No flow", ugRun ? false : null),
+            dRow("Submersible pump panel", loc == null && rem == null ? "No data" : loc ? "Local - cannot start from the panel" : rem ? "Remote" : "Neither", loc ? "warn" : rem ? "ok" : "unk"),
+            dRow("Supply header minimum", "3.0 bar (control logic)"), alRow("Pressure alarm", "PT_01_ALM")]) };
+      } },
+    { k: "ph", title: "Process water pH", sub: "pH-01 · acid / alkali dosed automatically to keep 6.5 - 7.5",
+      sp: { goto: "sp-alarm", what: "pH alarm set point" },
+      trend: { tag: "PH_01", title: "pH trend", limits: () => [auxNum("PH_01_ALM_SP") != null ? { v: auxNum("PH_01_ALM_SP"), label: "Alarm" } : null, { v: 6.5, label: "6.5" }, { v: 7.5, label: "7.5" }].filter(Boolean) },
+      eqs: ["OP_P12", "OP_P13"],
+      calc(c) {
+        const t = tag("PH_01");
+        if (!t) return null;
+        const v = num(t), out = v != null && (v < 6.5 || v > 7.5), both = running("OP_P12") && running("OP_P13");
+        const txt = v == null ? "No data" : v < 6.5 ? "Too acidic - alkali being added" : v > 7.5 ? "Too alkaline - acid being added" : "Within 6.5 - 7.5";
+        return { st: worst([anSt(t, "PH_01_ALM_SP"), bitSt("PH_01_ALM"), out ? "warn" : "ok", both ? "alarm" : "ok", ...eqStates(c.eqs)]),
+          fig: dialSVG(t, { sp: auxNum("PH_01_ALM_SP"), band: [6.5, 7.5] }),
+          act: anAct(t, "pH", "PH_01_ALM_SP") + stLine(v == null ? "unk" : out ? "warn" : "ok", txt),
+          sp: `Alarm ${auxTxt("PH_01_ALM_SP")} · dosing band 6.5 - 7.5`,
+          more: dl([dRow("Acid dosing starts / stops", "pH ≤ 6.5 / pH ≥ 7.0"), dRow("Alkali dosing starts / stops", "pH ≥ 7.5 / pH ≤ 7.0"),
+            dRow("Never both together", both ? "Both running" : "OK", both ? "alarm" : "ok"), alRow("pH alarm", "PH_01_ALM")]) };
+      } },
+    { k: "degas", title: "De-gasifier", sub: "07-TT-701 water temperature · 07-LS-701 tank switches · steam heats the water",
+      sp: { goto: "sp-process", what: "LP steam valve set points" }, sp2: { label: "Alarm", goto: "sp-alarm", what: "temperature alarm set point" },
+      trend: { tag: "T_04", title: "Temperature trend", limits: () => [["T_04_ALM_SP", "Alarm"], ["SP_LP_STEAM_OPEN", "Steam open"], ["SP_LP_STEAM_CLOSE", "Steam close"]]
+        .filter(([id]) => auxNum(id) != null).map(([id, l]) => ({ v: auxNum(id), label: l })) },
+      eqs: ["OP_SV1", "OP_SV2", "OP_M1", "OP_P4", "OP_P9"],
+      calc(c) {
+        const t = tag("T_04");
+        if (!t) return null;
+        const v = num(t), so = auxNum("SP_LP_STEAM_OPEN"), scl = auxNum("SP_LP_STEAM_CLOSE"), tk = swT("07-LS-701");
+        const dg = ["LS701_HH", "LS701_H", "LS701_L", "LS701_LL"].map((k) => sw(SW[k]));
+        const dgTxt = dg.some((x) => x == null) ? ["No data", "unk"] : dg[0] ? ["HH - outlet valve opens", "warn"] : dg[1] ? ["H", "ok"]
+          : dg[2] ? ["L", "ok"] : dg[3] ? ["Between LL and L", "warn"] : ["Below LL - recirculation pump stops", "alarm"];
+        const heat = v == null ? "No data" : so != null && v < so ? "Below steam open set point - heating" : scl != null && v > scl ? "Above steam close set point" : "Within the steam control band";
+        return { st: worst([anSt(t, "T_04_ALM_SP"), bitSt("T_04_ALM"), sw(SW.AIR) === false ? "alarm" : "ok", dgTxt[1] === "unk" ? "ok" : dgTxt[1], ...eqStates(c.eqs)]),
+          fig: dialSVG(t, { sp: auxNum("T_04_ALM_SP"), band: so != null && scl != null ? [Math.min(so, scl), Math.max(so, scl)] : null }) + swTile(tk),
+          act: anAct(t, "Water temperature", "T_04_ALM_SP") + stLine(v == null ? "unk" : "info", heat),
+          sp: `Steam valve opens ${spNum("SP_LP_STEAM_OPEN")} · closes ${spNum("SP_LP_STEAM_CLOSE")} °C`,
+          sp2: `Temperature alarm ${auxTxt("T_04_ALM_SP")}`,
+          more: dl([dRow("De-gasifier tank 07-LS-701", dgTxt[0], dgTxt[1]), airRow("Instrument air", "Low - steam valve closed"), alRow("Temperature alarm", "T_04_ALM")]) };
+      } },
+    { k: "hotwater", title: "Hot water to sludge dryer", sub: "06-TT-601 temperature · 06-PT-601 pressure · 06-LS-603 hot water tank",
+      sp: { goto: "sp-alarm", what: "hot water alarm set points" },
+      trend: { tag: "T_02", title: "Temperature trend", limits: () => (auxNum("T_02_ALM_SP") != null ? [{ v: auxNum("T_02_ALM_SP"), label: "Alarm" }] : []) },
+      eqs: ["OP_P2"],
+      calc(c) {
+        const t = tag("T_02"), p = tag("PT_03");
+        if (!t) return null;
+        const tk = swT("06-LS-603"), ps = p ? anSt(p, "PT_03_ALM_SP") : "ok";
+        return { st: worst([anSt(t, "T_02_ALM_SP"), ps === "unk" ? "ok" : ps, bitSt("T_02_ALM"), bitSt("PT_03_ALM"), swState(tk), ...eqStates(c.eqs)]),
+          fig: dialSVG(t, { sp: auxNum("T_02_ALM_SP") }) + swTile(tk),
+          act: anAct(t, "Temperature", "T_02_ALM_SP") + anAct(p, "Pressure", "PT_03_ALM_SP", true),
+          sp: `Alarm ${auxTxt("T_02_ALM_SP")} · ${auxTxt("PT_03_ALM_SP")}`,
+          more: dl([dRow("Hot water pump (VFD)", "runs above LL · stops at LL (and at HH)"), alRow("Temperature alarm", "T_02_ALM"), alRow("Pressure alarm", "PT_03_ALM")]) };
+      } },
+    { k: "ct", title: "Cooling towers", sub: "CT-1: de-gasifier PHE, dryer condenser, boiler · CT-2: turbine oil", noMain: true,
+      eqs: ["OP_P7", "OP_P3", "OP_P11", "OP_F1", "OP_P10", "OP_F2"],
+      calc(c) {
+        const a = swT("06-LS-601"), b = swT("06-LS-602");
+        return { st: worst([swState(a), swState(b), ...eqStates(c.eqs)]), fig: swTile(a) + swTile(b),
+          more: dl([dRow("Fans", "run only when a pump of their tower runs"), dRow("Pumps", "stop at basin LL")]) };
+      } },
+    { k: "gravity", title: "Gravity tank & CTP", sub: "07-LS-702 gravity tank → 07-P-704 → CTP raw water tank", noMain: true,
+      eqs: ["OP_P8"],
+      calc(c) {
+        const tks = ["07-LS-702", "08-LS-801/802", "08-LS-803/804"].map(swT);
+        return { st: worst([...tks.map(swState), ...eqStates(c.eqs)]), fig: tks.map(swTile).join(""),
+          more: dl([dRow("Pump 07-P-704 runs while", "gravity tank above LL and CTP raw water tank below HH")]) };
+      } },
+  ];
+  const DC_BY = Object.fromEntries(DC.map((c) => [c.k, c]));
+  const TANK_CFG = (id) => LV_TANKS.find((x) => x.id === id);
+  function dcSkeleton(c) {
+    const lt = c.tankId ? tag(c.tankId) : null;
+    const pen = (goto, what) => `<button class="v3-pen" type="button" data-goto="${goto}" aria-label="Change the ${esc(what)} on the Set points page" title="Change on the Set points page">${MD.v3.PEN}</button>`;
+    return `<article class="dc" data-card="${c.k}" aria-labelledby="dch-${c.k}">
+      <header class="dc-h">
+        <button class="dc-grip" type="button" draggable="true" aria-label="Drag to move the ${esc(c.title)} card" title="Drag to reorder">${GRIP}</button>
+        <div class="dc-ttl"><h3 id="dch-${c.k}">${esc(c.title)}</h3><span class="dc-subt">${esc(c.sub)}</span></div>
+        <span class="dc-chip" data-slot="chip"></span>
+        <span class="dc-mv"><button type="button" data-mv="-1" aria-label="Move the ${esc(c.title)} card up" title="Move up">${UP}</button><button type="button" data-mv="1" aria-label="Move the ${esc(c.title)} card down" title="Move down">${DOWN}</button></span>
+      </header>
+      <div class="dc-body${c.noMain ? " no-main" : ""}">
+        <div class="dc-fig" data-slot="${lt ? "tank" : "fig"}">${lt ? lvFigHTML(TANK_CFG(c.tankId), lt) : ""}</div>
+        ${c.noMain ? "" : `<div class="dc-main"><div class="dc-acts" data-slot="act"></div>
+          ${c.sp ? `<div class="dc-sp"><span class="dc-lbl">Set point</span><span class="dc-sp-v" data-slot="sp"></span>${pen(c.sp.goto, c.sp.what)}</div>` : ""}</div>`}
+        <div class="dc-eqs"><span class="dc-lbl">Equipment</span><div class="dc-eql" data-slot="eqs"></div></div>
+      </div>
+      <div class="dc-more" id="dcm-${c.k}" hidden>
+        <div data-slot="more"></div>
+        ${c.sp2 ? `<div class="dc-sp"><span class="dc-lbl">${esc(c.sp2.label)}</span><span class="dc-sp-v" data-slot="sp2"></span>${pen(c.sp2.goto, c.sp2.what)}</div>` : ""}
+        ${c.trend ? `<div class="dc-trend"><div class="dc-trend-h"><h4>${esc(c.trend.title)}</h4><div class="dc-rp"></div></div><div class="chart dc-chart"></div></div>` : ""}
+      </div>
+      <button class="dc-tog" type="button" aria-expanded="false" aria-controls="dcm-${c.k}"><span>Show more</span>${CHEV}</button>
+    </article>`;
+  }
+  const slotOf = (el, n) => el.querySelector(`[data-slot="${n}"]`);
+  function setH(el, html) { if (el && el._h !== html) { el.innerHTML = html; el._h = html; } }
+  function dcOrder(box, order) {                        // restore the user's saved order (unknown / new cards keep their place at the end)
+    if (!Array.isArray(order) || !order.length) return;
+    const cards = [...box.children];
+    const rank = (k) => { const i = order.indexOf(k); return i < 0 ? order.length + DC.findIndex((c) => c.k === k) : i; };
+    cards.sort((a, b) => rank(a.dataset.card) - rank(b.dataset.card)).forEach((c) => box.appendChild(c));
+  }
+  const dcSave = (box) => MD.v3.savePrefs({ card_order: [...box.children].map((c) => c.dataset.card) });
+  function dcWire(box) {
+    let dragEl = null;
+    box.addEventListener("dragstart", (e) => {
+      const g = e.target.closest && e.target.closest(".dc-grip");
+      if (!g) return;
+      dragEl = g.closest(".dc");
+      dragEl.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", dragEl.dataset.card); e.dataTransfer.setDragImage(dragEl, 24, 24); } catch (_) { /* old browsers */ }
+    });
+    box.addEventListener("dragover", (e) => {
+      if (!dragEl) return;
+      e.preventDefault();
+      const over = e.target.closest(".dc");
+      if (!over || over === dragEl || over.parentNode !== box) return;
+      const kids = [...box.children];
+      if (kids.indexOf(dragEl) < kids.indexOf(over)) over.after(dragEl); else over.before(dragEl);
+    });
+    box.addEventListener("drop", (e) => { if (dragEl) e.preventDefault(); });
+    box.addEventListener("dragend", () => { if (!dragEl) return; dragEl.classList.remove("dragging"); dragEl = null; dcSave(box); });
+    box.addEventListener("click", (e) => {
+      const tog = e.target.closest(".dc-tog");
+      if (tog) {
+        const card = tog.closest(".dc"), more = card.querySelector(".dc-more"), open = more.hidden;
+        more.hidden = !open;
+        tog.setAttribute("aria-expanded", String(open));
+        tog.querySelector("span").textContent = open ? "Show less" : "Show more";
+        card.classList.toggle("open", open);
+        if (open) dcTrendOpen(card);
+        return;
+      }
+      const pen = e.target.closest("[data-goto]");
+      if (pen) { gotoSp(pen.dataset.goto); return; }
+      const mv = e.target.closest("[data-mv]");
+      if (mv) {
+        const card = mv.closest(".dc"), d = +mv.dataset.mv;
+        const sib = d < 0 ? card.previousElementSibling : card.nextElementSibling;
+        if (!sib) return;
+        if (d < 0) sib.before(card); else sib.after(card);
+        mv.focus();
+        dcSave(box);
+      }
+    });
+  }
+  // trend inside an opened card: 8 hours / 2 days / 7 days / custom range (IST), limited to the kept history
+  function dcTrendOpen(card) {
+    const c = DC_BY[card.dataset.card];
+    if (!c.trend) return;
+    if (card._rp) { if (card._rp.key !== "custom") card._rp.refresh(); return; }
+    card._rp = MD.v3.rangePicker(card.querySelector(".dc-rp"), { presets: [["8 hours", "8h"], ["2 days", "2d"], ["7 days", "7d"], ["Custom", "custom"]],
+      initial: "8h", onApply: (f, t, k) => dcTrendLoad(card, f, t, null, card._trKey !== undefined && (card._trKey !== k || k === "custom")) });
+  }
+  // [f, t] = the selected range (zoom "home"); view = zoomed window to fetch finer data for; reset = new range picked
+  async function dcTrendLoad(card, f, t, view, reset) {
+    const c = DC_BY[card.dataset.card], id = c.trend.tag, tg = tag(id), box = card.querySelector(".dc-chart");
+    card._trAt = Date.now(); card._trKey = card._rp ? card._rp.key : ""; card._trRange = [f, t];
+    const [qf, qt] = view || [f, t];
+    try {
+      const r = await MD.api(`/api/trend?tags=${encodeURIComponent(id)}&from=${Math.floor(qf)}&to=${Math.ceil(qt)}&points=300`);
+      const s = r.series[0];
+      if (!s) { box.innerHTML = '<p class="muted">No trend is recorded for this value.</p>'; return; }
+      MDChart.render(box, { name: s.name, unit: s.unit, decimals: s.decimals, color: "var(--s3)", points: s.points, from: f, to: t,
+        limits: c.trend.limits(), yMin: tg ? tg.eng_min : undefined, yMax: tg ? tg.eng_max : undefined, height: 240,
+        zoomGroup: `tank-${id}`, resetZoom: !!reset, ...(view ? { view } : {}),
+        onView: (a, b, o) => { const [hf, ht] = card._trRange; dcTrendLoad(card, hf, ht, o && o.reset ? null : [a, b]); } });
+    } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+  }
+
+  function renderKeyPoints() {
+    const box = $("keyPoints");
+    if (!box || !live) return;
+    if (!box._built) {
+      box._built = true;
+      box.classList.add("dc-grid");
+      box.innerHTML = DC.map(dcSkeleton).join("");
+      dcWire(box);
+      if (MD.v3 && MD.v3.prefs) MD.v3.prefs().then((p) => dcOrder(box, p && p.card_order)).catch(() => {});
+    }
+    const now = Date.now();
+    box.querySelectorAll(".dc").forEach((el) => {
+      const c = DC_BY[el.dataset.card];
+      let r = null;
+      try { r = c.calc(c); } catch (e) { console.warn("card", c.k, e); }
+      el.hidden = !r;
+      if (!r) return;
+      RANK.forEach((s) => el.classList.toggle(`st-${s}`, s === r.st));
+      setH(slotOf(el, "chip"), chipHTML(r.st));
+      if (c.tankId) lvFigUpdate(slotOf(el, "tank"), tag(c.tankId), TANK_CFG(c.tankId)); else setH(slotOf(el, "fig"), r.fig || "");
+      setH(slotOf(el, "act"), r.act || "");
+      setH(slotOf(el, "sp"), esc(r.sp || "--"));
+      setH(slotOf(el, "sp2"), esc(r.sp2 || "--"));
+      setH(slotOf(el, "eqs"), c.eqs.map(eqItem).join(""));
+      setH(slotOf(el, "more"), r.more || "");
+      if (el._rp && el.classList.contains("open") && el._rp.key !== "custom" && now - (el._trAt || 0) > 60000
+        && !(MDChart.getView && MDChart.getView(`tank-${c.trend.tag}`))) el._rp.refresh();   // not while zoomed in
+    });
+  }
+  // pencil beside a set point summary: open Set points at the matching section (editing stays there)
+  let spTarget = null;
+  function gotoSp(id) {
+    spTarget = id;
+    if (location.hash === "#setpoints") spScroll(); else location.hash = "#setpoints";
+  }
+  function spScroll() {
+    if (!spTarget) return;
+    const el = document.getElementById(spTarget);
+    if (!el || el.closest(".hidden")) return;        // built / shown on the next render
+    spTarget = null;
+    // the page may still grow while it is first built: jump after it settles, then correct once more
+    setTimeout(() => {
+      el.scrollIntoView({ behavior: "auto", block: "start" });
+      setTimeout(() => { if (Math.abs(el.getBoundingClientRect().top - 16) > 24) el.scrollIntoView({ behavior: "auto", block: "start" }); }, 400);
+      el.classList.add("sp-flash");
+      setTimeout(() => el.classList.remove("sp-flash"), 1800);
+    }, 150);
+  }
   function lampChip(id, label) {
     const v = sw(id);
     return `<span class="kp-eq ${v == null ? "unk" : v ? "lamp" : "stop"}" title="Float switch ${v == null ? "no data" : v ? "ON" : "OFF"}"><i></i>${esc(label)}</span>`;
@@ -325,6 +686,7 @@
   // ---------- plant areas = mimic sheets ----------
   const AREAS = [
     { id: "overall", name: "Overall plant", eq: [], overall: true },
+    // v3 (SC04): no separate "3D plant" tab - 3D is the 2D / 3D switch beside the mimic heading (SHEETS.d3)
     { id: "sludge", name: "Sludge & filtrate", eq: ["AGIT", "OP_P1A", "OP_P1B", "MV_01", "OP_P5A", "OP_P5B"] },
     { id: "volute", name: "Volute press", eq: ["PCP"] },
     { id: "raw", name: "Raw water", eq: ["OP_P6A", "OP_P6B", "OP_P14", "OP_P15"] },
@@ -339,9 +701,11 @@
     const motors = list.filter((e) => e.type === "motor");
     const run = motors.filter((e) => ["RUNNING", "STARTING"].includes(e.status)).length;
     const trip = list.filter((e) => ["TRIP", "FAULT"].includes(e.status)).length;
+    const nod = motors.filter((e) => e.status === "UNKNOWN").length;      // no data: not counted as stopped
     return `<button class="kp-area ${trip ? "trip" : run ? "run" : ""}${a.overall ? " all" : ""}" data-sheet="${a.id}">
       <span class="ka-n">${esc(a.overall ? "Plant overview" : a.name)}</span>
-      <span class="ka-s">${motors.length ? `<b class="num">${run}</b>/${motors.length} running` : "Level switches"}${trip ? ` · <b class="t">${trip} tripped</b>` : ""}</span>
+      <span class="ka-s">${!motors.length ? "Level switches" : nod === motors.length ? `No data (${motors.length} machines)`
+        : `<b class="num">${run}</b>/${motors.length} running${nod ? ` · ${nod} no data` : ""}`}${trip ? ` · <b class="t">${trip} tripped</b>` : ""}</span>
       <span class="ka-go">Mimic →</span></button>`;
   }
 
@@ -349,38 +713,60 @@
   // MIMIC - SVG process sheets. Built once per sheet; live values are patched in place.
   // ======================================================================================
   const W = 1000, H = 560;
+  // v3 (SC04): label scale of the sheet being drawn. Text is 15 user units on the area sheets (≥ 12 px on screen at fit
+  // on a 1366 px window: the 1240-unit sheet is drawn ≈ 1000 px wide) and 15 × 1.3 on the 1600-unit overall sheet.
+  // Boxes that hold text (lamps, chips, readouts, badges) are sized with the same factor.
+  let FS = 1;
+  const T = (u) => u * FS;                              // a size in "label units" of the current sheet
+  const tw = (s, u = 15, k = 0.6) => String(s).length * u * k * FS;   // estimated text width (bold ≈ 0.6 em)
+  // pipes are collected while a sheet is drawn; their flow chevrons are added afterwards (sheetSVG), placed clear of
+  // the valves, gauges and labels registered in OB
+  let PIPES = [], OB = [], OY = 0;
+  const ob = (x1, y1, x2, y2) => { OB.push([Math.min(x1, x2), Math.min(y1, y2) + OY, Math.max(x1, x2), Math.max(y1, y2) + OY]); return ""; };
+  // part of a sheet moved down by dy (keeps its own coordinates; obstacles are registered at the moved position)
+  function shiftY(dy, fn) { OY += dy; const s = fn().join(""); OY -= dy; return `<g transform="translate(0 ${dy})">${s}</g>`; }
   // drawing primitives (all return SVG strings)
   const P = {
-    pipe(d, kind, flow = []) {
-      // arrow at the end of the line shows the flow direction
-      return `<path class="pp k-${kind}" d="${d}" marker-end="url(#ar-${kind})"/><path class="pf k-${kind}" d="${d}" data-flow="${flow.join(",")}"/>`;
+    // flow = IO machines that move liquid in this line (any one running); o.need = conditions that must also hold:
+    // a valve id (must be confirmed open) or "sw:<signal>" (must not be OFF). Lines without machines never animate.
+    // Lines are drawn source → destination: the arrow at the end and the chevrons along long runs show that direction.
+    pipe(d, kind, flow = [], o = {}) {
+      PIPES.push({ d, kind, arrows: o.arrows !== false, oy: OY });
+      return `<path class="pp k-${kind}" d="${d}" marker-end="url(#ar-${kind})"/><path class="pf k-${kind}" d="${d}" data-flow="${flow.join(",")}"${o.need ? ` data-need="${o.need.join(",")}"` : ""}/><!--AR${PIPES.length - 1}-->`;
     },
     tank(x, y, w, h, o = {}) {
       const id = o.level ? `data-lvl="${o.level}"` : o.sw ? `data-swl="${o.sw.map((s) => `${s.id}:${s.at}`).join(",")}"` : "";
       let s = `<g class="tank${o.sw && !o.level ? " ind" : ""}"><rect class="t-body" x="${x}" y="${y}" width="${w}" height="${h}" rx="${o.r ?? 6}"/>
         <clipPath id="cl${x}_${y}"><rect x="${x + 3}" y="${y + 3}" width="${w - 6}" height="${h - 6}" rx="${Math.max(0, (o.r ?? 6) - 2)}"/></clipPath>
         <rect class="t-fill ${o.fluid || "water"}" clip-path="url(#cl${x}_${y})" x="${x}" y="${y + h}" width="${w}" height="0" ${id} data-y0="${y}" data-h="${h}"/>`;
-      if (o.label) s += `<text class="t-lbl" x="${x + w / 2}" y="${y + h + (o.labelDy ?? 18)}" text-anchor="middle">${esc(o.label)}</text>`;
-      const rx = x + (o.readX ?? w / 2);                 // level readout position (moved aside when pump risers pass through)
-      if (o.level) s += `<g class="t-read" data-tag="${o.level}"><rect x="${rx - 44}" y="${y + 10}" width="88" height="34" rx="6"/>
-        <text class="tr-v num" x="${rx}" y="${y + 26}" text-anchor="middle" data-val="${o.level}">--</text>
-        <text class="tr-p" x="${rx}" y="${y + 39}" text-anchor="middle" data-pct="${o.level}">--</text></g>`;
-      (o.sw || []).forEach((sv, i) => (s += P.lamp(x + w + 8, y + h * sv.at, sv.id, sv.label)));
+      if (o.label) s += `<text class="t-lbl" x="${o.labelX ?? x + w / 2}" y="${y + h + (o.labelDy ?? T(18))}" text-anchor="${o.labelAnchor || "middle"}">${esc(o.label)}</text>`;
+      // switch / transmitter tag no under the name, shown when zoomed in (the area sheets carry it too)
+      if (o.sub) s += `<text class="note lod" x="${o.labelX ?? x + w / 2}" y="${y + h + (o.labelDy ?? T(18)) + T(15)}" text-anchor="${o.labelAnchor || "middle"}">${esc(o.sub)}</text>`;
+      s += ob(x, y, x + w, y + h);
+      // v3 (SC04): level transmitter tanks only - actual level and % in large text in the middle of the tank
+      // (moved sideways with readX where pump risers pass through); switch-only tanks get no number (none is measured)
+      const rx = x + (o.readX ?? w / 2), rw = T(124), rh = T(50), ry = y + (o.readY ?? h / 2) - rh / 2;
+      const rd = !o.level ? "" : `<g class="t-read" data-tag="${o.level}"><rect x="${rx - rw / 2}" y="${ry}" width="${rw}" height="${rh}" rx="${T(8)}"/>
+        <text class="tr-v num" x="${rx}" y="${ry + T(23)}" text-anchor="middle" data-val="${o.level}">--</text>
+        <text class="tr-p num" x="${rx}" y="${ry + T(42)}" text-anchor="middle" data-pct="${o.level}">--</text></g>` + ob(rx - rw / 2, ry, rx + rw / 2, ry + rh);
+      (o.sw || []).forEach((sv, i) => (s += P.lamp(o.lampX ?? x + w + 8, y + h * sv.at, sv.id, sv.label)));   // lampX: lamps on the other side
       if (o.level) {                                    // HH / H / L / LL: lamps beside the tank + dashed set-point lines inside
-        [0.1, 0.3, 0.7, 0.9].forEach((at, i) => {
+        (o.lvAt || [0.1, 0.3, 0.7, 0.9]).forEach((at, i) => {   // lvAt: lamp heights (moved up where a bottom mixer sits)
           const [k, l] = LV_KEYS[i];
           s += P.lvLamp(x + w + 8, y + h * at, `${o.level}:${k}`, l);
           s += `<g class="lv-ln" data-lvln="${o.level}:${k}" data-y0="${y}" data-h="${h}"><line x1="${x + 4}" x2="${x + w - 4}" y1="${y + h}" y2="${y + h}"/>
             <text x="${x + w - 8}" y="${y + h - 3}" text-anchor="end">${l}</text></g>`;
         });
       }
-      return s + "</g>";
+      return s + rd + "</g>";                            // readout last: drawn over the dashed set-point lines
     },
     lvLamp(x, y, key, label) {                          // level set-point lamp, lit from the transmitter value
-      return `<g class="lamp lvl" data-lv="${key}"><rect x="${x}" y="${y - 9}" width="30" height="18" rx="9"/><text x="${x + 15}" y="${y + 4}" text-anchor="middle">${esc(label)}</text></g>`;
+      const w = Math.max(T(40), tw(label) + T(14)), h = T(22);
+      return `<g class="lamp lvl" data-lv="${key}"><rect x="${x}" y="${y - h / 2}" width="${w}" height="${h}" rx="${h / 2}"/><text x="${x + w / 2}" y="${y + T(5)}" text-anchor="middle">${esc(label)}</text></g>` + ob(x, y - h / 2, x + w, y + h / 2);
     },
     lamp(x, y, id, label) {
-      return `<g class="lamp" data-sw="${id}"><rect x="${x}" y="${y - 9}" width="30" height="18" rx="9"/><text x="${x + 15}" y="${y + 4}" text-anchor="middle">${esc(label)}</text></g>`;
+      const w = Math.max(T(40), tw(label) + T(14)), h = T(22);
+      return `<g class="lamp" data-sw="${id}"><rect x="${x}" y="${y - h / 2}" width="${w}" height="${h}" rx="${h / 2}"/><text x="${x + w / 2}" y="${y + T(5)}" text-anchor="middle">${esc(label)}</text></g>` + ob(x, y - h / 2, x + w, y + h / 2);
     },
     pump(x, y, id, o = {}) {
       const lbl = o.label ?? PID[id] ?? id;
@@ -389,6 +775,7 @@
       const fins = [-18, -14, -10, -6].map((d) => `<line class="pm-fin" x1="${x + d}" y1="${y - 7}" x2="${x + d}" y2="${y + 7}"/>`).join("");
       // o.flip mirrors the set (suction on the right); labels stay outside the scaled group so they never mirror
       const up = o.below === false;
+      const ty = up ? y - 21 - T(3.75) : y + 20 + T(11.25);   // tag under the base plate (or above the nozzle), clear of the symbol
       return `<g class="eq pump" data-eq="${id}" tabindex="0"><g transform="translate(${x} ${y}) scale(${o.flip ? -1.2 : 1.2} 1.2) translate(${-x} ${-y})">
         <rect class="pm-base" x="${x - 25}" y="${y + 10}" width="48" height="4" rx="1"/>
         <rect class="pm-foot" x="${x - 19}" y="${y + 7}" width="5" height="4"/><rect class="pm-foot" x="${x - 9}" y="${y + 7}" width="5" height="4"/>
@@ -401,17 +788,19 @@
         <circle class="pm-vol" cx="${x + 10}" cy="${y}" r="8.5"/>
         <g class="spin" style="transform-origin:${x + 10}px ${y}px"><path class="pm-imp" d="M${x + 10} ${y} l5 -3 M${x + 10} ${y} l-2.5 5.5 M${x + 10} ${y} l-3 -4.5"/></g>
         <circle class="pm-led" cx="${x - 12}" cy="${y - 13}" r="3.5"/></g>
-        <text class="eq-t pm-t" x="${x}" y="${y + (up ? -29 : 36)}" text-anchor="middle">${esc(lbl)}</text>
-        ${o.name !== false && PUMP_NAME[id] ? `<text class="eq-n pm-n" x="${x}" y="${y + (up ? -41 : 48)}" text-anchor="middle">${esc(PUMP_NAME[id])}</text>` : ""}</g>`;
+        <text class="eq-t pm-t" x="${x}" y="${ty}" text-anchor="middle">${esc(lbl)}</text>
+        ${o.name !== false && PUMP_NAME[id] ? `<text class="eq-n pm-n" x="${x}" y="${up ? ty - T(14.25) - 2 : ty + T(14)}" text-anchor="middle">${esc(PUMP_NAME[id])}</text>` : ""}</g>`
+        + ob(x - 32, y - 20, x + 28, y + 17);
     },
     // submersible pump (P&ID: sludge / filtrate tank pumps, borewell pumps): vertical body standing on the floor at (x, y),
     // motor at the bottom (coloured by state), intake screen, discharge flange on top at y - 50; name beside it
     subPump(x, y, id, o = {}) {
       const tagTxt = o.label ?? PID[id] ?? id, nm = PUMP_NAME[id] || "", side = o.side || "right";
-      const bw = 8 + Math.max(tagTxt.length * 6.6, nm.length * 5.2);
+      // tag on a light plate (readable over the tank fill); the descriptive name under it shows when zoomed in
+      const bw = 8 + tw(tagTxt);
       const below = side === "below";                    // label under the pump (borewell pumps)
       const tx = below ? x : side === "left" ? x - 14 : x + 14, anchor = below ? "middle" : side === "left" ? "end" : "start";
-      const bx = below ? x - bw / 2 : side === "left" ? tx - bw + 4 : tx - 4, ly = below ? y + 44 : y;
+      const bx = below ? x - bw / 2 : side === "left" ? tx - bw + 4 : tx - 4, ly = below ? y + 44 : y + (o.dy || 0);
       const fins = [-26, -20, -14].map((d) => `<line class="pm-fin" x1="${x - 8}" y1="${y + d}" x2="${x + 8}" y2="${y + d}"/>`).join("");
       return `<g class="eq pump sub" data-eq="${id}" tabindex="0">
         <rect class="pm-noz" x="${x - 5}" y="${y - 50}" width="10" height="6" rx="1"/>
@@ -420,9 +809,10 @@
         <rect class="pm-motor" x="${x - 9}" y="${y - 34}" width="18" height="28" rx="4"/>${fins}
         <rect class="pm-base" x="${x - 11}" y="${y - 6}" width="22" height="6" rx="1.5"/>
         <circle class="pm-led" cx="${x}" cy="${y - 10}" r="2.6"/>
-        <rect class="pm-lb" x="${bx}" y="${ly - 41}" width="${bw}" height="${nm ? 27 : 16}" rx="4"/>
-        <text class="eq-t" x="${tx}" y="${ly - 29}" text-anchor="${anchor}">${esc(tagTxt)}</text>
-        ${nm ? `<text class="eq-n" x="${tx}" y="${ly - 18}" text-anchor="${anchor}">${esc(nm)}</text>` : ""}</g>`;
+        <rect class="pm-lb" x="${bx}" y="${ly - 30 - T(15)}" width="${bw}" height="${T(20)}" rx="4"/>
+        <text class="eq-t" x="${tx}" y="${ly - 30}" text-anchor="${anchor}">${esc(tagTxt)}</text>
+        ${nm ? `<text class="eq-n" x="${tx}" y="${ly - 28 + T(12)}" text-anchor="${anchor}">${esc(nm)}</text>` : ""}</g>`
+        + ob(x - 11, y - 50, x + 11, y) + ob(bx, ly - 30 - T(15), bx + bw, ly - 30 + T(5));
     },
     ground(x1, x2, y, label = "ground level") {         // ground line with hatching (borewell pumps hang below it)
       let h = "";
@@ -433,47 +823,57 @@
     fan(x, y, id, label) {
       return `<g class="eq fan" data-eq="${id}" tabindex="0"><circle cx="${x}" cy="${y}" r="15"/>
         <g class="spin" style="transform-origin:${x}px ${y}px"><path class="eq-ic" d="M${x} ${y} l0 -11 a5 5 0 0 1 5 5 Z M${x} ${y} l11 0 a5 5 0 0 1 -5 5 Z M${x} ${y} l0 11 a5 5 0 0 1 -5 -5 Z M${x} ${y} l-11 0 a5 5 0 0 1 5 -5 Z"/></g>
-        <text class="eq-t" x="${x}" y="${y - 22}" text-anchor="middle">${esc(label ?? PID[id] ?? id)}</text></g>`;
+        <text class="eq-t" x="${x}" y="${y - 19 - T(3.75)}" text-anchor="middle">${esc(label ?? PID[id] ?? id)}</text></g>` + ob(x - 16, y - 16, x + 16, y + 16);
     },
     mixer(x, y, id, label) {
       return `<g class="eq mixer" data-eq="${id}" tabindex="0"><line x1="${x}" y1="${y - 40}" x2="${x}" y2="${y}" class="shaft"/>
         <g class="spin" style="transform-origin:${x}px ${y}px"><path class="eq-ic" d="M${x - 14} ${y - 4} L${x + 14} ${y + 4} M${x - 14} ${y + 4} L${x + 14} ${y - 4}"/></g>
         <circle cx="${x}" cy="${y - 44}" r="9"/><text class="eq-t" x="${x + 14}" y="${y - 40}">${esc(label ?? PID[id] ?? id)}</text></g>`;
     },
+    // on/off valve. v3 (SC05): body colour = position confirmed by the limit switches (green open / grey closed);
+    // a commanded position without confirmation = outline only + "cmd"; nothing known = dashed + "?" (v-cue, set live)
     valve(x, y, id, o = {}) {
-      return `<g class="eq valve" data-eq="${id}" tabindex="0"><path d="M${x - 11} ${y - 8} L${x + 11} ${y + 8} L${x + 11} ${y - 8} L${x - 11} ${y + 8} Z"/>
+      const ly = o.below ? y + 10 + T(11.25) : y - 22 - T(3.75);
+      return `<g class="eq valve" data-eq="${id}" tabindex="0"><path class="v-body" d="M${x - 11} ${y - 8} L${x + 11} ${y + 8} L${x + 11} ${y - 8} L${x - 11} ${y + 8} Z"/>
         <line x1="${x}" y1="${y}" x2="${x}" y2="${y - 14}" class="stem"/><rect x="${x - 7}" y="${y - 20}" width="14" height="7" rx="1" class="act"/>
-        <text class="eq-t" x="${x}" y="${y + (o.below ? 24 : -26)}" text-anchor="middle">${esc(o.label ?? PID[id] ?? id)}</text></g>`;
+        <text class="v-cue" x="${o.below ? x + 11 : x}" y="${o.below ? y - 13 : y + 10 + T(11.25)}" text-anchor="${o.below ? "start" : "middle"}"></text>
+        <text class="eq-t" x="${x}" y="${ly}" text-anchor="middle">${esc(o.label ?? PID[id] ?? id)}</text></g>` + ob(x - 12, y - 21, x + 12, y + 9);
     },
     tx(x, y, id, label) {                                 // transmitter bubble, tag no above, live value below
+      const bw = T(100), bh = T(24);
       return `<g class="tx" data-tag="${id}" tabindex="0">
         <circle cx="${x}" cy="${y}" r="13"/><text class="tx-i" x="${x}" y="${y + 4}" text-anchor="middle">${esc(label.split("-")[0])}</text>
-        <rect class="tx-box" x="${x - 44}" y="${y + 17}" width="88" height="22" rx="5"/>
-        <text class="tx-v num" x="${x}" y="${y + 32}" text-anchor="middle" data-val="${id}">--</text>
-        <text class="tx-n" x="${x}" y="${y - 18}" text-anchor="middle">${esc(TAG_PID[id] || label)}</text>
-        <text class="tx-sp" x="${x}" y="${y + 51}" text-anchor="middle" data-spv="alm:${id}" data-pre="alarm SP "></text></g>`;
+        <rect class="tx-box" x="${x - bw / 2}" y="${y + 17}" width="${bw}" height="${bh}" rx="5"/>
+        <text class="tx-v num" x="${x}" y="${y + 17 + bh / 2 + T(5)}" text-anchor="middle" data-val="${id}">--</text>
+        <text class="tx-n" x="${x}" y="${y - 15 - T(3.75)}" text-anchor="middle">${esc(TAG_PID[id] || label)}</text>
+        <text class="tx-sp" x="${x}" y="${y + 19 + bh + T(10)}" text-anchor="middle" data-spv="alm:${id}" data-pre="alarm SP "></text></g>`
+        + ob(x - bw / 2, y - 14, x + bw / 2, y + 17 + bh);
     },
     // compact live value with its alarm set point underneath (overall sheet)
     chipSP(x, y, id, label, w = 150) {
-      return `<g class="chip sp" data-tag="${id}" tabindex="0"><rect x="${x - w / 2}" y="${y - 13}" width="${w}" height="30" rx="6"/>
-        <text class="ch-l" x="${x - w / 2 + 7}" y="${y + 1}">${esc(label)}</text>
-        <text class="ch-v num" x="${x + w / 2 - 7}" y="${y + 1}" text-anchor="end" data-vals="${id}">--</text>
-        <text class="tx-sp" x="${x - w / 2 + 7}" y="${y + 13}" data-spv="alm:${id}" data-pre="alarm SP "></text></g>`;
+      w = Math.max(w, tw(label) + T(92));
+      const h = T(26);
+      return `<g class="chip sp" data-tag="${id}" tabindex="0"><rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="6"/>
+        <text class="ch-l" x="${x - w / 2 + 7}" y="${y + T(5)}">${esc(label)}</text>
+        <text class="ch-v num" x="${x + w / 2 - 7}" y="${y + T(5)}" text-anchor="end" data-vals="${id}">--</text>
+        <text class="tx-sp" x="${x - w / 2 + 7}" y="${y + h / 2 + T(11)}" data-spv="alm:${id}" data-pre="alarm SP "></text></g>` + ob(x - w / 2, y - h / 2, x + w / 2, y + h / 2);
     },
     // set points read from the PLC (entered on the HMI); key: lv:<LT>:<hh|h|l|ll> · aux:<tag> · alm:<tag> (its _ALM_SP)
     spCard(x, y, title, rows) {
-      return `<g class="spc"><rect x="${x}" y="${y}" width="200" height="${26 + rows.length * 15}" rx="6"/>
-        <text class="sp-h" x="${x + 8}" y="${y + 16}">${esc(title)}</text>
-        ${rows.map(([l, k], i) => `<text class="sp-l" x="${x + 8}" y="${y + 33 + i * 15}">${esc(l)}</text><text class="sp-v num" x="${x + 192}" y="${y + 33 + i * 15}" text-anchor="end" data-spv="${k}">--</text>`).join("")}</g>`;
+      const w = Math.max(tw(title) + T(16), Math.max(...rows.map(([l]) => tw(l, 15, 0.53))) + T(120)), rh = T(20);
+      return `<g class="spc"><rect x="${x}" y="${y}" width="${w}" height="${T(30) + rows.length * rh}" rx="6"/>
+        <text class="sp-h" x="${x + 8}" y="${y + T(20)}">${esc(title)}</text>
+        ${rows.map(([l, k], i) => `<text class="sp-l" x="${x + 8}" y="${y + T(42) + i * rh}">${esc(l)}</text><text class="sp-v num" x="${x + w - 8}" y="${y + T(42) + i * rh}" text-anchor="end" data-spv="${k}">--</text>`).join("")}</g>`
+        + ob(x, y, x + w, y + T(30) + rows.length * rh);
     },
     box(x, y, w, h, text, kind = "") {
-      const lines = String(text).split("\n");
+      const lines = String(text).split("\n"), lh = T(18);
       return `<g class="dest ${kind}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>${lines.map((l, i) =>
-        `<text x="${x + w / 2}" y="${y + h / 2 + 4 + (i - (lines.length - 1) / 2) * 14}" text-anchor="middle">${esc(l)}</text>`).join("")}</g>`;
+        `<text x="${x + w / 2}" y="${y + h / 2 + T(5) + (i - (lines.length - 1) / 2) * lh}" text-anchor="middle">${esc(l)}</text>`).join("")}</g>` + ob(x, y, x + w, y + h);
     },
     // induced-draft cooling tower (footprint x..x+120, y-24..y+144): fan stack on top (fan drawn at x+60, y-11),
     // drift eliminator, spray, fill pack, air-inlet louvers and the cold-water basin at the bottom
-    tower(x, y, label) {
+    tower(x, y, label, sub, dx = 0) {                 // dx: name moved sideways (clear of a pipe)
       let fill = "", louv = "", spray = "";
       for (let i = 0; i < 10; i++) fill += `M${x + 12 + i * 10} ${y + 44} l10 34 M${x + 22 + i * 10} ${y + 44} l-10 34 `;
       for (let i = 0; i < 4; i++) louv += `M${x + 4 - i * 1.2} ${y + 88 + i * 8} L${x + 116 + i * 1.2} ${y + 88 + i * 8} `;
@@ -490,22 +890,29 @@
         <rect class="ct-basin" x="${x - 6}" y="${y + 116}" width="132" height="28" rx="3"/>
         <rect class="ct-water" x="${x - 3}" y="${y + 122}" width="126" height="19" rx="2"/>
         <path class="ct-wave" d="M${x} ${y + 125} q8 -3 16 0 t16 0 t16 0 t16 0 t16 0 t16 0 t16 0 t16 0"/>
-        <text class="t-lbl" x="${x + 60}" y="${y + 162}" text-anchor="middle">${esc(label)}</text></g>`;
+        <text class="t-lbl" x="${x + 60 + dx}" y="${y + 150 + T(12)}" text-anchor="middle">${esc(label)}</text>
+        ${sub ? `<text class="note lod" x="${x + 60 + dx}" y="${y + 150 + T(27)}" text-anchor="middle">${esc(sub)}</text>` : ""}</g>` + ob(x - 6, y - 24, x + 126, y + 144);
     },
     hx(x, y, label) {
       return `<g class="hx"><rect x="${x}" y="${y}" width="44" height="90" rx="5"/><path d="M${x + 8} ${y + 14} L${x + 36} ${y + 14} M${x + 8} ${y + 32} L${x + 36} ${y + 32} M${x + 8} ${y + 50} L${x + 36} ${y + 50} M${x + 8} ${y + 68} L${x + 36} ${y + 68}"/>
         <text class="t-lbl" x="${x + 22}" y="${y + 108}" text-anchor="middle">${esc(label)}</text></g>`;
     },
-    text(x, y, s, cls = "note") { return `<text class="${cls}" x="${x}" y="${y}">${esc(s)}</text>`; },
+    // free text; anchor "end" / "middle" optional; registered so flow chevrons keep off it
+    text(x, y, s, cls = "note", anchor = "start") {
+      const w = tw(s, 15, cls.includes("note") ? 0.53 : 0.6), x1 = anchor === "end" ? x - w : anchor === "middle" ? x - w / 2 : x;
+      return `<text class="${cls}" x="${x}" y="${y}"${anchor !== "start" ? ` text-anchor="${anchor}"` : ""}>${esc(s)}</text>` + ob(x1, y - T(12), x1 + w, y + T(4));
+    },
     chip(x, y, ids, label, w = 150) {                   // compact live readout (one or two values), click for the trend
-      return `<g class="chip" data-tag="${ids[0]}" tabindex="0"><rect x="${x - w / 2}" y="${y - 11}" width="${w}" height="22" rx="6"/>
-        <text class="ch-l" x="${x - w / 2 + 7}" y="${y + 4}">${esc(label)}</text>
-        <text class="ch-v num" x="${x + w / 2 - 7}" y="${y + 4}" text-anchor="end" data-vals="${ids.join(",")}">--</text></g>`;
+      w = Math.max(w, tw(label) + T(92));
+      const h = T(26);
+      return `<g class="chip" data-tag="${ids[0]}" tabindex="0"><rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="6"/>
+        <text class="ch-l" x="${x - w / 2 + 7}" y="${y + T(5)}">${esc(label)}</text>
+        <text class="ch-v num" x="${x + w / 2 - 7}" y="${y + T(5)}" text-anchor="end" data-vals="${ids.join(",")}">--</text></g>` + ob(x - w / 2, y - h / 2, x + w / 2, y + h / 2);
     },
 
     // ---------- P&ID detail symbols (area sheets follow the client P&ID R1, 12-12-2025) ----------
     // package equipment (Norsen / PAR scope) is not wired to this panel: it is drawn with data-run, i.e. shown
-    // running while the listed panel motors run (indicative only, said in its tooltip)
+    // for reference only: never animated (no running state is guessed - user request 2026-11-04)
     head(id, cls, run, why) {
       if (id) return `class="eq ${cls}" data-eq="${id}" tabindex="0"`;
       return `class="pk ${cls}" data-run="${(run || []).join(",")}" data-why="${esc(why || "")}"`;
@@ -513,26 +920,27 @@
     hv(x, y, vert = false) {                          // manual valve (bow-tie) sitting on the pipe
       const d = vert ? `M${x - 6} ${y - 7} L${x + 6} ${y - 7} L${x - 6} ${y + 7} L${x + 6} ${y + 7} Z`
         : `M${x - 7} ${y - 6} L${x - 7} ${y + 6} L${x + 7} ${y - 6} L${x + 7} ${y + 6} Z`;
-      return `<path class="hv" d="${d}"><title>Manual valve</title></path>`;
+      return `<path class="hv" d="${d}"><title>Manual valve</title></path>` + ob(x - 8, y - 8, x + 8, y + 8);
     },
     nrv(x, y, dir = "r") {                            // non-return valve, triangle points the flow direction
       const rot = { r: 0, d: 90, l: 180, u: 270 }[dir] || 0;
       return `<g class="nrv" transform="rotate(${rot} ${x} ${y})"><path d="M${x - 7} ${y - 6} L${x + 4} ${y} L${x - 7} ${y + 6} Z"/>
-        <line x1="${x + 5}" y1="${y - 7}" x2="${x + 5}" y2="${y + 7}"/><title>Non-return valve</title></g>`;
+        <line x1="${x + 5}" y1="${y - 7}" x2="${x + 5}" y2="${y + 7}"/><title>Non-return valve</title></g>` + ob(x - 8, y - 8, x + 8, y + 8);
     },
     strn(x, y) {                                       // Y-strainer
-      return `<g class="strn"><path d="M${x - 8} ${y - 5} L${x + 8} ${y - 5} L${x + 8} ${y + 5} L${x - 8} ${y + 5} Z M${x - 2} ${y + 5} L${x + 5} ${y + 14} L${x + 9} ${y + 11} L${x + 4} ${y + 5}"/><title>Strainer</title></g>`;
+      return `<g class="strn"><path d="M${x - 8} ${y - 5} L${x + 8} ${y - 5} L${x + 8} ${y + 5} L${x - 8} ${y + 5} Z M${x - 2} ${y + 5} L${x + 5} ${y + 14} L${x + 9} ${y + 11} L${x + 4} ${y + 5}"/><title>Strainer</title></g>` + ob(x - 9, y - 6, x + 10, y + 15);
     },
     gauge(x, y, tagNo, kind = "PG", down = false) {  // local gauge (PG / TG / PI) - read on site, no PLC signal
       const sy = down ? y - 10 : y + 10, ey = down ? y - 24 : y + 24;
       return `<g class="gauge"><line x1="${x}" y1="${sy}" x2="${x}" y2="${ey}"/><circle cx="${x}" cy="${y}" r="10"/>
         <path class="g-nd" d="M${x} ${y} L${x + 5} ${y - 5}"/><text class="g-k" x="${x}" y="${y + 7}" text-anchor="middle">${kind}</text>
         <text class="g-n" x="${x}" y="${down ? y + 22 : y - 14}" text-anchor="middle">${esc(tagNo)}</text>
-        <title>${tagNo ? `${esc(tagNo)} - ` : ""}local ${kind === "TG" ? "temperature" : "pressure"} gauge, read on site (no signal to the PLC)</title></g>`;
+        <title>${tagNo ? `${esc(tagNo)} - ` : ""}local ${kind === "TG" ? "temperature" : "pressure"} gauge, read on site (no signal to the panel)</title></g>`
+        + ob(x - 11, Math.min(y - 11, sy, ey), x + 11, Math.max(y + 11, sy, ey));
     },
     pkInst(x, y, kind, label) {                       // package instrument bubble (FT, LT, LS) without a signal here
       return `<g class="gauge pki"><circle cx="${x}" cy="${y}" r="12"/><text class="g-k" x="${x}" y="${y + 3.5}" text-anchor="middle">${kind}</text>
-        ${label ? `<text class="g-n" x="${x}" y="${y - 16}" text-anchor="middle">${esc(label)}</text>` : ""}<title>${esc(kind)} - package instrument, not wired to this panel</title></g>`;
+        ${label ? `<text class="g-n" x="${x}" y="${y - 16}" text-anchor="middle">${esc(label)}</text>` : ""}<title>${esc(kind)} - package instrument, not wired to this panel</title></g>` + ob(x - 13, y - 13, x + 13, y + 13);
     },
     // top-mounted agitator standing on a tank roof at (x, y): motor, gearbox, shaft, propeller at y + depth.
     // The two blade pairs squash in turn, which reads as a propeller turning when seen from the side.
@@ -543,8 +951,8 @@
         <line class="ag-fin" x1="${x - 8}" y1="${y - 40}" x2="${x + 8}" y2="${y - 40}"/><line class="ag-fin" x1="${x - 8}" y1="${y - 34}" x2="${x + 8}" y2="${y - 34}"/><line class="ag-fin" x1="${x - 8}" y1="${y - 28}" x2="${x + 8}" y2="${y - 28}"/>
         <rect class="ag-gb" x="${x - 8}" y="${y - 21}" width="16" height="13" rx="2"/><rect class="ag-fl" x="${x - 15}" y="${y - 8}" width="30" height="6" rx="1"/>
         <line class="shaft" x1="${x}" y1="${y - 2}" x2="${x}" y2="${py}"/>${bl("p1")}${bl("p2")}<circle class="ag-hub" cx="${x}" cy="${py}" r="3.5"/>
-        ${o.label ? `<text class="eq-t" x="${x + 16}" y="${y - 32}">${esc(o.label)}</text>` : ""}${o.sub ? `<text class="eq-n" x="${x + 16}" y="${y - 22}">${esc(o.sub)}</text>` : ""}
-        ${o.id ? "" : `<title>${esc(o.why || "")}</title>`}</g>`;
+        ${o.label ? `<text class="eq-t" x="${x + 16}" y="${y - 32}">${esc(o.label)}</text>` : ""}${o.sub ? `<text class="eq-n" x="${x + 16}" y="${y - 30 + T(13)}">${esc(o.sub)}</text>` : ""}
+        ${o.id ? "" : `<title>${esc(o.why || "")}</title>`}</g>` + ob(x - 15, y - 48, x + 15, y);
     },
     // side-entry propeller mixer through the right-hand tank wall at (x, y) (P&ID sheet 1: F1 / OP-A1)
     sideMix(x, y, o = {}) {
@@ -555,7 +963,8 @@
         <rect class="ag-mot" x="${x + 20}" y="${y - 11}" width="30" height="22" rx="4"/>
         <line class="ag-fin" x1="${x + 27}" y1="${y - 8}" x2="${x + 27}" y2="${y + 8}"/><line class="ag-fin" x1="${x + 34}" y1="${y - 8}" x2="${x + 34}" y2="${y + 8}"/><line class="ag-fin" x1="${x + 41}" y1="${y - 8}" x2="${x + 41}" y2="${y + 8}"/>
         <circle class="pm-led" cx="${x + 35}" cy="${y - 17}" r="3"/>
-        ${o.label ? `<text class="eq-t" x="${x + 56}" y="${y - 2}">${esc(o.label)}</text>` : ""}${o.sub ? `<text class="eq-n" x="${x + 56}" y="${y + 10}">${esc(o.sub)}</text>` : ""}</g>`;
+        ${o.below ? `${o.label ? `<text class="eq-t" x="${x + 10}" y="${y + 14 + T(11.25)}" text-anchor="start">${esc(o.label)}</text>` : ""}${o.sub ? `<text class="eq-n" x="${x + 35}" y="${y + 16 + T(11.25) + T(13)}" text-anchor="middle">${esc(o.sub)}</text>` : ""}`
+          : `${o.label ? `<text class="eq-t" x="${x + 56}" y="${y + T(4)}">${esc(o.label)}</text>` : ""}${o.sub ? `<text class="eq-n" x="${x + 56}" y="${y + T(6) + T(12)}">${esc(o.sub)}</text>` : ""}`}</g>` + ob(x + 2, y - 21, x + 50, y + 14);
     },
     // screw conveyor / screw press drum (volute press): trough x..x+w on centre line y, drive on the right,
     // feed hopper top-right, cake drops out at the left end; the flights travel towards the cake end while running
@@ -572,9 +981,9 @@
         <rect class="ag-gb" x="${x + w}" y="${y - 8}" width="12" height="16" rx="2"/><rect class="ag-mot" x="${x + w + 12}" y="${y - 11}" width="30" height="22" rx="4"/>
         <circle class="pm-led" cx="${x + w + 27}" cy="${y - 17}" r="3"/>
         ${o.spray ? `<g class="spray"><path d="M${x + o.spray - 10} ${y - 22} l-4 8 M${x + o.spray} ${y - 22} l0 8 M${x + o.spray + 10} ${y - 22} l4 8"/></g><rect class="sc-noz" x="${x + o.spray - 12}" y="${y - 27}" width="24" height="5" rx="2"/>` : ""}
-        <text class="eq-t" x="${o.labelAt ? o.labelAt[0] : x + w / 2 - 10}" y="${o.labelAt ? o.labelAt[1] : y + 30}" text-anchor="${o.labelAt ? o.labelAt[2] : "middle"}">${esc(o.label || "")}</text>
-        <text class="eq-n" x="${x + w + 27}" y="${y + 24}" text-anchor="middle">${esc(o.drive ?? "VFD F/R")}</text>
-        ${o.id ? "" : `<title>${esc(o.why || "")}</title>`}</g>`;
+        <text class="eq-t" x="${o.labelAt ? o.labelAt[0] : x + w / 2 - 10}" y="${o.labelAt ? o.labelAt[1] : y + 14 + T(11.25)}" text-anchor="${o.labelAt ? o.labelAt[2] : "middle"}">${esc(o.label || "")}</text>
+        <text class="eq-n" x="${x + w + 27}" y="${y + 13 + T(9)}" text-anchor="middle">${esc(o.drive ?? "VFD F/R")}</text>
+        ${o.id ? "" : `<title>${esc(o.why || "")}</title>`}</g>` + ob(x, y - 30, x + w + 42, y + 22);
     },
     // progressive cavity pump on centre line y: discharge flange at the left end (x - 66), suction housing
     // with the inlet port on top at x + 42, drive on the right; the rotor wave travels while running
@@ -592,8 +1001,8 @@
         <rect class="ag-gb" x="${x + 56}" y="${y - 8}" width="12" height="16" rx="2"/>
         <rect class="pm-motor" x="${x + 68}" y="${y - 11}" width="34" height="22" rx="4"/>
         <circle class="pm-led" cx="${x + 85}" cy="${y - 17}" r="3.2"/>
-        <text class="eq-t" x="${x + 10}" y="${y + 34}" text-anchor="middle">${esc(o.label ?? PID[id] ?? "")}</text>
-        <text class="eq-n" x="${x + 10}" y="${y + 45}" text-anchor="middle">Progressive cavity pump</text></g>`;
+        <text class="eq-t" x="${x + 10}" y="${y + 20 + T(11.25)}" text-anchor="middle">${esc(o.label ?? PID[id] ?? "")}</text>
+        <text class="eq-n" x="${x + 10}" y="${y + 22 + T(11.25) + T(13)}" text-anchor="middle">Progressive cavity pump</text></g>` + ob(x - 68, y - 22, x + 104, y + 18);
     },
     // centrifugal exhaust blower at (x, y): motor on the left, scroll casing, discharge on top (to the vent duct)
     blower(x, y, id, o = {}) {
@@ -604,8 +1013,8 @@
         <circle class="pm-vol" cx="${x}" cy="${y}" r="14"/>
         <g class="spin" style="transform-origin:${x}px ${y}px"><path class="pm-imp" d="M${x} ${y} l9 -5 M${x} ${y} l0 10 M${x} ${y} l-9 -5 M${x} ${y} l9 5 M${x} ${y} l-9 5 M${x} ${y} l0 -10"/></g>
         <circle class="pm-led" cx="${x - 36}" cy="${y - 17}" r="3.2"/>
-        <text class="eq-t" x="${x - 8}" y="${y + 46}" text-anchor="middle">${esc(o.label ?? PID[id] ?? id)}</text>
-        ${o.sub ? `<text class="eq-n" x="${x - 8}" y="${y + 57}" text-anchor="middle">${esc(o.sub)}</text>` : ""}</g>`;
+        <text class="eq-t" x="${x - 8}" y="${y + 32 + T(11.25)}" text-anchor="middle">${esc(o.label ?? PID[id] ?? id)}</text>
+        ${o.sub ? `<text class="eq-n" x="${x - 8}" y="${y + 34 + T(11.25) + T(13)}" text-anchor="middle">${esc(o.sub)}</text>` : ""}</g>` + ob(x - 52, y - 24, x + 30, y + 30);
     },
     // package pump (no panel signal): same picture as P.pump, state follows the listed panel motors
     pkPump(x, y, label, run, why, o = {}) {
@@ -618,8 +1027,8 @@
       for (let i = 10; i < w - 8; i += 5) pl += `M${x + i} ${y + 8} L${x + i} ${y + h - 8} `;
       return `<g class="phe"><rect class="ph-fr" x="${x}" y="${y}" width="${w}" height="${h}" rx="3"/><path class="ph-pl" d="${pl}"/>
         <rect class="ph-end" x="${x}" y="${y}" width="8" height="${h}" rx="2"/><rect class="ph-end" x="${x + w - 8}" y="${y}" width="8" height="${h}" rx="2"/>
-        <text class="t-lbl" x="${x + w / 2}" y="${y + h + 17}" text-anchor="middle">${esc(label)}</text>
-        ${sub ? `<text class="note" x="${x + w / 2}" y="${y + h + 31}" text-anchor="middle">${esc(sub)}</text>` : ""}</g>`;
+        <text class="t-lbl" x="${x + w / 2}" y="${y + h + 4 + T(12)}" text-anchor="middle">${esc(label)}</text>
+        ${sub ? `<text class="note" x="${x + w / 2}" y="${y + h + 6 + T(12) + T(15)}" text-anchor="middle">${esc(sub)}</text>` : ""}</g>` + ob(x, y, x + w, y + h);
     },
     // radiator: finned core with its cooling fan
     radiator(x, y, run, why) {
@@ -628,7 +1037,7 @@
       return `<g class="pk rad" data-run="${(run || []).join(",")}"><rect class="rd-core" x="${x}" y="${y}" width="96" height="60" rx="3"/><path class="rd-fin" d="${fin}"/>
         <circle class="rd-ring" cx="${x + 48}" cy="${y + 30}" r="22"/>
         <g class="spin" style="transform-origin:${x + 48}px ${y + 30}px"><path class="rd-fan" d="M${x + 48} ${y + 30} l0 -18 a7 7 0 0 1 7 7 Z M${x + 48} ${y + 30} l18 0 a7 7 0 0 1 -7 7 Z M${x + 48} ${y + 30} l0 18 a7 7 0 0 1 -7 -7 Z M${x + 48} ${y + 30} l-18 0 a7 7 0 0 1 7 -7 Z"/></g>
-        <text class="t-lbl" x="${x + 48}" y="${y + 78}" text-anchor="middle">Radiator</text><title>${esc(why || "")}</title></g>`;
+        <text class="t-lbl" x="${x + 48}" y="${y + 64 + T(12)}" text-anchor="middle">Radiator</text><title>${esc(why || "")}</title></g>` + ob(x, y, x + 96, y + 60);
     },
     // static vessel for package tanks (no level signal): fill shown as an indicative working level
     vessel(x, y, w, h, o = {}) {
@@ -637,163 +1046,180 @@
         <rect class="t-body" x="${x}" y="${y}" width="${w}" height="${h}" rx="${o.r ?? 5}"/>
         <rect class="t-fill vs-fill ${o.fluid || "water"}" clip-path="url(#${cid})" x="${x}" y="${y + h - fh}" width="${w}" height="${fh}"/>
         ${(o.parts || []).map((px) => `<line class="vs-part" x1="${px}" y1="${y}" x2="${px}" y2="${y + h}"/>`).join("")}
-        ${o.label ? `<text class="t-lbl" x="${x + w / 2}" y="${y + h + (o.labelDy ?? 18)}" text-anchor="middle">${esc(o.label)}</text>` : ""}
-        ${o.sub ? `<text class="note" x="${x + w / 2}" y="${y + h + (o.labelDy ?? 18) + 14}" text-anchor="middle">${esc(o.sub)}</text>` : ""}</g>`;
+        ${o.label ? `<text class="t-lbl" x="${o.labelX ?? x + w / 2}" y="${y + h + (o.labelDy ?? T(18))}" text-anchor="${o.labelAnchor || "middle"}">${esc(o.label)}</text>` : ""}
+        ${o.sub ? `<text class="note lod" x="${o.labelX ?? x + w / 2}" y="${y + h + (o.labelDy ?? T(18)) + T(4) + T(9) + 2}" text-anchor="${o.labelAnchor || "middle"}">${esc(o.sub)}</text>` : ""}</g>` + ob(x, y, x + w, y + h);
     },
     // chemical powder tank with cone bottom (vibrator + timer on the cone)
     hopperTank(x, y, w, label) {
       return `<g class="vs"><path class="t-body" d="M${x} ${y} L${x + w} ${y} L${x + w} ${y + 46} L${x + w / 2 + 8} ${y + 78} L${x + w / 2 - 8} ${y + 78} L${x} ${y + 46} Z"/>
         <path class="vs-pow" d="M${x + 4} ${y + 22} L${x + w - 4} ${y + 22} L${x + w - 4} ${y + 46} L${x + w / 2 + 7} ${y + 75} L${x + w / 2 - 7} ${y + 75} L${x + 4} ${y + 46} Z"/>
-        <text class="t-lbl" x="${x + w + 8}" y="${y + 18}">${esc(label)}</text></g>`;
+        <text class="t-lbl" x="${x + w + 8}" y="${y + T(14)}">${esc(label)}</text></g>` + ob(x, y, x + w, y + 78);
     },
     // pressure / gravity filter vessel (sand, carbon) with the multiport auto valve on top
     filterV(x, y, label) {
-      return `<g class="fv"><rect class="fv-av" x="${x + 22}" y="${y - 16}" width="26" height="14" rx="2"/><text class="note" x="${x + 35}" y="${y - 22}" text-anchor="middle">auto valve</text>
+      return `<g class="fv"><rect class="fv-av" x="${x + 22}" y="${y - 16}" width="26" height="14" rx="2"/><text class="note lod" x="${x + 35}" y="${y - 20}" text-anchor="middle">auto valve</text>
         <path class="fv-body" d="M${x} ${y + 26} Q${x} ${y} ${x + 35} ${y} Q${x + 70} ${y} ${x + 70} ${y + 26} L${x + 70} ${y + 150} L${x} ${y + 150} Z"/>
         <path class="fv-st" d="M${x + 4} ${y + 70} L${x + 66} ${y + 44} M${x + 4} ${y + 110} L${x + 66} ${y + 84} M${x + 4} ${y + 146} L${x + 66} ${y + 124}"/>
         <path class="fv-leg" d="M${x + 6} ${y + 150} Q${x + 35} ${y + 132} ${x + 64} ${y + 150} L${x + 70} ${y + 162} L${x + 52} ${y + 162} Q${x + 35} ${y + 150} ${x + 18} ${y + 162} L${x} ${y + 162} Z"/>
-        <text class="t-lbl" x="${x + 35}" y="${y + 180}" text-anchor="middle">${esc(label)}</text></g>`;
+        <text class="t-lbl" x="${x + 35}" y="${y + 166 + T(12)}" text-anchor="middle">${esc(label)}</text></g>` + ob(x, y - 16, x + 70, y + 162);
     },
     // link box to another sheet (click to open it)
     link(x, y, w, h, text, goto, kind = "") {
-      const lines = String(text).split("\n");
+      const lines = String(text).split("\n"), lh = T(18);
       return `<g class="dest link ${kind}" data-goto="${goto}" tabindex="0"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>${lines.map((l, i) =>
-        `<text x="${x + w / 2 - 6}" y="${y + h / 2 + 4 + (i - (lines.length - 1) / 2) * 14}" text-anchor="middle">${esc(l)}</text>`).join("")}
-        <text class="lk-go" x="${x + w - 9}" y="${y + h / 2 + 5}" text-anchor="middle">›</text><title>Open this sheet</title></g>`;
+        `<text x="${x + w / 2 - 6}" y="${y + h / 2 + T(5) + (i - (lines.length - 1) / 2) * lh}" text-anchor="middle">${esc(l)}</text>`).join("")}
+        <text class="lk-go" x="${x + w - 9}" y="${y + h / 2 + T(6)}" text-anchor="middle">›</text><title>Open this sheet</title></g>` + ob(x, y, x + w, y + h);
     },
   };
   const LS = (id, at, label) => ({ id: SW[id], at, label });
 
   // small label with a light background, placed on a connection line
   function CL(x, y, text, anchor = "start") {
-    const w = 10 + text.length * 6.1, rx = anchor === "end" ? x - w : anchor === "middle" ? x - w / 2 : x;
-    return `<g class="cl"><rect x="${rx}" y="${y - 11}" width="${w}" height="16" rx="8"/><text x="${rx + w / 2}" y="${y + 1}" text-anchor="middle">${esc(text)}</text></g>`;
+    const w = T(12) + tw(text), h = T(20), rx = anchor === "end" ? x - w : anchor === "middle" ? x - w / 2 : x;
+    return `<g class="cl"><rect x="${rx}" y="${y - h / 2 - T(1)}" width="${w}" height="${h}" rx="${h / 2}"/><text x="${rx + w / 2}" y="${y + T(4)}" text-anchor="middle">${esc(text)}</text></g>` + ob(rx, y - h / 2, rx + w, y + h / 2);
   }
 
   const SHEETS = {
+    // 3D view of the whole plant (js/plant3d.js, canvas): same live states, positions indicative (not to scale)
+    d3: {
+      name: "3D plant - whole plant (indicative layout)",
+      note: "Drag to rotate · wheel to zoom · right-drag to move · click a machine for details · green = running, grey = stopped, red = tripped · package equipment is shown faded and not animated",
+      d3: true,
+      draw: () => [],
+    },
     overall: {
       name: "Overall plant - complete process (P&ID R1)",
       note: "Whole plant on one drawing, following the client P&ID: 1 water supply & cooling towers · 2 sludge & volute press · 3 hot water & dryer · 4 de-gasifier & water recovery. Click a machine, value or box for details; the tabs above show each area larger.",
-      vb: [1600, 1310],
+      vb: [1600, 1450], fs: 1.3,                       // 1600 units ≈ 1000 px at fit: labels × 1.3 to stay ≥ 12 px
       draw: () => {
         const ug = ["OP_P6A", "OP_P6B"], sup = ["OP_P14", "OP_P15"], vp = ["OP_P1A", "OP_P1B", "PCP"], ct1 = ["OP_P7", "OP_P3", "OP_P11"];
-        const why = "Volute press package (Norsen scope) - not wired to this panel. Shown running while the sludge feed pump or the PC pump runs (indicative only).";
+        const why = "Volute press package (Norsen scope) - not wired to this panel. Shown for reference only - not animated (no signal).";
+        // v3 (SC04): re-spaced for labels at 15 × 1.3 units; sections 3 and 4 are drawn 70 units lower (shiftY) to make room
+        const D34 = 70;
         return [
-          `<text class="band" x="1590" y="20" text-anchor="end">1 · WATER SUPPLY &amp; COOLING TOWERS</text><text class="band" x="1590" y="300" text-anchor="end">2 · SLUDGE &amp; VOLUTE PRESS</text>
-           <text class="band" x="1590" y="690" text-anchor="end">3 · HOT WATER LOOP &amp; DRYER</text><text class="band" x="1590" y="966" text-anchor="end">4 · DE-GASIFIER &amp; WATER RECOVERY</text>`,
-          // ===== 1 water supply: borewell pumps -> raw water tank -> supply pumps (VFD) -> header -> towers, volute press, hot water tank
-          P.pipe("M88 110 L120 110 M88 190 L120 190 M120 190 L120 90 L168 90", "water", ug),
-          P.pipe("M120 190 L120 275 L150 275", "water", ug), P.box(150, 262, 100, 26, "Wash room"),
-          P.pipe("M150 43 L186 43 L186 68", "ctp"), P.link(20, 30, 130, 28, "From CTP plant", "wtp"),
-          P.hv(104, 110), P.hv(104, 190), P.nrv(120, 168, "u"), P.lamp(105, 128, SW.FLOW, "FS"),
-          P.pump(60, 110, "OP_P6A"), P.pump(60, 190, "OP_P6B"),
-          P.tank(170, 70, 170, 150, { fluid: "water", label: "Raw water tank (03-LS-301)", sw: [LS("LS301_HL", 0.15, "HL"), LS("LS301_LL", 0.7, "LL")] }),
-          P.pipe("M340 190 L412 190", "water", ["OP_P15"]), P.pipe("M392 190 L392 110 L412 110", "water", ["OP_P14"]),
-          P.hv(402, 110), P.hv(402, 190),
-          P.pipe("M468 110 L500 110 L500 150", "water", ["OP_P14"]), P.pipe("M468 190 L500 190 L500 150", "water", ["OP_P15"]),
-          P.pipe("M500 150 L520 150 L520 40 L1590 40", "water", sup), P.nrv(482, 110), P.nrv(482, 190),
-          P.gauge(512, 174, "PG-301", "PG", true),
-          P.pump(440, 110, "OP_P14"), P.pump(440, 190, "OP_P15"),
-          P.chipSP(450, 262, "PT_01", "PT-301 header", 150),
-          P.text(640, 30, "header also feeds: boiler DM make-up · wet scraper conveyor · vacuum pump & KO drum (PAR scope)"),
-          // cooling tower 1 -> 3 pumps
-          P.pipe("M615 40 L615 210 L622 210", "water"), P.hv(615, 185, true),
-          P.tower(630, 80, "Cooling tower-1 (06-LS-601)"), P.fan(690, 69, "OP_F1", ""), P.text(724, 64, "06-F-601", "fan-l"),
-          P.lamp(762, 150, SW.LS601_HL, "HL"), P.lamp(762, 180, SW.LS601_LL, "LL"),
-          P.pipe("M756 210 L800 210 M800 100 L800 230 M800 100 L822 100 M800 165 L822 165 M800 230 L822 230", "water", ct1),
+          `<text class="band" x="1590" y="18" text-anchor="end">1 · WATER SUPPLY &amp; COOLING TOWERS</text><text class="band" x="1590" y="306" text-anchor="end">2 · SLUDGE &amp; VOLUTE PRESS</text>`,
+          // ===== 1 water supply: borewell pumps -> NRV -> raw water tank (branch to the wash room after the NRV) -> supply pumps (VFD)
+          // -> header -> towers, volute press, hot water tank. Both borewell pumps join one riser, so every stretch flows one way.
+          P.pipe("M102 110 L124 110 M102 190 L124 190 L124 90 L168 90", "water", ug, { need: [`sw:${SW.FLOW}`] }),
+          P.pipe("M156 90 L156 294 L168 294", "water", ug, { need: [`sw:${SW.FLOW}`] }), P.box(170, 278, 132, 32, "Wash room"),
+          P.pipe("M208 20 L250 20 L250 68", "ctp"), P.link(8, 4, 200, 32, "From CTP plant", "wtp"),
+          P.hv(112, 110), P.hv(112, 190), P.nrv(140, 90, "r"), P.lamp(98, 68, SW.FLOW, "FS"),
+          P.pump(74, 110, "OP_P6A", { name: false }), P.pump(74, 190, "OP_P6B", { name: false }),
+          P.tank(170, 70, 170, 150, { fluid: "water", label: "Raw water tank", sub: "03-LS-301", sw: [LS("LS301_HL", 0.15, "HL"), LS("LS301_LL", 0.7, "LL")] }),
+          P.pipe("M340 190 L442 190", "water", ["OP_P15"]), P.pipe("M410 190 L410 110 L442 110", "water", ["OP_P14"]),
+          P.hv(430, 110), P.hv(430, 190),
+          P.pipe("M498 110 L530 110 L530 150", "water", ["OP_P14"]), P.pipe("M498 190 L530 190 L530 150", "water", ["OP_P15"]),
+          P.pipe("M530 150 L548 150 L548 40 L1590 40", "water", sup), P.nrv(514, 110), P.nrv(514, 190),
+          P.gauge(575, 66, "PG-301", "PG", true),
+          P.pump(470, 110, "OP_P14"), P.pump(470, 190, "OP_P15"),
+          P.chipSP(455, 262, "PT_01", "PT-301", 190),
+          P.text(640, 35, "header also feeds: boiler DM make-up · wet scraper · vacuum pump & KO drum (PAR)", "note lod"),
+          // cooling tower 1 -> 3 pumps (make-up from the header; switch lamps on the free side of the tower)
+          P.pipe("M615 40 L615 210 L622 210", "water", sup), P.hv(615, 185, true),
+          P.tower(630, 80, "Cooling tower-1", "06-LS-601", 12), P.fan(690, 69, "OP_F1", ""), P.text(724, 64, "06-F-601", "fan-l"),
+          P.lamp(544, 150, SW.LS601_HL, "HL"), P.lamp(544, 180, SW.LS601_LL, "LL"),
+          P.pipe("M756 210 L800 210 M800 210 L800 100 L822 100 M800 210 L800 230 L822 230 M800 165 L822 165", "water", ct1),
           P.pipe("M878 100 L905 100", "water", ["OP_P7"]), P.pipe("M878 165 L905 165", "water", ["OP_P3"]), P.pipe("M878 230 L905 230", "water", ["OP_P11"]),
           P.pump(850, 100, "OP_P7", { name: false }), P.pump(850, 165, "OP_P3", { name: false }), P.pump(850, 230, "OP_P11", { name: false }),
-          P.text(912, 104, "→ De-gasifier PHE-1", "dtxt"), P.text(912, 169, "→ Dryer surface condenser", "dtxt"), P.text(912, 234, "→ Boiler cooling water", "dtxt"),
+          P.text(912, 108, "→ PHE-1", "dtxt"), P.text(912, 173, "→ Dryer condenser", "dtxt"), P.text(912, 238, "→ Boiler cooling", "dtxt"),
           // cooling tower 2 -> turbine oil PHE
-          P.pipe("M1115 40 L1115 210 L1122 210", "water"), P.hv(1115, 185, true),
-          P.tower(1130, 80, "Cooling tower-2 (06-LS-602)"), P.fan(1190, 69, "OP_F2", ""), P.text(1224, 64, "06-F-602", "fan-l"),
+          P.pipe("M1115 40 L1115 210 L1122 210", "water", sup), P.hv(1115, 185, true),
+          P.tower(1130, 80, "Cooling tower-2", "06-LS-602"), P.fan(1190, 69, "OP_F2", ""), P.text(1224, 64, "06-F-602", "fan-l"),
           P.lamp(1262, 150, SW.LS602_HL, "HL"), P.lamp(1262, 180, SW.LS602_LL, "LL"),
-          P.pipe("M1256 210 L1300 210 L1300 160 L1312 160", "water", ["OP_P10"]), P.pipe("M1368 160 L1390 160", "water", ["OP_P10"]),
-          P.pipe("M1460 160 L1480 160 L1480 100 L1252 100", "water", ["OP_P10"]),
-          P.phe(1390, 135, 70, 50, "Turbine oil PHE"), P.pump(1340, 160, "OP_P10", { name: false }),
+          P.pipe("M1256 210 L1330 210 L1330 160 L1352 160", "water", ["OP_P10"]), P.pipe("M1408 160 L1430 160", "water", ["OP_P10"]),
+          P.pipe("M1500 160 L1530 160 L1530 100 L1252 100", "water", ["OP_P10"]),
+          P.phe(1430, 135, 70, 50, "Turbine oil PHE"), P.pump(1380, 160, "OP_P10", { name: false, below: false }),
           // ===== 2 sludge storage -> volute press (flocculation, PC pump, screws) -> cake hopper; filtrate -> filtrate tank
-          P.box(10, 330, 100, 36, "Raw sludge in"), P.pipe("M60 366 L60 425 L128 425", "sludge", ["MV_01"]),
-          P.valve(90, 425, "MV_01", { label: "01-MV-101", below: true }), P.lamp(120, 336, SW.AIR, "AIR"), P.text(156, 340, "inst. air"),
-          `<g class="scr"><rect class="t-body" x="128" y="395" width="50" height="62" rx="3"/><path class="scr-c" d="M136 400 L150 452"/><path class="scr-f" d="M156 400 L170 452"/>
-            <text class="note" x="153" y="474" text-anchor="middle">screens</text></g>`,
-          P.pipe("M178 425 L228 425", "sludge", ["MV_01"]),
-          P.pipe("M270 494 L270 330 M330 494 L330 330 M270 330 L330 330 M300 330 L300 312 L1100 312 L1100 398", "sludge", ["OP_P1A", "OP_P1B"]),
-          P.tank(230, 360, 260, 190, { level: "LT_01", fluid: "sludge", label: "Sludge storage tank (01-LT-101)", readX: 190 }),
-          P.hv(270, 346, true), P.hv(330, 346, true), P.gauge(315, 288, "01-PG-101"),
-          P.subPump(270, 544, "OP_P1A", { side: "left" }), P.subPump(330, 544, "OP_P1B"),
-          P.sideMix(490, 455, { id: "AGIT", label: "OP-A1", sub: "F1 mixer" }),
-          P.pipe("M600 40 L600 450 L618 450", "water", vp), P.pipe("M600 450 L600 566 L700 566 L700 572 M600 566 L930 566 L930 572", "water", vp),
-          P.hopperTank(540, 326, 56, "Chemical tank"), P.pipe("M568 404 L568 432 L618 432", "chem", vp),
-          P.pipe("M660 490 L660 520 M740 490 L740 520 M820 490 L820 520 M660 520 L902 520", "chem", vp),
-          P.pipe("M958 520 L980 520 L980 470 L998 470", "chem", vp),
-          P.vessel(620, 400, 240, 90, { fluid: "chem", parts: [700, 780], label: "Chemical dilution tank (3 compartments)", fill: 0.6 }),
+          P.box(6, 318, 168, 34, "Raw sludge in"), P.pipe("M60 352 L60 425 L146 425", "sludge", ["MV_01"]),
+          P.valve(88, 425, "MV_01", { label: "01-MV-101", below: true }), P.lamp(6, 612, SW.AIR, "AIR"), P.text(66, 618, "inst. air"),
+          `<g class="scr"><rect class="t-body" x="146" y="395" width="50" height="62" rx="3"/><path class="scr-c" d="M154 400 L168 452"/><path class="scr-f" d="M174 400 L188 452"/>
+            <text class="note" x="171" y="482" text-anchor="middle">screens</text></g>` + ob(146, 395, 196, 486),
+          P.pipe("M196 425 L228 425", "sludge", ["MV_01"]),
+          P.pipe("M256 534 L256 330 L276 330 M296 534 L296 330 L276 330 M276 330 L276 312 L1100 312 L1100 398", "sludge", ["OP_P1A", "OP_P1B"]),
+          // the mixer OP-A1 is mounted near the tank bottom -> level lamps sit higher on that side
+          P.tank(230, 360, 260, 230, { level: "LT_01", fluid: "sludge", label: "Sludge storage tank", sub: "01-LT-101", readX: 160, readY: 46, lvAt: [0.08, 0.26, 0.48, 0.66] }),
+          P.hv(256, 346, true), P.hv(296, 346, true), P.gauge(360, 292, "01-PG-101"),
+          P.subPump(256, 584, "OP_P1A", { side: "left" }), P.subPump(296, 584, "OP_P1B"),
+          P.sideMix(490, 560, { id: "AGIT", label: "OP-A1" }),
+          P.pipe("M600 40 L600 450 L618 450", "water", sup), P.pipe("M600 450 L600 606 L700 606 L700 612 M600 606 L930 606 L930 612", "water", sup),
+          P.hopperTank(540, 326, 56, "Chemical tank"), P.pipe("M568 404 L568 432 L618 432", "chem"),
+          P.pipe("M660 490 L660 520 M740 490 L740 520 M820 490 L820 520 M660 520 L908 520", "chem"),
+          P.pipe("M964 520 L1020 520 L1020 512", "chem"),
+          // dilution tank name below its outlet header, clear of the outlets (image78)
+          P.vessel(620, 400, 240, 90, { fluid: "chem", parts: [700, 780], label: "Chemical dilution tank", labelX: 740, labelDy: 59, fill: 0.6 }),
           P.agit(660, 400, 62, { run: vp, why }), P.agit(740, 400, 62, { run: vp, why }), P.agit(820, 400, 62, { run: vp, why }),
-          P.pkPump(930, 520, "Dosing pump", vp, why, { below: false }),
-          P.pipe("M1160 440 L1178 440", "sludge", vp),
-          P.vessel(1000, 400, 160, 110, { fluid: "sludge", label: "Flocculation tank", fill: 0.7 }),
+          P.pkPump(936, 520, "Dosing pump", vp, why, { below: false }),
+          P.pipe("M1160 440 L1178 440", "sludge"),
+          P.vessel(1000, 400, 160, 110, { fluid: "sludge", label: "Flocculation tank", labelX: 1090, labelDy: T(24), fill: 0.7 }),
           P.agit(1060, 400, 75, { run: vp, why }),
-          P.vessel(1180, 420, 80, 70, { fluid: "sludge", label: "Collecting tank", labelDy: -76, fill: 0.55 }),
-          P.pipe("M1220 490 L1220 587", "sludge", ["PCP"]),
-          P.pipe("M1109 610 L1095 610 L1095 557 L786 557 L786 569 M1016 557 L1016 569", "sludge", ["PCP"]),
-          P.pcp(1177, 610, "PCP", { label: "OP-P201" }),
-          P.pipe("M1030 612 L1030 640 L545 640 L545 1008 M800 612 L800 640", "water", vp), CL(551, 820, "filtrate"),
-          P.pipe("M644 622 L644 646 M874 622 L874 660 L696 660", "sludge", vp),
-          P.screw(630, 600, 180, { run: vp, why, label: "Screw-1", spray: 70 }), P.screw(860, 600, 180, { run: vp, why, label: "Screw-2", spray: 70 }),
-          `<g class="vs"><path class="t-body" d="M580 648 L700 648 L680 678 L600 678 Z"/><path class="t-fill sludge" d="M588 660 L692 660 L678 676 L602 676 Z"/>
-            <text class="t-lbl" x="640" y="696" text-anchor="middle">Sludge hopper (cake)</text></g>`,
+          P.vessel(1180, 420, 80, 70, { fluid: "sludge", label: "Collecting tank", labelX: 1268, labelAnchor: "start", labelDy: -35, fill: 0.55 }),
+          P.pipe("M1220 490 L1220 627", "sludge", ["PCP"]),
+          P.pipe("M1109 650 L1095 650 L1095 597 L786 597 L786 609 M1016 597 L1016 609", "sludge", ["PCP"]),
+          P.pcp(1177, 650, "PCP", { label: "OP-P201" }),
+          // filtrate from the screws (package) back to the filtrate tank: no IO signal on this line -> not animated
+          P.pipe(`M1030 652 L1030 680 L545 680 L545 ${1008 + D34} M800 652 L800 680`, "water"), CL(539, 880, "filtrate", "end"),
+          P.pipe("M644 662 L644 686 M874 662 L874 700 L696 700", "sludge"),
+          P.screw(630, 640, 180, { run: vp, why, label: "Screw-1", spray: 70, drive: "" }), P.screw(860, 640, 180, { run: vp, why, label: "Screw-2", spray: 70, drive: "" }),
+          `<g class="vs"><path class="t-body" d="M580 688 L700 688 L680 718 L600 718 Z"/><path class="t-fill sludge" d="M588 700 L692 700 L678 716 L602 716 Z"/>
+            <text class="t-lbl" x="640" y="${718 + T(18)}" text-anchor="middle">Cake hopper</text></g>` + ob(580, 688, 700, 718),
+          shiftY(D34, () => [
+          `<text class="band" x="1590" y="690" text-anchor="end">3 · HOT WATER LOOP &amp; DRYER</text><text class="band" x="1590" y="944" text-anchor="end">4 · DE-GASIFIER &amp; RECOVERY</text>`,
           // ===== 3 hot water loop: tank -> 06-P-605 -> dryer -> radiator -> surface condenser -> tank
-          P.box(440, 704, 90, 24, "Boiler"), P.box(440, 734, 90, 24, "Turbine"),
-          P.pipe("M530 716 L560 716 L560 730 L598 730 M530 746 L560 746 L560 730", "steam"),
-          P.box(600, 712, 150, 36, "Surface condenser", "dest-proc"),
-          P.pipe("M640 748 L640 798", "hot", ["OP_P2"]),
-          P.box(552, 845, 60, 30, "Make-up"), P.pipe("M612 860 L618 860", "water"),
-          P.tank(620, 800, 140, 120, { fluid: "hot", label: "Hot water tank (06-LS-603)", sw: [LS("LS603_HL", 0.2, "HL"), LS("LS603_LL", 0.8, "LL")] }),
+          P.box(430, 700, 100, 28, "Boiler"), P.box(430, 734, 100, 28, "Turbine"),
+          P.pipe("M530 714 L560 714 L560 730 L598 730 M530 748 L560 748 L560 730", "steam"),
+          P.box(600, 704, 126, 56, "Surface\ncondenser", "dest-proc"),
+          P.pipe("M640 760 L640 798", "hot", ["OP_P2"]),
+          P.box(436, 844, 96, 32, "Make-up"), P.pipe("M532 860 L618 860", "water"),
+          P.tank(620, 800, 140, 120, { fluid: "hot", label: "Hot water tank", sub: "06-LS-603", sw: [LS("LS603_HL", 0.2, "HL"), LS("LS603_LL", 0.8, "LL")] }),
           P.pipe("M760 910 L812 910", "hot", ["OP_P2"]), P.pipe("M868 910 L1158 910", "hot", ["OP_P2"]),
-          P.pump(840, 910, "OP_P2"),
-          P.chipSP(930, 877, "T_02", "TT-601 to dryer", 150), P.chipSP(1085, 877, "PT_03", "PT-601 to dryer", 150),
-          `<g class="dest dest-proc"><rect x="1160" y="820" width="180" height="100" rx="6"/><text class="dr-t" x="1250" y="874" text-anchor="middle">DRYER</text></g>`,
+          P.pump(840, 910, "OP_P2", { name: false }),
+          P.chipSP(1010, 844, "T_02", "TT-601", 190), P.chipSP(1010, 880, "PT_03", "PT-601", 190),
+          `<g class="dest dest-proc"><rect x="1160" y="820" width="180" height="100" rx="6"/><text class="dr-t" x="1250" y="878" text-anchor="middle">DRYER</text></g>` + ob(1160, 820, 1340, 920),
           P.pipe("M1250 820 L1250 730 L1128 730", "hot", ["OP_P2"]),
-          P.chipSP(1340, 752, "T_01", "TT dryer out", 150), P.chipSP(1340, 788, "PT_02", "PT-602 dryer out", 160),
-          P.radiator(1030, 700, ["OP_P2"], "Radiator fan - not wired to this panel; shown turning while hot water pump 06-P-605 runs (indicative). PID holds TT."),
-          P.pipe("M1030 730 L752 730", "hot", ["OP_P2"]),
-          P.chipSP(890, 770, "T_03", "TT radiator out", 150), P.chipSP(890, 806, "PT_04", "PT-603 rad. out", 150),
+          P.chipSP(1440, 752, "T_01", "TT dryer out", 150), P.chipSP(1440, 788, "PT_02", "PT-602 dryer out", 160),
+          P.radiator(1030, 700, ["OP_P2"], "Radiator fan - not wired to this panel; shown for reference only - not animated (no signal). PID holds TT."),
+          P.pipe("M1030 730 L728 730", "hot", ["OP_P2"]),
+          P.chipSP(900, 756, "T_03", "TT rad. out", 150), P.chipSP(900, 792, "PT_04", "PT-603", 150),
           // ===== 4 filtrate tank -> client; de-gasifier, pH dosing, gravity tank -> PHE-2 -> WTP
-          P.pipe("M490 1104 L490 990 M610 1104 L610 990 M490 990 L610 990 M490 990 L420 990", "water", ["OP_P5A", "OP_P5B"]),
-          P.tank(440, 1010, 220, 150, { level: "LT_02", fluid: "water", label: "Filtrate tank (01-LT-102)", readX: 110 }),
-          P.gauge(575, 966, "01-PG-102"), P.box(310, 976, 110, 28, "To client reuse"),
-          P.subPump(490, 1154, "OP_P5A", { side: "left" }), P.subPump(610, 1154, "OP_P5B", { side: "left" }),
+          P.pipe("M470 1104 L470 990 L420 990 M630 1104 L630 990 L470 990", "water", ["OP_P5A", "OP_P5B"]),
+          P.tank(440, 1010, 220, 150, { level: "LT_02", fluid: "water", label: "Filtrate tank", sub: "01-LT-102", readY: 40 }),
+          P.gauge(575, 966, "01-PG-102"), P.box(226, 974, 192, 32, "To client reuse"),
+          P.subPump(470, 1154, "OP_P5A", { side: "left" }), P.subPump(630, 1154, "OP_P5B", { side: "left" }),
           // air: plated filter -> column -> exhaust blower -> vent
-          P.pipe("M800 1120 L878 1120", "air", ["OP_M1"]), P.pipe("M930 1008 L930 990 L816 990", "air", ["OP_M1"]), P.pipe("M805 986 L805 968", "air", ["OP_M1"]),
+          P.pipe("M800 1100 L878 1100", "air", ["OP_M1"]), P.pipe("M930 1008 L930 990 L816 990", "air", ["OP_M1"]), P.pipe("M805 986 L805 968", "air", ["OP_M1"]),
           P.text(812, 976, "vent"),
           `<g class="vs"><rect class="t-body" x="770" y="1080" width="30" height="80" rx="6"/><path class="pf-pl" d="M776 1092 L794 1092 M776 1104 L794 1104 M776 1116 L794 1116 M776 1128 L794 1128 M776 1140 L794 1140 M776 1152 L794 1152"/>
-            <text class="note" x="785" y="1178" text-anchor="middle">plated filter</text></g>`,
-          P.blower(790, 1010, "OP_M1", { label: "OP-M1", sub: "exhaust blower" }),
+            <text class="note" x="766" y="1180" text-anchor="end">plated filter</text></g>` + ob(770, 1080, 800, 1160),
+          P.blower(790, 1010, "OP_M1", { label: "OP-M1" }),
           // process condensate from the dryer -> 05-P-501 -> column top
           P.pipe("M1200 920 L1200 985 L1138 985", "water", ["OP_P4"]), P.pipe("M1082 985 L960 985 L960 1008", "water", ["OP_P4"]),
-          P.text(1206, 952, "process condensate"),
+          P.text(1194, 952, "process condensate", "note", "end"),
           P.pump(1110, 985, "OP_P4", { flip: true }),
           `<path class="t-body" d="M884 1186 L976 1186 L940 1216 L920 1216 Z"/>`,
-          P.tank(880, 1010, 100, 180, { fluid: "water", r: 25, sw: [LS("LS701_HH", 0.1, "HH"), LS("LS701_H", 0.3, "H"), LS("LS701_L", 0.7, "L"), LS("LS701_LL", 0.9, "LL")] }),
-          `<text class="t-lbl" x="872" y="1150" text-anchor="end">De-gasifier</text><text class="note" x="872" y="1166" text-anchor="end">07-LS-701</text>`,
+          // de-gasifier column: float switch lamps on the free (left) side, name under the column
+          P.tank(880, 1010, 100, 180, { fluid: "water", r: 25, lampX: 826, sw: [LS("LS701_HH", 0.1, "HH"), LS("LS701_H", 0.3, "H"), LS("LS701_L", 0.7, "L"), LS("LS701_LL", 0.9, "LL")] }),
+          P.text(912, 1238, "De-gasifier", "t-lbl", "end"), P.text(912, 1256, "07-LS-701", "note lod", "end"),
           // recirculation through steam-heated PHE-1
           P.pipe("M930 1216 L930 1240 L962 1240", "water", ["OP_P9"]), P.pipe("M1018 1240 L1105 1240 L1105 1132", "water", ["OP_P9"]),
           P.pipe("M1105 1060 L1105 1046 L982 1046", "water", ["OP_P9"]),
-          P.phe(1080, 1060, 50, 70, ""), P.text(1136, 1128, "PHE-1"), P.pump(990, 1240, "OP_P9"),
-          P.chipSP(1210, 1046, "T_04", "TT-701 PHE-1 out", 160),
-          P.pipe("M1290 1112 L1132 1112", "steam", ["OP_SV1"]), P.valve(1250, 1112, "OP_SV1", { label: "07-XV-701" }), P.box(1290, 1098, 90, 28, "LP steam"),
-          // hot water -> process water valve -> gravity PP tank; acid / alkali dosing into the line
-          P.pipe("M982 1150 L1418 1150", "water", ["OP_SV2"]), P.valve(1060, 1150, "OP_SV2", { label: "07-XV-702", below: true }),
-          P.chipSP(1200, 1186, "PH_01", "pH", 130),
-          P.pipe("M1282 1252 L1282 1227 M1352 1252 L1352 1227", "chem"),
-          P.pipe("M1338 1225 L1342 1225 L1342 1152", "chem", ["OP_P12"]), P.pipe("M1408 1225 L1412 1225 L1412 1152", "chem", ["OP_P13"]),
-          P.pump(1310, 1225, "OP_P12", { below: false, name: false }), P.pump(1380, 1225, "OP_P13", { below: false, name: false }),
-          P.vessel(1270, 1252, 60, 26, { fluid: "chem", label: "Acid 80 L", labelDy: 16, fill: 0.6 }), P.vessel(1350, 1252, 60, 26, { fluid: "chem", label: "Alkali 80 L", labelDy: 16, fill: 0.6 }),
-          P.tank(1420, 1040, 120, 120, { fluid: "water", label: "Gravity PP tank (07-LS-702)", sw: [LS("LS702_HL", 0.2, "HL"), LS("LS702_LL", 0.8, "LL")] }),
-          P.pipe("M1470 1160 L1470 1215 L1482 1215", "water", ["OP_P8"]), P.pipe("M1538 1215 L1582 1215 L1582 1122", "water", ["OP_P8"]),
+          P.phe(1080, 1060, 50, 70, ""), P.text(1136, 1090, "PHE-1"), P.pump(990, 1240, "OP_P9"),
+          P.chipSP(1260, 1040, "T_04", "TT-701", 190),
+          P.pipe("M1290 1112 L1132 1112", "steam", ["OP_SV1"]), P.valve(1250, 1112, "OP_SV1", { label: "07-XV-701" }), P.box(1290, 1096, 112, 32, "LP steam"),
+          // hot water -> process water valve -> gravity PP tank; acid / alkali dosing pumps (stacked) into the line
+          P.pipe("M982 1150 L1388 1150", "water", ["OP_SV2"]), P.valve(1040, 1150, "OP_SV2", { label: "07-XV-702", below: true }),
+          P.chipSP(1190, 1192, "PH_01", "pH", 130),
+          P.pipe("M1160 1250 L1222 1250", "chem", ["OP_P12"]), P.pipe("M1160 1320 L1222 1320", "chem", ["OP_P13"]),
+          P.pipe("M1278 1250 L1330 1250 L1330 1152", "chem", ["OP_P12"]), P.pipe("M1278 1320 L1350 1320 L1350 1152", "chem", ["OP_P13"]),
+          P.pump(1250, 1250, "OP_P12", { name: false }), P.pump(1250, 1320, "OP_P13", { name: false }),
+          P.vessel(1100, 1238, 60, 26, { fluid: "chem", label: "Acid 80 L", labelX: 1130, labelDy: T(16), fill: 0.6 }),
+          P.vessel(1100, 1308, 60, 26, { fluid: "chem", label: "Alkali 80 L", labelX: 1130, labelDy: T(16), fill: 0.6 }),
+          P.tank(1390, 1040, 110, 120, { fluid: "water", label: "Gravity PP tank", labelX: 1445, labelDy: -130, sw: [LS("LS702_HL", 0.2, "HL"), LS("LS702_LL", 0.8, "LL")] }),
+          P.pipe("M1445 1160 L1445 1215 L1452 1215", "water", ["OP_P8"]), P.pipe("M1508 1215 L1582 1215 L1582 1122", "water", ["OP_P8"]),
           P.pipe("M1582 1060 L1582 1006", "water", ["OP_P8"]),
-          P.pump(1510, 1215, "OP_P8"), P.phe(1564, 1060, 36, 60, ""), P.text(1556, 1052, "PHE-2"),
-          P.link(1430, 976, 160, 28, "WTP / CTP (RO)", "wtp"),
-          P.lamp(1356, 990, SW.LS801, "HL"), P.lamp(1390, 990, SW.LS802, "LL"), P.text(1290, 994, "CTP tank"),
+          P.pump(1480, 1215, "OP_P8"), P.phe(1564, 1060, 36, 60, ""), P.text(1558, 1104, "PHE-2", "note", "end"),
+          P.link(1390, 972, 200, 32, "WTP / CTP (RO)", "wtp"),
+          P.lamp(1210, 990, SW.LS801, "HL"), P.lamp(1266, 990, SW.LS802, "LL"), P.text(1214, 970, "CTP tank"),
+          ]),
         ];
       },
     },
@@ -803,70 +1229,72 @@
       note: "MV-101 opens at LL, closes at HH (needs instrument air 04-PS-401) · Pumps start at NL, stop at VLL (auto) · Mixer starts 60 s before and stops 60 s after the sludge pump · PC pump runs with the sludge pump",
       vb: [1240, 680],
       draw: () => [
-        P.box(10, 296, 110, 46, "Raw sludge in\nSL-200NB uPVC"),
-        P.pipe("M120 320 L250 320", "sludge", ["MV_01"]), P.valve(180, 320, "MV_01", { label: "01-MV-101" }),
-        P.text(128, 362, "LL: opens · HH: closes"), P.lamp(128, 236, SW.AIR, "AIR"), P.text(164, 240, "instrument air 04-PS-401"),
+        P.box(6, 292, 130, 52, "Raw sludge in\nSL-200NB uPVC"),
+        P.pipe("M136 320 L250 320", "sludge", ["MV_01"]), P.valve(180, 320, "MV_01", { label: "01-MV-101" }),
+        P.text(10, 368, "LL: opens · HH: closes"), P.lamp(128, 210, SW.AIR, "AIR"), P.text(176, 215, "instrument air 04-PS-401"),
         `<g class="scr"><rect class="t-body" x="250" y="262" width="120" height="120" rx="4"/><path class="scr-c" d="M268 272 L300 372"/><path class="scr-f" d="M318 272 L350 372"/>
           <text class="t-lbl" x="310" y="254" text-anchor="middle">Screening chamber</text>
-          <text class="note" x="300" y="398" text-anchor="middle">coarse cum magnetic screen</text><text class="note" x="330" y="412" text-anchor="middle">+ fine screen</text></g>`,
+          <text class="note" x="300" y="402" text-anchor="middle">coarse + magnetic screen</text><text class="note" x="300" y="420" text-anchor="middle">+ fine screen</text></g>` + ob(250, 240, 370, 424),
         P.pipe("M370 330 L398 330", "sludge", ["MV_01"]),
-        P.pipe("M470 474 L470 130 M620 474 L620 130 M470 130 L620 130 M545 130 L545 80 L660 80", "sludge", ["OP_P1A", "OP_P1B"]),
-        P.tank(400, 200, 380, 330, { level: "LT_01", fluid: "sludge", label: "Sludge storage tank", readX: 300 }),
-        P.text(672, 258, "01-LT-101"),
+        P.pipe("M470 474 L470 130 L545 130 M620 474 L620 130 L545 130 M545 130 L545 80 L660 80", "sludge", ["OP_P1A", "OP_P1B"]),
+        P.tank(400, 200, 380, 330, { level: "LT_01", fluid: "sludge", label: "Sludge storage tank (01-LT-101)", readX: 300, lvAt: [0.08, 0.26, 0.48, 0.66] }),
         P.hv(470, 178, true), P.hv(620, 178, true), P.nrv(470, 156, "u"), P.nrv(620, 156, "u"),
         P.gauge(510, 106, "01-PG-101"),
         P.subPump(470, 524, "OP_P1A"), P.subPump(620, 524, "OP_P1B"),
-        P.sideMix(780, 465, { id: "AGIT", label: "OP-A1 (F1)", sub: "propeller mixer" }),
+        P.sideMix(780, 498, { id: "AGIT", label: "OP-A1 (F1)", below: true }),   // mounted near the tank bottom; label under it (filtrate tank on the right)
         P.link(660, 58, 170, 44, "To volute press\n(sheet 2)", "volute", "dest-proc"),
-        P.spCard(20, 430, "Sludge tank set points (HMI)", [
+        P.spCard(20, 430, "Sludge tank set points", [
           ["HH level", "lv:LT_01:hh"], ["H level", "lv:LT_01:h"], ["L level", "lv:LT_01:l"], ["LL level", "lv:LT_01:ll"],
           ["Pump start (NL)", "aux:SP_SLUDGE_PUMP_START"], ["Pump stop (VLL)", "aux:SP_SLUDGE_PUMP_STOP"],
-          ["Valve open (LL)", "aux:SP_SLUDGE_VALVE_OPEN"], ["Valve close (HH)", "aux:SP_SLUDGE_VALVE_CLOSE"], ["Level alarm", "alm:LT_01"]]),
+          ["Valve open (LL)", "aux:SP_SLUDGE_VALVE_OPEN"], ["Valve close (HH)", "aux:SP_SLUDGE_VALVE_CLOSE"]]),
         // filtrate tank
-        P.pipe("M1105 84 L1105 248", "water", ["OP_P1A", "OP_P1B", "PCP"]),
-        P.link(1020, 40, 170, 44, "From volute press\n(filtrate, sheet 2)", "volute"),
-        P.pipe("M940 474 L940 200 M1060 474 L1060 200 M940 200 L1060 200 M1000 200 L1000 140 L982 140", "water", ["OP_P5A", "OP_P5B"]),
-        P.tank(900, 250, 260, 280, { level: "LT_02", fluid: "water", label: "Filtrate tank", readX: 200 }),
-        P.text(1072, 308, "01-LT-102"),
-        P.hv(940, 236, true), P.hv(1060, 236, true), P.nrv(940, 218, "u"), P.nrv(1060, 218, "u"),
+        // filtrate from the volute press package (gravity, no IO signal on this line) -> not animated
+        P.pipe("M1105 84 L1105 248", "water"),
+        P.link(1000, 40, 210, 44, "From volute press\n(filtrate, sheet 2)", "volute"),
+        P.pipe("M930 474 L930 200 L1000 200 M1030 474 L1030 200 L1000 200 M1000 200 L1000 140 L982 140", "water", ["OP_P5A", "OP_P5B"]),
+        P.tank(900, 250, 260, 280, { level: "LT_02", fluid: "water", label: "Filtrate tank (01-LT-102)", readX: 196 }),
+        P.hv(930, 236, true), P.hv(1030, 236, true), P.nrv(930, 218, "u"), P.nrv(1030, 218, "u"),
         P.gauge(1030, 176, "01-PG-102"),
-        P.subPump(940, 524, "OP_P5A"), P.subPump(1060, 524, "OP_P5B"),
+        P.subPump(930, 524, "OP_P5A"), P.subPump(1030, 524, "OP_P5B"),
         P.box(880, 120, 100, 40, "To client\n(reuse)"),
-        P.spCard(900, 566, "Filtrate tank set points (HMI)", [
-          ["HH level", "lv:LT_02:hh"], ["H level", "lv:LT_02:h"], ["L level", "lv:LT_02:l"], ["LL level", "lv:LT_02:ll"], ["Level alarm", "alm:LT_02"]]),
+        P.spCard(900, 566, "Filtrate tank set points", [
+          ["HH level", "lv:LT_02:hh"], ["H level", "lv:LT_02:h"], ["L level", "lv:LT_02:l"], ["LL level", "lv:LT_02:ll"]]),
       ],
     },
     volute: {
       name: "Volute press - flocculation & dewatering (P&ID sheet 2)",
-      note: "Package (Norsen scope): only the PC pump OP-P201 is wired to this panel · other machines are shown running while the sludge feed / PC pump runs (indicative) · low water flow stops the chemical feeder",
+      note: "Package (Norsen scope): only the PC pump OP-P201 is wired to this panel · the other machines have no signal and are shown for reference only (not animated) · low water flow stops the chemical feeder",
       vb: [1240, 730],
       draw: () => {
         const run = ["OP_P1A", "OP_P1B", "PCP"];
-        const why = "Volute press package (Norsen scope) - not wired to this panel. Shown running while the sludge feed pump or the PC pump runs (indicative only).";
+        const why = "Volute press package (Norsen scope) - not wired to this panel. Shown for reference only - not animated (no signal).";
         return [
           // water: raw water main -> dilution tank inlet + screw spray
-          P.pipe("M1100 442 L110 442 L110 150 L230 150 L230 178", "water", run),
-          P.pipe("M110 442 L110 566 L290 566 L290 572 M110 486 L290 486 L290 492", "water", run),
+          // raw water from the header (pumped by 03-P-303 / 304, manual valves only) -> animated while a supply pump runs
+          P.pipe("M1100 442 L110 442 L110 150 L230 150 L230 178", "water", ["OP_P14", "OP_P15"]),
+          P.pipe("M110 442 L110 566 L290 566 L290 572 M110 486 L290 486 L290 492", "water", ["OP_P14", "OP_P15"]),
           P.link(1100, 420, 130, 44, "Raw water\n(sheet 3)", "raw"),
-          P.strn(1085, 442), P.gauge(1062, 418, "PI"), P.pkInst(700, 442, "FT", "flow transmitter"),
+          P.strn(1085, 442), P.gauge(1062, 418, "PI"), P.pkInst(700, 442, "FT", ""),
+          P.text(716, 424, "low water flow → chemical feeder stops"),
           P.text(118, 140, "water inlet"),
           // chemical powder -> screw feeder -> dilution tank (3 compartments, 3 agitators)
           P.hopperTank(371, 6, 90, "Chemical tank"), P.text(469, 38, "vibrator + timer"),
-          P.lamp(469, 58, "", "LS"), P.text(505, 62, "level switch"),
-          P.pipe("M304 134 L304 178", "chem", run),
+          P.lamp(469, 58, "", "LS"), P.text(516, 63, "level switch"),
+          P.pipe("M304 134 L304 178", "chem"),
           P.screw(290, 112, 150, { run, why, label: "Chemical screw feeder", drive: "VFD", labelAt: [282, 116, "end"] }),
-          P.pipe("M270 320 L270 370 M410 320 L410 370 M550 320 L550 370 M270 370 L972 370", "chem", run),
-          P.pipe("M270 370 L150 370", "chem"), P.text(118, 366, "drain"),
-          P.vessel(200, 180, 420, 140, { fluid: "chem", parts: [340, 480], label: "Chemical dilution tank", sub: "3 compartments - polymer solution", fill: 0.62 }),
+          P.pipe("M270 320 L270 370 M410 320 L410 370 M550 320 L550 370 M270 370 L972 370", "chem"),
+          P.pipe("M270 370 L150 370", "chem"), P.text(150, 394, "drain"),
+          // name beside the tank (right), clear of the three outlet valves under it (image78)
+          P.vessel(200, 180, 420, 140, { fluid: "chem", parts: [340, 480], label: "Chemical dilution tank", sub: "3 compartments - polymer solution", labelX: 630, labelAnchor: "start", labelDy: -70, fill: 0.62 }),
           P.agit(270, 180, 105, { run, why }), P.agit(410, 180, 105, { run, why }), P.agit(550, 180, 105, { run, why }),
           P.pkInst(600, 160, "LT"),
           P.hv(270, 345, true), P.hv(410, 345, true), P.hv(550, 345, true), P.hv(175, 370),
           // dosing pump -> flocculation tank
-          P.pipe("M1028 370 L1060 370 L1060 470 L960 470 L960 488", "chem", run),
-          P.pkPump(1000, 370, "Chemical dosing pump", run, why),
+          P.pipe("M1028 370 L1060 370 L1060 470 L960 470 L960 488", "chem"),
+          P.pkPump(1000, 370, "Chemical dosing pump", run, why, { below: false }),   // label above: the PI gauge label sits below
           P.pipe("M1040 601 L1002 601", "sludge", ["OP_P1A", "OP_P1B"]), P.hv(1022, 601),
           P.link(1040, 578, 170, 46, "Raw sludge from\n01-P-101 / 102", "sludge"),
-          P.pipe("M790 520 L737 520", "sludge", run),
+          P.pipe("M790 520 L737 520", "sludge"),
           P.vessel(790, 490, 210, 150, { fluid: "sludge", label: "Flocculation tank", fill: 0.7 }),
           P.agit(895, 490, 110, { run, why, label: "VFD agitator" }),
           // sludge collecting tank -> PC pump -> screw 1 / 2
@@ -874,14 +1302,13 @@
           P.vessel(625, 500, 110, 80, { fluid: "sludge", label: "Sludge collecting tank", labelDy: -88, fill: 0.55 }),
           P.pipe("M572 650 L520 650 L520 480 L376 480 L376 489 M520 556 L376 556 L376 569", "sludge", ["PCP"]),
           P.pcp(640, 650, "PCP", { label: "OP-P201" }),
-          P.pipe("M380 532 L380 540 L450 540 L450 658 M380 612 L380 620 L450 620", "water", run),
-          P.pipe("M214 542 L214 552 L160 552 L160 640 M214 622 L214 632 L160 632", "sludge", run),
+          P.pipe("M380 532 L380 540 L450 540 L450 658 M380 612 L380 620 L450 620", "water"),
+          P.pipe("M214 542 L214 552 L160 552 L160 640 M214 622 L214 632 L160 632", "sludge"),
           P.screw(200, 520, 200, { run, why, label: "Screw-1", spray: 90 }),
           P.screw(200, 600, 200, { run, why, label: "Screw-2", spray: 90 }),
-          P.link(400, 660, 130, 34, "Filtrate tank (sh. 1)", "sludge"),
+          P.link(390, 660, 180, 34, "To filtrate tank", "sludge"),
           `<g class="vs"><path class="t-body" d="M90 640 L230 640 L200 700 L120 700 Z"/><path class="t-fill sludge" d="M100 662 L220 662 L200 698 L120 698 Z"/>
             <text class="t-lbl" x="160" y="720" text-anchor="middle">Sludge storage hopper (cake)</text></g>`,
-          P.text(560, 462, "low water flow → chemical feeder stops"),
         ];
       },
     },
@@ -893,14 +1320,18 @@
         const both = ["OP_P14", "OP_P15"], ug = ["OP_P6A", "OP_P6B"];
         const dests = [["Boiler DM plant make-up tank\n(PAR scope)", "CW-25NB"], ["Boiler wet scraper conveyor\n(PAR scope)", "CW-25NB"],
           ["OP cooling tower-2 make-up", "CW-20NB", "ct2"], ["OP cooling tower-1 make-up", "CW-20NB", "ct1"],
-          ["OP vacuum pump & knock-out drum\n(PAR scope)", "CW-25NB"], ["Volute press: dosing make-up\n& screw spray", "CW-25NB", "volute"],
+          ["Vacuum pump & KO drum\n(PAR scope)", "CW-25NB"], ["Volute press: dosing make-up\n& screw spray", "CW-25NB", "volute"],
           ["Sludge screen", "CW-40NB", "sludge"], ["Hot water tank make-up", "CW-40NB", "ct2"]];
+        // borewell lines also need the flow switch: no animation while 03-FS-301 reports no flow
+        const fs = { need: [`sw:${SW.FLOW}`] };
         return [
-          P.pipe("M228 600 L250 600 L250 560 L130 560 M98 600 L130 600 L130 160 L298 160", "water", ug),
-          P.pipe("M130 440 L415 440 L415 468", "water", ug), P.hv(200, 440), P.box(300, 470, 230, 40, "Wash room & general purpose tank"),
+          // both borewell pumps join one riser below the NRV; the wash-room branch leaves the riser above the NRV,
+          // so every stretch of line has a single flow direction (brief SC04: two-way arrow mismatch)
+          P.pipe("M228 600 L250 600 L250 560 L130 560 M98 600 L130 600 L130 160 L298 160", "water", ug, fs),
+          P.pipe("M130 440 L405 440 L405 464", "water", ug, fs), P.hv(200, 440), P.box(300, 466, 210, 46, "Wash room &\ngeneral purpose tank"),
           P.pipe("M220 250 L220 200 L298 200", "ctp"), P.hv(220, 226, true), P.link(160, 250, 120, 44, "From CTP\nplant", "wtp"),
           P.hv(114, 600), P.hv(250, 580, true), P.nrv(130, 520, "u"),
-          P.lamp(115, 380, SW.FLOW, "FS"), P.text(150, 384, "03-FS-301"),
+          P.lamp(138, 380, SW.FLOW, "FS"), P.text(184, 385, "03-FS-301"),
           P.pump(70, 600, "OP_P6A"), P.pump(200, 600, "OP_P6B"),
           P.tank(300, 140, 260, 260, { fluid: "water", label: "Raw water storage tank (03-LS-301)", sw: [LS("LS301_HL", 0.12, "HL"), LS("LS301_LL", 0.85, "LL")] }),
           // transfer pumps (VFD): valve - strainer - valve - pump - NRV - valve
@@ -910,11 +1341,12 @@
           P.pump(720, 300, "OP_P14"), P.pump(720, 460, "OP_P15"),
           P.pipe("M830 380 L900 380", "water", both), P.pipe("M900 380 L900 60 M900 380 L900 550", "water", both),
           P.gauge(865, 356, "03-PG-301"),
-          `<path class="tx-leg" d="M863 200 L900 200"/>`, P.tx(850, 200, "PT_01", "PT-301"),
+          `<path class="tx-leg" d="M853 200 L900 200"/>`, P.tx(840, 200, "PT_01", "PT-301"),
           ...dests.map(([d, sz, go], i) => {
             const y = 60 + i * 70;
-            return P.pipe(`M900 ${y} L1000 ${y}`, "water", both) + P.hv(950, y) + `<text class="psz" x="912" y="${y - 6}">${sz}</text>` +
-              (go ? P.link(1000, y - 22, 230, 44, d, go) : P.box(1000, y - 22, 230, 44, d));
+            // v3: longer branch stub so the pipe size (CW-25NB …) sits fully between the header and the box
+            return P.pipe(`M900 ${y} L986 ${y}`, "water", both) + P.hv(950, y) + `<text class="psz" x="906" y="${y - 10}">${sz}</text>` +
+              (go ? P.link(986, y - 22, 250, 44, d, go) : P.box(986, y - 22, 250, 44, d));
           }),
         ];
       },
@@ -927,18 +1359,18 @@
         const rows = [[150, "OP_P7", "De-gasifier PHE-1\n(sheet 7)", "degas"], [330, "OP_P3", "Dryer surface\ncondenser"], [510, "OP_P11", "Boiler cooling\nwater"]];
         const ids = rows.map((r) => r[1]);
         return [
-          P.pipe("M150 338 L194 338", "water"), P.hv(172, 338), P.link(20, 316, 130, 44, "Make-up water\n(sheet 3)", "raw"),
+          P.pipe("M156 338 L194 338", "water", ["OP_P14", "OP_P15"]), P.hv(175, 338), P.link(6, 316, 150, 44, "Make-up water\n(sheet 3)", "raw"),
           P.pipe("M326 330 L380 330 M380 330 L380 150 M380 330 L380 510", "water", ids),
-          ...rows.map(([y, id, d, go], i) => {
-            const rx = 920 + 25 * i, ty = 50 + 14 * i, lx = 120 + 14 * i, ey = 214 + 12 * i;
-            return P.pipe(`M380 ${y} L517 ${y}`, "water", [id]) + P.pipe(`M400 ${y} L400 ${y + 28} L500 ${y + 28} L500 ${y}`, "water") +
+          // v3: the three warm returns join ONE return header (x 960) back to the tower spray inlet - no three loops round the sheet
+          ...rows.map(([y, id, d, go]) => P.pipe(`M380 ${y} L517 ${y}`, "water", [id]) + P.pipe(`M400 ${y} L400 ${y + 28} L500 ${y + 28} L500 ${y}`, "water") +
               P.hv(412, y) + P.strn(450, y) + P.hv(488, y) + P.hv(450, y + 28) +
               P.pipe(`M573 ${y} L660 ${y}`, "water", [id]) + P.gauge(600, y - 24, "", "PG") + P.nrv(630, y) +
-              P.pipe(`M850 ${y} L${rx} ${y} L${rx} ${ty} L${lx} ${ty} L${lx} ${ey} L202 ${ey}`, "water", [id]) + P.gauge(885, y - 24, "", "TG") +
-              P.pump(545, y, id) + (go ? P.link(660, y - 22, 190, 44, d, go) : P.box(660, y - 22, 190, 44, d, "dest-proc"));
-          }),
+              P.pipe(`M850 ${y} L960 ${y}`, "water", [id]) + P.gauge(900, y - 24, "", "TG") +
+              P.pump(545, y, id) + (go ? P.link(660, y - 22, 190, 44, d, go) : P.box(660, y - 22, 190, 44, d, "dest-proc"))),
+          P.pipe("M960 510 L960 330 M960 330 L960 150 M960 150 L960 50 L100 50 L100 214 L202 214", "water", ids),
+          `<text class="note" x="530" y="40" text-anchor="middle">warm return header → tower spray</text>`,
           P.tower(200, 200, "Cooling tower-1"), P.fan(260, 189, "OP_F1", "06-F-601"),
-          P.lamp(160, 280, SW.LS601_HL, "HL"), P.lamp(160, 306, SW.LS601_LL, "LL"), P.text(152, 268, "06-LS-601"),
+          P.lamp(158, 280, SW.LS601_HL, "HL"), P.lamp(158, 306, SW.LS601_LL, "LL"), P.text(196, 262, "06-LS-601", "note", "end"),
           `<text class="band" x="1225" y="610" text-anchor="end">WARM RETURN WITH TG GAUGES → TOWER SPRAY HEADER</text>`,
         ];
       },
@@ -951,31 +1383,32 @@
         const hot = ["OP_P2"];
         return [
           `<text class="band" x="1225" y="24" text-anchor="end">COOLING TOWER-2 · TURBINE OIL COOLING</text><text class="band" x="1225" y="324" text-anchor="end">HOT WATER LOOP · DRYER</text>`,
-          P.pipe("M130 240 L154 240", "water"), P.hv(142, 240), P.link(10, 218, 120, 44, "Make-up water\n(sheet 3)", "raw"),
+          P.pipe("M140 240 L158 240", "water", ["OP_P14", "OP_P15"]), P.hv(149, 240), P.link(4, 218, 136, 44, "Make-up water\n(sheet 3)", "raw"),
           P.pipe("M286 244 L442 244", "water", ["OP_P10"]), P.pipe("M340 244 L340 270 L400 270 L400 244", "water"),
           P.hv(318, 244), P.strn(370, 244), P.hv(422, 244), P.hv(370, 270),
           P.pipe("M498 244 L600 244", "water", ["OP_P10"]), P.gauge(525, 220, "", "PG"), P.gauge(560, 220, "", "TG"),
           P.pipe("M710 244 L780 244 L780 60 L130 60 L130 140 L156 140", "water", ["OP_P10"]), P.nrv(130, 100, "d"), P.gauge(400, 36, "", "TG"),
           P.phe(600, 214, 110, 60, "Turbine oil PHE"),
           P.tower(160, 110, "Cooling tower-2"), P.fan(220, 99, "OP_F2", "06-F-602"),
-          P.lamp(300, 150, SW.LS602_HL, "HL"), P.lamp(300, 176, SW.LS602_LL, "LL"), P.text(336, 168, "06-LS-602"),
+          P.lamp(300, 150, SW.LS602_HL, "HL"), P.lamp(300, 176, SW.LS602_LL, "LL"), P.text(346, 168, "06-LS-602"),
           P.pump(470, 244, "OP_P10", { label: "06-P-604" }),
           // hot water loop
-          P.pipe("M130 582 L176 582", "water"), P.hv(152, 582), P.link(10, 560, 120, 44, "Make-up water\n(sheet 3)", "raw"),
-          `<path class="tx-leg" d="M600 612 L600 625 M700 612 L700 625 M900 386 L900 400 M800 386 L800 400 M540 386 L540 400 M450 386 L450 400"/>`,
+          P.pipe("M140 582 L176 582", "water", ["OP_P14", "OP_P15"]), P.hv(158, 582), P.link(4, 560, 136, 44, "Make-up water\n(sheet 3)", "raw"),
+          // v3: transmitters spaced 110-120 apart so their boxes and "alarm SP" captions never touch
+          `<path class="tx-leg" d="M590 612 L590 625 M710 612 L710 625 M910 386 L910 400 M790 386 L790 400 M540 386 L540 400 M430 386 L430 400"/>`,
           P.pipe("M318 625 L412 625", "hot", hot), P.hv(370, 625),
           P.pipe("M468 625 L898 625", "hot", hot), P.gauge(515, 601, "", "PG"),
           P.pipe("M1000 560 L1000 400 L698 400", "hot", hot), P.gauge(726, 376, "", "PG"),
           P.pipe("M600 400 L382 400", "hot", hot),
           P.pipe("M248 424 L248 518", "hot", hot),
           P.pipe("M240 362 L240 378 M330 362 L330 378", "steam"),
-          P.tank(178, 520, 140, 120, { fluid: "hot", label: "Hot water tank (06-LS-603)", sw: [LS("LS603_HL", 0.2, "HL"), LS("LS603_LL", 0.8, "LL")] }),
+          P.tank(178, 520, 140, 120, { fluid: "hot", label: "Hot water tank (06-LS-603)", sw: [LS("LS603_HL", 0.2, "HL"), LS("LS603_LL", 0.7, "LL")] }),
           P.pump(440, 625, "OP_P2", { label: "06-P-605" }),
-          P.tx(600, 556, "PT_03", "PT-601"), P.tx(700, 556, "T_02", "TT-601"),
+          P.tx(590, 556, "PT_03", "PT-601"), P.tx(710, 556, "T_02", "TT-601"),
           `<g class="dest dest-proc"><rect x="900" y="560" width="200" height="110" rx="6"/><text class="dr-t" x="1000" y="620" text-anchor="middle">DRYER</text></g>`,
-          P.tx(900, 330, "PT_02", "PT-602"), P.tx(800, 330, "T_01", "TT"),
-          P.radiator(600, 370, hot, "Radiator fan - not wired to this panel; shown turning while hot water pump 06-P-605 runs (indicative). PID holds TT."),
-          P.tx(540, 330, "T_03", "TT"), P.tx(450, 330, "PT_04", "PT-603"),
+          P.tx(910, 330, "PT_02", "PT-602"), P.tx(790, 330, "T_01", "TT"),
+          P.radiator(600, 370, hot, "Radiator fan - not wired to this panel; shown for reference only - not animated (no signal). PID holds TT."),
+          P.tx(540, 330, "T_03", "TT"), P.tx(430, 330, "PT_04", "PT-603"),
           P.box(180, 380, 200, 44, "Surface condenser", "dest-proc"), P.box(200, 332, 80, 30, "Boiler"), P.box(290, 332, 80, 30, "Turbine"),
         ];
       },
@@ -987,25 +1420,25 @@
       draw: () => [
         // air: plated filter -> 4" duct -> column -> 10" duct -> exhaust blower -> vent
         P.pipe("M280 420 L378 420", "air", ["OP_M1"]), P.pipe("M440 170 L440 120 L176 120", "air", ["OP_M1"]), P.pipe("M165 96 L165 30", "air", ["OP_M1"]),
-        P.text(174, 40, "vent (3\" duct)"), P.text(250, 112, "10\" duct"), P.text(300, 412, "4\" duct"),
+        P.text(174, 40, "vent (3\" duct)"), P.text(250, 112, "10\" duct"), P.text(306, 412, "4\" duct"),
         `<g class="vs"><rect class="t-body" x="236" y="380" width="44" height="110" rx="8"/><path class="pf-pl" d="M244 392 L272 392 M244 404 L272 404 M244 416 L272 416 M244 428 L272 428 M244 440 L272 440 M244 452 L272 452 M244 464 L272 464 M244 476 L272 476"/>
-          <text class="t-lbl" x="258" y="508" text-anchor="middle">Plated filter</text><text class="note" x="258" y="522" text-anchor="middle">(air in)</text></g>`,
+          <text class="t-lbl" x="292" y="508" text-anchor="end">Plated filter</text><text class="note" x="258" y="528" text-anchor="middle">(air in)</text></g>` + ob(236, 380, 280, 532),
         P.blower(150, 120, "OP_M1", { label: "OP-M1", sub: "hot air exhaust blower" }),
         // process condensate in
         P.pipe("M180 615 L212 615", "water", ["OP_P4"]), P.pipe("M268 615 L300 615 L300 230 L378 230", "water", ["OP_P4"]), P.hv(330, 230),
         P.box(10, 590, 170, 50, "Process condensate\nfrom dryer (T-101)"), P.pump(240, 615, "OP_P4"),
         // column
         `<path class="t-body" d="M384 462 L496 462 L452 500 L428 500 Z"/>`,
-        P.tank(380, 170, 120, 300, { fluid: "water", r: 30, sw: [LS("LS701_HH", 0.1, "HH"), LS("LS701_H", 0.3, "H"), LS("LS701_L", 0.7, "L"), LS("LS701_LL", 0.9, "LL")] }),
-        `<rect class="pack" x="388" y="250" width="104" height="80"/><text class="t-lbl" x="372" y="300" text-anchor="end">De-gasifier</text><text class="note" x="372" y="316" text-anchor="end">07-LS-701</text>`,
+        P.tank(380, 170, 120, 300, { fluid: "water", r: 30, lampX: 332, sw: [LS("LS701_HH", 0.1, "HH"), LS("LS701_H", 0.3, "H"), LS("LS701_L", 0.7, "L"), LS("LS701_LL", 0.9, "LL")] }),
+        `<rect class="pack" x="388" y="250" width="104" height="80"/>`, P.text(448, 162, "De-gasifier (07-LS-701)", "t-lbl"),
         // recirculation through PHE-1 (steam heated)
         P.pipe("M440 500 L440 640 L462 640", "water", ["OP_P9"]), P.pipe("M518 640 L540 640 L540 420 L620 420 L620 412", "water", ["OP_P9"]),
         P.pipe("M620 330 L620 230 L502 230", "water", ["OP_P9"]), P.gauge(566, 396, "07-PG-701"), P.text(882, 492, "07-LS-702"),
         `<path class="tx-leg" d="M573 270 L620 270"/>`, P.tx(560, 270, "T_04", "TT-701"),
         P.pump(490, 640, "OP_P9"),
-        P.phe(590, 330, 60, 80, "PHE-1"),
-        P.pipe("M760 317 L700 317 L700 350 L652 350", "steam", ["OP_SV1"]), P.valve(722, 317, "OP_SV1", { label: "07-XV-701" }),
-        P.box(760, 300, 120, 34, "Steam inlet 25NB"), P.lamp(890, 308, SW.AIR, "AIR"), P.text(926, 312, "instrument air 04-PS-401"), P.gauge(748, 341, "07-TG-701", "TG", true),
+        P.phe(590, 330, 60, 80, ""), P.text(584, 372, "PHE-1", "t-lbl", "end"),
+        P.pipe("M756 317 L700 317 L700 350 L652 350", "steam", ["OP_SV1"]), P.valve(722, 317, "OP_SV1", { label: "07-XV-701" }),
+        P.box(756, 298, 156, 34, "Steam inlet 25NB"), P.lamp(790, 270, SW.AIR, "AIR"), P.text(838, 275, "instrument air 04-PS-401"), P.gauge(742, 341, "07-TG-701", "TG", true),
         P.pipe("M650 395 L700 395 L700 430 L760 430", "steam"), P.nrv(730, 430), P.box(760, 414, 120, 34, "Cond. outlet"),
         // hot water (70 °C) -> pH sensor -> process water valve -> gravity PP tank, acid / alkali dosing into the line
         P.pipe("M440 540 L838 540", "water", ["OP_SV2"]), P.valve(600, 540, "OP_SV2", { label: "07-XV-702" }),
@@ -1013,15 +1446,15 @@
         P.pipe("M612 645 L612 600 L622 600", "chem", ["OP_P12"]), P.pipe("M732 645 L732 600 L742 600", "chem", ["OP_P13"]),
         P.pipe("M678 600 L690 600 L690 542", "chem", ["OP_P12"]), P.pipe("M798 600 L810 600 L810 542", "chem", ["OP_P13"]),
         P.pump(650, 600, "OP_P12", { below: false, name: false }), P.pump(770, 600, "OP_P13", { below: false, name: false }),
-        P.vessel(595, 645, 80, 50, { fluid: "chem", label: "Acid tank 80 L", labelDy: 16 }), P.vessel(715, 645, 80, 50, { fluid: "chem", label: "Alkali tank 80 L", labelDy: 16 }),
+        P.vessel(595, 645, 80, 50, { fluid: "chem", label: "Acid 80 L", labelDy: 16 }), P.vessel(715, 645, 80, 50, { fluid: "chem", label: "Alkali 80 L", labelDy: 16 }),
         P.tank(840, 500, 150, 150, { fluid: "water", label: "Gravity PP tank 2000 L", sw: [LS("LS702_HL", 0.2, "HL"), LS("LS702_LL", 0.8, "LL")] }),
         // gravity tank pump -> PHE-2 (cooled by CT water) -> WTP
         P.pipe("M990 635 L1040 635", "water", ["OP_P8"]), P.pipe("M1096 635 L1120 635 L1120 420", "water", ["OP_P8"]), P.pipe("M1120 340 L1120 272", "water", ["OP_P8"]),
-        P.pump(1068, 635, "OP_P8"), P.phe(1090, 340, 60, 80, "PHE-2"), P.gauge(1150, 300, "07-TG-703", "TG"),
+        P.pump(1068, 635, "OP_P8", { name: false }), P.phe(1090, 340, 60, 80, ""), P.text(1084, 384, "PHE-2", "t-lbl", "end"), P.gauge(1150, 300, "07-TG-703", "TG"),
         P.link(1060, 228, 150, 44, "To WTP / CTP\n(sheet 8)", "wtp"),
         P.pipe("M1210 470 L1210 400 L1150 400", "water"), P.pipe("M1150 356 L1200 356 L1200 300", "water"),
-        P.link(1160, 470, 76, 40, "CW in\n(sh. 6)", "ct1"), P.text(1170, 292, "CW return"),
-        P.spCard(900, 60, "De-gasifier set points (HMI)", [
+        P.link(1150, 470, 86, 44, "CW in\n(sh. 6)", "ct1"), P.text(1170, 292, "CW return"),
+        P.spCard(900, 60, "De-gasifier set points", [
           ["Steam valve open", "aux:SP_LP_STEAM_OPEN"], ["Steam valve close", "aux:SP_LP_STEAM_CLOSE"],
           ["PHE-1 temp alarm", "alm:T_04"], ["pH alarm", "alm:PH_01"]]),
       ],
@@ -1039,66 +1472,325 @@
           P.pipe("M728 300 L768 300", "ctp"), P.pipe("M814 230 L850 230 L850 300 L862 300", "ctp"),
           P.pipe("M918 300 L950 300 L950 120 L978 120", "ctp"),
           P.pipe("M1200 200 L1220 200 L1220 420 L902 420", "ctp"), P.pipe("M760 420 L640 420 L640 380 L530 380 L530 398", "water"),
-          P.pipe("M1200 120 L1232 120 L1232 560 L1152 560", "ctp"),
-          P.pipe("M590 510 L700 510", "water"), P.pipe("M810 510 L860 510 L860 558", "water"),
+          P.pipe("M1200 120 L1232 120 L1232 560 L1192 560", "ctp"),
+          P.pipe("M590 510 L690 510", "water"), P.pipe("M860 510 L875 510 L875 558", "water"),
           P.tank(30, 160, 110, 170, { fluid: "water", label: "Raw water tank", sw: [LS("LS801", 0.15, "HL"), LS("LS802", 0.7, "LL")] }),
           P.pkPump(215, 300, "Raw water pump", [], why),
           P.filterV(300, 110, "Sand filter"), P.filterV(440, 110, "Carbon filter"),
-          P.vessel(560, 180, 80, 120, { fluid: "chem", label: "pH dosing &", sub: "antiscalant", fill: 0.6 }),
+          P.vessel(560, 180, 80, 120, { fluid: "chem", label: "Dosing", sub: "pH & antiscalant", fill: 0.6 }),
           P.pkPump(700, 300, "Raw water pump", [], why),
-          P.vessel(770, 200, 44, 110, { fluid: "water", label: "Micron filter", fill: 0.9, r: 14 }),
+          P.vessel(770, 200, 44, 110, { fluid: "water", label: "Micron filter", labelDy: -120, fill: 0.9, r: 14 }),
           P.pkPump(890, 300, "Booster pump", [], why),
           `<g class="ro">${[0, 1, 2, 3].map((i) => `<rect x="980" y="${100 + i * 32}" width="220" height="22" rx="11"/><circle cx="992" cy="${111 + i * 32}" r="5"/><circle cx="1188" cy="${111 + i * 32}" r="5"/>`).join("")}
             <text class="t-lbl" x="1090" y="250" text-anchor="middle">RO module</text><text class="note" x="1226" y="112" text-anchor="end">reject</text></g>`,
           `<g class="uv"><rect x="760" y="406" width="140" height="28" rx="14"/><rect x="744" y="410" width="16" height="20" rx="3"/><rect x="900" y="410" width="16" height="20" rx="3"/>
             <text class="t-lbl" x="830" y="456" text-anchor="middle">UV sterilizer</text></g>`,
           P.tank(470, 400, 120, 160, { fluid: "pure", label: "Pure water tank", sw: [LS("LS803", 0.15, "HL"), LS("LS804", 0.85, "LL")] }),
-          P.box(700, 490, 110, 40, "Mineral cartridge"), P.box(800, 560, 130, 40, "Drinking water tank"),
-          P.link(1000, 540, 150, 40, "Filtrate tank (sh. 1)", "sludge"),
+          P.box(690, 490, 170, 40, "Mineral cartridge"), P.box(780, 560, 190, 40, "Drinking water tank"),
+          P.link(982, 540, 210, 40, "Filtrate tank (sh. 1)", "sludge"),
         ];
       },
     },
   };
 
+  // ---------- v3 (SC05): valve position from the IO list signals ----------
+  // open / closed only when a limit-switch input confirms it; an output (command) alone does not prove the position
+  function vState(e) {
+    if (!e) return { k: "unk", cue: "?", txt: "No data - position unknown" };
+    const io = e.io || {}, o = io.open, c = io.close, oc = io.open_cmd, cc = io.close_cmd;
+    if (o === true && c === true) return { k: "conf", cue: "!", txt: "Open and closed limit switches both ON - check the valve / wiring" };
+    if (o === true) return { k: "open", cue: "", txt: "Open - confirmed by the open limit switch" };
+    if (c === true) return { k: "closed", cue: "", txt: "Closed - confirmed by the closed limit switch" };
+    const mid = o === false && c === false;                 // both switches OFF: travelling or not reached
+    if (oc === true && cc !== true) return { k: "cmd-open", cue: "cmd", txt: `Commanded open - not confirmed${mid ? " (no limit switch ON yet)" : ""}` };
+    if (cc === true && oc !== true) return { k: "cmd-closed", cue: "cmd", txt: `Commanded closed - not confirmed${mid ? " (no limit switch ON yet)" : ""}` };
+    return { k: "unk", cue: "?", txt: "Position unknown - no limit switch confirms it" };
+  }
+  const isValve = (id) => { const e = eq(id); return !!e && e.type === "valve"; };
+  // flow in a line: one of its machines running (a valve counts only when confirmed open) and every condition met
+  function flowOn(ids, need = []) {
+    if (!ids.length) return false;
+    const go = (id) => (isValve(id) ? vState(eq(id)).k === "open" : running(id));
+    return ids.some(go) && need.every((n) => (n.startsWith("sw:") ? sw(n.slice(3)) !== false : vState(eq(n)).k === "open"));
+  }
+  // the cue ("cmd", "?", "!") gets its own room so it never runs into the legend words
+  const vIcon = (k, cue = "") => `<svg class="lg-v v-${k}${cue.length > 1 ? " lg-v-w" : ""}" viewBox="0 0 ${cue.length > 1 ? 58 : 40} 18" aria-hidden="true"><path d="M2 2 L22 16 L22 2 L2 16 Z"/>${cue ? `<text x="27" y="13">${cue}</text>` : ""}</svg>`;
   function legend() {
     return `<div class="mm-guide"><b>How to read:</b>
       <span><i class="g-run"></i>Green machine = running</span><span><i class="g-stop"></i>Grey = stopped</span>
-      <span><i class="g-trip"></i>Red, blinking = tripped (fault)</span><span><i class="g-flow"></i>Moving dashes = liquid is flowing, arrow shows the direction</span>
+      <span><i class="g-trip"></i>Red, blinking = tripped (fault)</span><span><i class="g-flow"></i>Moving dashes = flow: the pump is running and the valves on the line are confirmed open</span>
+      <span>▶ Arrows on the lines = flow direction (source → destination)</span>
       <span><i class="g-lamp"></i>Yellow lamp = float switch ON (water has reached that level)</span><span><i class="g-trip"></i>AIR lamp red = instrument air low (pneumatic valves blocked)</span>
-      <span><i class="g-trip"></i>HH / LL lamp red, <i class="g-hl"></i>H / L lamp orange = tank level reached that set point (dashed line)</span><span>👆 Click any pump, valve or value to see details</span></div>
+      <span><i class="g-trip"></i>HH / LL lamp red, <i class="g-hl"></i>H / L lamp orange = tank level reached that set point (dashed line)</span><span>Click any pump, valve or value to see details · drag to move, wheel or + / − to zoom</span></div>
       <div class="mm-legend">${[["water", "Water"], ["hot", "Hot water"], ["sludge", "Sludge"], ["steam", "Steam"], ["air", "Air"],
       ["chem", "Chemical dosing"], ["ctp", "CTP line"]].map(([k, l]) => `<span><i class="lg k-${k}"></i>${l}</span>`).join("")}
-      <span class="sep"></span><span><i class="lg-eq run"></i>Running / open</span><span><i class="lg-eq stop"></i>Stopped / closed</span>
+      <span class="sep"></span><span><i class="lg-eq run"></i>Running</span><span><i class="lg-eq stop"></i>Stopped</span>
       <span><i class="lg-eq trip"></i>Tripped</span><span><i class="lg-lamp"></i>Float switch ON</span>
-      <span class="muted">Moving dashes = flow (pump running) · Hatched tank = level from float switches only</span></div>`;
+      <span class="muted">Hatched tank = level from float switches only (no number)</span></div>
+      <div class="mm-legend mm-vlg"><b>Valves:</b><span>${vIcon("open")}Open - confirmed</span><span>${vIcon("closed")}Closed - confirmed</span>
+      <span>${vIcon("cmd-open", "cmd")}Commanded open, not confirmed</span><span>${vIcon("cmd-closed", "cmd")}Commanded closed, not confirmed</span>
+      <span>${vIcon("unk", "?")}No confirmation</span><span>${vIcon("conf", "!")}Both limit switches ON</span>
+      <span class="muted">Confirmed = limit switch input · commanded = output only</span></div>`;
   }
+  let mmUser = false;                                    // v3 (SC04): the mimic opens on the overall plant until a sheet is picked
   function setSheet(id) {
     if (!SHEETS[id]) return;
     sheet = id;
+    mmUser = true;
     try { localStorage.setItem("md-mimic2", id); } catch (_) {}
     const box = $("mimicSvg");
     if (box) box._sheet = null;
   }
+
+  // ---------- v3 (SC04): zoom / pan / fit / full screen (viewBox of the sheet's svg) ----------
+  const MMV = { s: 1, x: 0, y: 0, fit: 1, vw: W, vh: H, fs: 1, at: true };
+  const mmSvg = () => { const b = $("mimicSvg"); return b ? b.querySelector("svg.mimic") : null; };
+  const mmFull = () => !!document.fullscreenElement && document.fullscreenElement === $("mimicCard");
+  const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+  function mmLayout() {                                   // normal view: canvas as tall as the whole drawing at fit width
+    const host = $("mimicHost");
+    if (!host) return;
+    host.style.height = mmSvg() && !mmFull() ? `${Math.round(host.clientWidth * MMV.vh / MMV.vw)}px` : "";
+  }
+  function mmFit() {
+    const host = $("mimicHost");
+    if (!host || !mmSvg()) return;
+    mmLayout();
+    const cw = host.clientWidth, ch = host.clientHeight;
+    if (!cw || !ch) return;
+    // whole drawing in view; in full screen never smaller than the scale that keeps labels at 12 px (then it scrolls)
+    const sw = cw / MMV.vw, read = 12 / (15 * MMV.fs);
+    MMV.fit = MMV.s = Math.max(Math.min(sw, ch / MMV.vh), Math.min(sw, read));
+    MMV.x = (MMV.vw - cw / MMV.s) / 2;
+    MMV.y = Math.min(0, (MMV.vh - ch / MMV.s) / 2);
+    MMV.at = true;
+    mmApply();
+  }
+  function mmApply() {
+    const svg = mmSvg(), host = $("mimicHost");
+    if (!svg || !host) return;
+    const cw = host.clientWidth, ch = host.clientHeight;
+    if (!cw || !ch) return;
+    const vw = cw / MMV.s, vh = ch / MMV.s;
+    MMV.x = clampN(MMV.x, -vw * 0.75, MMV.vw - vw * 0.25);   // part of the drawing always stays on screen
+    MMV.y = clampN(MMV.y, -vh * 0.75, MMV.vh - vh * 0.25);
+    svg.setAttribute("viewBox", `${MMV.x.toFixed(2)} ${MMV.y.toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}`);
+    svg.setAttribute("preserveAspectRatio", "xMinYMin meet");
+    const z = MMV.s / MMV.fit;
+    const pctEl = $("mmZoomPct");
+    if (pctEl) pctEl.textContent = `${Math.round(z * 100)} %`;
+    const zi = $("mmZoomIn"), zo = $("mmZoomOut");
+    if (zi) zi.disabled = z >= 3.999;
+    if (zo) zo.disabled = z <= 0.251;
+    // labels never drawn below 12 px: zoom-only details hide until large enough; zoomed out past fit all text hides
+    svg.classList.toggle("lod-hide", MMV.s * 12 * MMV.fs < 11.5);
+    svg.classList.toggle("lbl-hide", z < 0.999 && MMV.s * 15 * MMV.fs < 11.5);
+  }
+  function mmZoomAt(f, px, py) {
+    if (!mmSvg()) return;
+    const s2 = clampN(MMV.s * f, MMV.fit * 0.25, MMV.fit * 4);
+    const ux = MMV.x + px / MMV.s, uy = MMV.y + py / MMV.s;
+    MMV.s = s2; MMV.x = ux - px / s2; MMV.y = uy - py / s2; MMV.at = false;
+    mmApply();
+  }
+  function mmZoomCenter(f) { const h = $("mimicHost"); if (h) mmZoomAt(f, h.clientWidth / 2, h.clientHeight / 2); }
+  function mmBind() {
+    const host = $("mimicHost"), card = $("mimicCard");
+    if (!host || host._mm) return;
+    host._mm = true;
+    const on = (id, fn) => { const b = $(id); if (b) b.onclick = fn; };
+    on("mmZoomIn", () => mmZoomCenter(1.25));
+    on("mmZoomOut", () => mmZoomCenter(0.8));
+    on("mmFitBtn", () => mmFit());
+    on("mmFsBtn", () => {
+      if (document.fullscreenElement) { if (document.exitFullscreen) document.exitFullscreen().catch(() => {}); }
+      else if (card && card.requestFullscreen) card.requestFullscreen().catch(() => {});
+    });
+    document.addEventListener("fullscreenchange", () => {
+      const fs = mmFull(), b = $("mmFsBtn");
+      if (card) card.classList.toggle("mm-fs", fs);
+      if (b) { b.setAttribute("aria-pressed", String(fs)); b.title = fs ? "Exit full screen (Esc)" : "Full screen"; b.setAttribute("aria-label", b.title); }
+      requestAnimationFrame(() => mmFit());
+    });
+    $("mimicDim") && $("mimicDim").querySelectorAll("button").forEach((b) => (b.onclick = () => {
+      if (b.dataset.d === "3d") setSheet("d3");             // 3D = the whole plant
+      else if (sheet === "d3") setSheet("overall");
+      renderMimic();
+    }));
+    // pan: drag (mouse / touch / pen), pinch to zoom; a drag never counts as a click on a symbol
+    const pts = new Map();
+    let drag = null, pinch = null;
+    host.addEventListener("pointerdown", (ev) => {
+      if (!mmSvg() || ev.target.closest(".mm-pop") || (ev.pointerType === "mouse" && ev.button !== 0)) return;
+      pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (pts.size === 1) drag = { x: ev.clientX, y: ev.clientY, mx: MMV.x, my: MMV.y, moved: false };
+      else if (pts.size === 2) {
+        const [a, b] = [...pts.values()];
+        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, s: MMV.s };
+        if (drag) { drag.moved = true; drag.dead = true; }
+      }
+    });
+    host.addEventListener("pointermove", (ev) => {
+      if (!pts.has(ev.pointerId)) return;
+      pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (pinch && pts.size >= 2) {
+        const [a, b] = [...pts.values()], r = host.getBoundingClientRect();
+        mmZoomAt((pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d) / MMV.s, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
+        return;
+      }
+      if (!drag || drag.dead) return;
+      const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
+      if (!drag.moved && Math.hypot(dx, dy) < 5) return;
+      if (!drag.moved) { drag.moved = true; host.classList.add("dragging"); try { host.setPointerCapture(ev.pointerId); } catch (_) {} }
+      MMV.x = drag.mx - dx / MMV.s; MMV.y = drag.my - dy / MMV.s; MMV.at = false;
+      mmApply();
+    });
+    const end = (ev) => {
+      pts.delete(ev.pointerId);
+      if (pts.size < 2) pinch = null;
+      if (!pts.size) { if (drag && drag.moved) host._dragged = Date.now(); drag = null; host.classList.remove("dragging"); }
+    };
+    host.addEventListener("pointerup", end);
+    host.addEventListener("pointercancel", end);
+    host.addEventListener("click", (ev) => {
+      if (host._dragged && Date.now() - host._dragged < 350) { ev.stopPropagation(); ev.preventDefault(); host._dragged = 0; }
+    }, true);
+    host.addEventListener("wheel", (ev) => {                // zoom towards the cursor
+      if (!mmSvg()) return;
+      ev.preventDefault();
+      const r = host.getBoundingClientRect();
+      mmZoomAt(Math.exp(-ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0015)), ev.clientX - r.left, ev.clientY - r.top);
+    }, { passive: false });
+    host.addEventListener("keydown", (ev) => {              // arrow keys pan, + / − zoom, 0 = fit (when the mimic has focus)
+      if (!mmSvg() || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+      const st = 48 / MMV.s, d = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, -st], ArrowDown: [0, st] }[ev.key];
+      if (d) { MMV.x += d[0]; MMV.y += d[1]; MMV.at = false; mmApply(); }
+      else if (ev.key === "+" || ev.key === "=") mmZoomCenter(1.25);
+      else if (ev.key === "-" || ev.key === "_") mmZoomCenter(0.8);
+      else if (ev.key === "0") mmFit();
+      else return;
+      ev.preventDefault();
+    });
+    if (window.ResizeObserver) {
+      let lw = 0, lh = 0;
+      new ResizeObserver(() => {
+        const w = host.clientWidth, h = host.clientHeight;
+        if (!w || (w === lw && h === lh)) return;
+        const wChanged = w !== lw;
+        lw = w; lh = h;
+        if (!mmSvg()) return;
+        if (MMV.at) mmFit(); else { if (wChanged) mmLayout(); mmApply(); }
+      }).observe(host);
+    }
+  }
+
+  // ---------- v3 (SC04): active alerts that belong to the sheet on screen ----------
+  // trip inputs of the machines (tag ids from the IO list configuration) -> machine
+  const TRIP_EQ = {
+    DI_Under_Grnd_Slud_Pmp_TO_VP_Mn_Tp: "OP_P1A", DI_Under_Grnd_Slud_Pmp_TO_VP_Stby_Tp: "OP_P1B", DI_Dry_Hot_Wtr_Inlet_Pmp_Vfd_Tp: "OP_P2",
+    DI_Cool_Twr_Pmp_For_Su_Co_Of_Dry_Tp: "OP_P3", DI_Cool_Twr_Fn_For_Su_Co_Of_Dry_An_P2_Tp: "OP_F1", DI_Centrifug_Pmp_Su_Co_To_Degas_Tp: "OP_P4",
+    DI_Filtrate_Tnk_Pmp_Main_Tp: "OP_P5A", DI_Filtrate_Tnk_Pump_Stby_Tp: "OP_P5B", DI_Undr_Grnd_Subm_Pmp_Mn_Tp: "OP_P6A", DI_Undr_Grnd_Subm_pmp_Stby_Tp: "OP_P6B",
+    DI_Degf_Phe_Cool_Twr_Wtr_Cirul_Pmp_Tp: "OP_P7", DI_Gvt_Tnk_To_wtp_Phe_Wtr_Pmp_Tp: "OP_P8", DI_Degasifier_Exhaust_Blower_Hot_Air_Blower_Trip: "OP_M1",
+    DI_Degf_Cirul_Wtr_Pmp_Tp: "OP_P9", DI_Turb_Oil_Cool_Cirul_Pmp_Tp: "OP_P10", DI_Trub_Oil_Cool_Twr_Fan_Tp: "OP_F2", DI_Blr_Cool_Wtr_Pmp_Tp: "OP_P11",
+    DI_Acid_Dosing_Pump_Trip: "OP_P12", DI_Base_Dosing_Pmp_Tp: "OP_P13", DI_Make_Up_Wtr_Pmp_Mn_Tp: "OP_P14", DI_Make_Up_Wtr_Pmp_Stby_Tp: "OP_P15",
+    DI_Prog_Cavity_Pmp_Tp: "PCP", DI_Agita_Prop_Mix_For_Slud_Tnk_Tp: "AGIT",
+  };
+  function sheetSig(box) {                               // every signal and machine drawn on the sheet
+    const tags = new Set(), eqs = new Set();
+    box.querySelectorAll("[data-tag],[data-val],[data-vals],[data-lvl],[data-sw],[data-swl],[data-lv],[data-spv],[data-eq],[data-flow]").forEach((el) => {
+      const d = el.dataset;
+      [d.tag, d.val, d.lvl, d.sw].forEach((v) => v && tags.add(v));
+      (d.vals || "").split(",").forEach((v) => v && tags.add(v));
+      (d.swl || "").split(",").forEach((v) => v && tags.add(v.split(":")[0]));
+      if (d.lv) tags.add(d.lv.split(":")[0]);
+      if (d.spv && d.spv.startsWith("alm:")) tags.add(d.spv.split(":")[1]);
+      if (d.eq) eqs.add(d.eq);
+      (d.flow || "").split(",").forEach((v) => v && eqs.add(v));
+    });
+    return { tags, eqs };
+  }
+  function mmAlerts(box) {
+    const el = $("mimicAlerts");
+    if (!el || !live) return;
+    const s = SHEETS[sheet], all = live.alarms || [];
+    if (!box._sig && !s.d3) box._sig = sheetSig(box);
+    const sig = box._sig || { tags: new Set(), eqs: new Set() };
+    const wide = (a) => a.tag === "_COMM" || ((live.aux || {})[a.tag] || {}).group === "Safety";
+    const mine = all.filter((a) => s.overall || s.d3 || wide(a) || sig.tags.has(a.tag) || sig.tags.has(String(a.tag || "").replace(/_ALM$/, "")) || sig.eqs.has(TRIP_EQ[a.tag]))
+      .sort((a, b) => (a.priority === "red" ? 0 : 1) - (b.priority === "red" ? 0 : 1) || (b.raised_at || 0) - (a.raised_at || 0));
+    const others = all.length - mine.length;
+    const more = others > 0 ? `<a class="mm-al-more" href="#alarms">${others} other alert${others > 1 ? "s" : ""} in the plant</a>` : "";
+    const html = !mine.length
+      ? `<span class="mm-al-ok"><i aria-hidden="true"></i>No active alerts on this ${s.overall || s.d3 ? "plant" : "sheet"}</span>${more}`
+      : `<span class="mm-al-n">${mine.length} active alert${mine.length > 1 ? "s" : ""}</span>${mine.slice(0, 4).map((a) =>
+          `<span class="mm-al ${a.priority === "red" ? "red" : "yel"}${a.acked_at ? " ack" : ""}" title="${esc(a.tag_name || "")}${a.acked_at ? " - acknowledged" : ""}"><b aria-hidden="true">${a.priority === "red" ? "✕" : "⚠"}</b>${esc(a.message || a.tag_name || "")}</span>`).join("")}
+         ${mine.length > 4 ? `<span class="mm-al-n">+${mine.length - 4} more</span>` : ""}<a class="mm-al-more" href="#alarms">Open alarms</a>${others > 0 ? more : ""}`;
+    if (el._h !== html) { el._h = html; el.innerHTML = html; }
+    el.classList.toggle("has", mine.length > 0);
+  }
+
   function renderMimic() {
     const tabs = $("mimicTabs"), box = $("mimicSvg");
     if (!tabs || !box) return;
+    if (!mmUser) sheet = "overall";                      // open on the overall plant first
     if (!SHEETS[sheet]) sheet = "overall";              // a remembered sheet that no longer exists
+    mmBind();
+    const is3d = !!SHEETS[sheet].d3, tabSel = is3d ? "overall" : sheet;
     if (tabs._sheet !== sheet) {
       tabs._sheet = sheet;
       let n = 0;
-      tabs.innerHTML = AREAS.map((a) => `<button class="${a.id === sheet ? "active" : ""}${a.overall ? " all" : ""}" data-s="${a.id}"><b>${a.d3 ? "3D" : a.overall ? "★" : ++n}</b> ${esc(a.name)}</button>`).join("");
+      // area tabs (3D is the 2D / 3D switch beside the heading, not a tab); picking an area always shows its 2D sheet
+      tabs.innerHTML = AREAS.map((a) => `<button role="tab" aria-selected="${a.id === tabSel}" class="${a.id === tabSel ? "active" : ""}${a.overall ? " all" : ""}" data-s="${a.id}"><b>${a.overall ? "★" : ++n}</b> ${esc(a.name)}</button>`).join("");
       tabs.querySelectorAll("button").forEach((b) => (b.onclick = () => { setSheet(b.dataset.s); renderMimic(); }));
+      const dim = $("mimicDim");
+      if (dim) dim.querySelectorAll("button").forEach((b) => { const act = (b.dataset.d === "3d") === is3d; b.classList.toggle("active", act); b.setAttribute("aria-pressed", String(act)); });
+      // 2D / 3D switch only on Overall plant (and its 3D view) - the area sheets are 2D only (user request 15-11-2026)
+      if (dim) dim.hidden = tabSel !== "overall";
     }
     if (box._sheet !== sheet) {
       box._sheet = sheet;
-      const s = SHEETS[sheet];
-      const [vw, vh] = s.vb || [W, H];                  // the overall sheet uses a larger drawing area
-      box.innerHTML = sheetSVG(s);
+      box._sig = null;
+      const s = SHEETS[sheet], card = $("mimicCard");
       $("mimicTitle").textContent = s.name;
       $("mimicNote").textContent = s.note;
-      $("mimicLegend").innerHTML = legend();
-      bindSheet(box, (id) => { setSheet(id); renderMimic(); }, "mimicPop");
+      if (card) card.classList.toggle("is-3d", is3d);
+      const pop = $("mimicPop");
+      if (pop) pop.classList.add("hidden");
+      if (s.d3 && !window.Plant3D) {                     // 3D module (three.js) still loading: try again on the next update
+        box._sheet = null;
+        box.innerHTML = '<p class="muted" style="padding:40px;text-align:center">Loading the 3D plant…</p>';
+        window.addEventListener("plant3d-ready", () => live && renderMimic(), { once: true });
+        return;
+      }
+      if (s.d3) {                                        // 3D view: three.js scene, no SVG drawing
+        box.innerHTML = "";
+        mmLayout();
+        $("mimicLegend").innerHTML = "";
+        Plant3D.mount(box, {
+          pct: (id) => { const t = tag(id); return t ? pct(t) : null; },
+          sw: (key) => sw(SW[key] || key),
+          tagTxt: (id) => { const t = tag(id); if (!t || num(t) == null) return null; const p = pct(t); return `${fmt(t)} ${t.unit || ""}${p == null ? "" : ` · ${Math.round(p)} %`}`.trim(); },
+          val: (id) => { const t = tag(id); return t && num(t) != null ? `${fmt(t)} ${t.unit || ""}`.trim() : null; },
+          tagName: (id) => { const t = tag(id); return t ? t.name : ""; },
+          over: (id) => { const t = tag(id), v = num(t), sp = auxNum(`${id}_ALM_SP`); return v != null && sp != null && t.group !== "Analysis" && v >= sp; },
+          pid: (id) => PID[id] || id,
+          stateTxt: (e) => (e.type === "valve" ? vState(e).txt.split(" - ")[0] : STATE_TXT[e.status] || e.status),
+          valve: (e) => vState(e).k,                     // v3 (SC05): same valve rule as the 2D sheets
+          flowOn: (ids) => flowOn(ids),
+        }, (id, x, y) => eqPop(id, { getBoundingClientRect: () => ({ left: x - 6, right: x + 6, top: y - 6, bottom: y + 6, width: 12, height: 12 }) }, "mimicPop", $("mimicHost") || box));
+      } else {
+        if (window.Plant3D) Plant3D.unmount();
+        box.innerHTML = sheetSVG(s);
+        const svg = mmSvg();
+        MMV.vw = +svg.dataset.vw; MMV.vh = +svg.dataset.vh; MMV.fs = +svg.dataset.fs || 1;
+        $("mimicLegend").innerHTML = legend();
+        bindSheet(box, (id) => { setSheet(id); renderMimic(); }, "mimicPop");
+        mmFit();                                         // whole sheet in view first
+      }
     }
+    mmAlerts(box);
+    if (SHEETS[sheet].d3) { if (window.Plant3D) Plant3D.update(live); return; }
+    if (MMV.at && mmSvg() && !mmSvg().getAttribute("preserveAspectRatio")) mmFit();   // section was hidden at build time
     patchMimic(box);
   }
   // shared fills used by the stylesheet (url(#gRun) etc.): one always-rendered copy for every drawing on the page -
@@ -1119,14 +1811,52 @@
     document.body.prepend(d.firstElementChild);
   }
   // the drawing of one sheet (SVG string); idp prefixes the SVG ids (arrows, clip paths) so two drawings can be on the page at once
+  // straight segments of a pipe path (mimic pipes use absolute M / L only)
+  function pipeSegs(d) {
+    const segs = [];
+    let cx = 0, cy = 0;
+    String(d).replace(/([ML])\s*(-?[\d.]+)[\s,]+(-?[\d.]+)/g, (_, c, x, y) => { x = +x; y = +y; if (c === "L") segs.push([cx, cy, x, y]); cx = x; cy = y; return ""; });
+    return segs;
+  }
+  // v3 (SC04): flow-direction chevrons at regular intervals on long runs, in the drawn direction (source → destination);
+  // each one is moved a little along the line if it would sit on a valve, gauge, label or another chevron
+  function chevrons(p) {
+    if (!p.arrows) return "";
+    const segs = pipeSegs(p.d), SP = 130, MIN = 110;
+    const hit = (x, y, r) => OB.some(([a, b, c, d]) => x > a - r && x < c + r && y > b - r && y < d + r);
+    let out = "";
+    segs.forEach(([x1, y1, x2, y2], si) => {
+      const L = Math.hypot(x2 - x1, y2 - y1);
+      if (L < MIN) return;
+      const ux = (x2 - x1) / L, uy = (y2 - y1) / L, n = Math.max(1, Math.floor(L / SP));
+      const end = si === segs.length - 1 ? 34 : 22;     // keep clear of the arrowhead at the end of the line
+      for (let i = 1; i <= n; i++) {
+        const t0 = (i / (n + 1)) * L;
+        for (const dt of [0, 14, -14, 28, -28, 42, -42, 56, -56]) {
+          const t = t0 + dt;
+          if (t < 22 || t > L - end) continue;
+          const px = x1 + ux * t, py = y1 + uy * t;
+          if (hit(px, py + p.oy, 7)) continue;
+          const f = (a, b) => `${(px + ux * a - uy * b).toFixed(1)} ${(py + uy * a + ux * b).toFixed(1)}`;
+          out += `<path class="pa k-${p.kind}" d="M${f(7, 0)} L${f(-5, -6)} L${f(-5, 6)} Z"/>`;
+          ob(px - 7, py - 7 + p.oy, px + 7, py + 7 + p.oy);
+          break;
+        }
+      }
+    });
+    return out;
+  }
   function sheetSVG(s, idp = "") {
     ensureDefs();
     const [vw, vh] = s.vb || [W, H];                  // the overall sheet uses a larger drawing area
-    let svg = `<svg viewBox="0 0 ${vw} ${vh}" class="mimic${s.vb ? " big" : ""}" role="img" aria-label="${esc(s.name)} process mimic">
+    FS = s.fs || 1; PIPES = []; OB = []; OY = 0;
+    const body = s.draw().join("").replace(/<!--AR(\d+)-->/g, (_, i) => chevrons(PIPES[+i]));
+    let svg = `<svg viewBox="0 0 ${vw} ${vh}" class="mimic${s.vb ? " big" : ""}" style="--fs:${FS}" role="img" aria-label="${esc(s.name)} process mimic" data-vw="${vw}" data-vh="${vh}" data-fs="${FS}">
         <defs>
           ${[["water", "#2f7fd1"], ["hot", "#e8731a"], ["sludge", "#a8781e"], ["steam", "#c43d3d"], ["air", "#1fb5b5"], ["chem", "#8e44c9"], ["ctp", "#3a3f2a"]]
             .map(([k, c]) => `<marker id="ar-${k}" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="${c}"/></marker>`).join("")}</defs>
-        ${s.draw().join("")}</svg>`;
+        ${body}</svg>`;
+    FS = 1;
     if (idp) svg = svg.replace(/(\s)id="/g, `$1id="${idp}`).replace(/url\(#/g, `url(#${idp}`);
     return svg;
   }
@@ -1141,16 +1871,90 @@
       g.onkeydown = (ev) => { if (ev.key === "Enter") g.onclick(); };
     });
   }
+  // Auto / Manual badge on every machine that has an HMI A/M selector (like the HMI mimic): "AUTO" green, "MAN" amber.
+  // Placed above the motor (or the symbol) once the drawing is on screen; the text follows the PLC bit every update.
+  const SVGNS = "http://www.w3.org/2000/svg";
+  function amBadge(svg, g, e) {
+    let b = svg.querySelector(`g.am-b[data-am="${g.dataset.eq}"]`);
+    if (!e || e.auto == null) { if (b) b.remove(); return; }
+    // level lines move after the first draw: if one now sits under the badge, place the badge again
+    if (b) {
+      const br = b.querySelector("rect").getBoundingClientRect();
+      // (any label now under the badge - e.g. labels that were hidden at the zoom when the badge was placed)
+      const hit = br.width && !b.dataset.forced && [...svg.querySelectorAll("text, .lamp rect")].filter((t) => !t.closest(".am-b")).some((t) => { const r = t.getBoundingClientRect();
+        return r.width && !(r.right < br.left + 1 || r.left > br.right - 1 || r.bottom < br.top + 1 || r.top > br.bottom - 1); });
+      if (hit) { b.remove(); b = null; }
+    }
+    if (!b) {
+      // v3 (SC04): anchor on the motor / actuator, never on a rotating part (the side mixer has no .pm-motor: its first
+      // circle was the propeller hub, so the badge sat on the propeller)
+      const shape = g.querySelector(".pm-motor") || g.querySelector(".ag-mot") || g.querySelector(".act") || g.querySelector("circle") || g.querySelector("path");
+      const r = shape && shape.getBoundingClientRect(), m = svg.getScreenCTM();
+      if (!r || !r.width || !m) return;                  // sheet not on screen yet: try again on the next update
+      const inv = m.inverse();
+      const toSvg = (rc) => { const a = new DOMPoint(rc.left, rc.top).matrixTransform(inv), c = new DOMPoint(rc.right, rc.bottom).matrixTransform(inv);
+        return { l: Math.min(a.x, c.x), t: Math.min(a.y, c.y), r: Math.max(a.x, c.x), b: Math.max(a.y, c.y) }; };
+      const s = toSvg(r), cx = (s.l + s.r) / 2, cy = (s.t + s.b) / 2;
+      // first free spot (no text, no other badge) of: above, right, left, below the motor / symbol
+      const busy = [...svg.querySelectorAll("text")].filter((t) => !t.closest(".am-b")).map((t) => t.getBoundingClientRect()).filter((x) => x.width).map(toSvg)
+        // level / switch lamps and tank readouts are wider than their text: keep the badge off the whole pill
+        .concat([...svg.querySelectorAll(".am-b rect, .lamp rect, .t-read rect")].map((x) => x.getBoundingClientRect()).filter((x) => x.width).map(toSvg))
+        .concat([...svg.querySelectorAll(".lv-ln text")].map((x) => x.getBoundingClientRect()).filter((x) => x.width).map(toSvg)
+          .map((o) => ({ l: o.l - 6, t: o.t - 4, r: o.r + 6, b: o.b + 4 })))
+        // every machine / package part (shafts, propellers, impellers, valve bodies) and every chevron: badge never covers them
+        .concat([...svg.querySelectorAll("[data-eq] :is(rect,circle,path,line), .pk :is(rect,circle,path,line), .pa, .hv, .nrv path, .gauge circle")]
+          .map((x) => x.getBoundingClientRect()).filter((x) => x.width || x.height).map(toSvg));
+      const fs = +svg.dataset.fs || 1, bw = 48 * fs, bh = 20 * fs;   // text 15 units × sheet scale (≥ 12 px at fit)
+      // texts (labels / tags / values) must never be covered; shapes only as a last resort
+      const nText = [...svg.querySelectorAll("text")].filter((t) => !t.closest(".am-b") && t.getBoundingClientRect().width).length;
+      // whole drawing (the viewBox itself changes with zoom / pan): 0 0 MMV.vw MMV.vh
+      const full = MMV && MMV.vw ? [0, 0, MMV.vw, MMV.vh] : null;
+      const inside = ([x, y]) => !full || (x >= full[0] + 2 && y >= full[1] + 2 && x + bw <= full[0] + full[2] - 2 && y + bh <= full[1] + full[3] - 2);
+      const cost = ([x, y]) => {
+        if (!inside([x, y])) return 1e9;
+        let c = 0;
+        busy.forEach((o, i) => { if (!(o.r < x - 1 || o.l > x + bw + 1 || o.b < y - 1 || o.t > y + bh + 1)) c += i < nText ? 1000 : 1; });
+        return c;
+      };
+      // same corner first on every symbol (top-right), then above, right, left, below, then further out
+      const spots = [[s.r + 4, s.t - bh - 2], [cx - bw / 2, s.t - bh - 4], [s.r + 4, cy - bh / 2], [s.l - bw - 4, cy - bh / 2], [cx - bw / 2, s.b + 4],
+        [s.l - bw - 4, s.t - bh - 2], [s.r + 4, s.b + 2], [s.l - bw - 4, s.b + 2], [cx - bw / 2, s.t - 2 * bh - 8], [s.r + bw / 2, s.t - bh - 2],
+        [s.l, s.t - bh - 4], [s.r - bw, s.t - bh - 4], [s.r + 8, s.t - 2 * bh - 6], [s.l - bw - 8, s.t - 2 * bh - 6], [s.r + bw + 8, cy - bh / 2],
+        [cx - bw / 2, s.b + bh + 10], [s.l - 2 * bw - 8, cy - bh / 2]];
+      let best = spots[0], bestC = Infinity;
+      for (const p of spots) { const c = cost(p); if (c < bestC) { best = p; bestC = c; } if (c === 0) break; }
+      const [bx, by] = best;
+      b = document.createElementNS(SVGNS, "g");
+      b.setAttribute("class", "am-b");
+      b.dataset.am = g.dataset.eq;
+      if (bestC >= 1000) b.dataset.forced = "1";        // no label-free spot exists: don't keep re-placing it every update
+      b.innerHTML = `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="${bh / 2}"/><text x="${bx + bw / 2}" y="${by + bh / 2 + 5 * fs}" text-anchor="middle"></text>`;
+      svg.appendChild(b);
+    }
+    const man = !e.auto;
+    b.classList.toggle("man", man);
+    b.querySelector("text").textContent = man ? "MAN" : "AUTO";
+  }
   function patchMimic(box) {
+    const svg = box.querySelector("svg");
     box.querySelectorAll("[data-eq]").forEach((g) => {
-      const e = eq(g.dataset.eq);
-      g.setAttribute("class", g.getAttribute("class").replace(/\s(run|stop|trip|warn|unk)\b/g, "") + " " + eqCls(e));
+      const e = eq(g.dataset.eq), base = g.getAttribute("class").replace(/\s(run|stop|trip|warn|unk|v-[a-z-]+)\b/g, "");
       const t = g.querySelector("title") || g.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "title"));
-      t.textContent = e ? `${e.name} (${PID[e.id] || e.tag_no}) - ${STATE_TXT[e.status] || e.status} · ${modeTxt(e)}` : "No data";
+      if (g.classList.contains("valve")) {                 // v3 (SC05): confirmed / commanded / unknown, see vState
+        const v = vState(e), cue = g.querySelector(".v-cue");
+        g.setAttribute("class", `${base} v-${v.k}`);
+        if (cue) cue.textContent = v.cue;
+        t.textContent = `${e ? `${e.name} (${PID[e.id] || e.tag_no})` : PID[g.dataset.eq] || g.dataset.eq} - ${v.txt}${e ? ` · ${modeTxt(e)}` : ""}`;
+      } else {
+        g.setAttribute("class", `${base} ${eqCls(e)}`);
+        t.textContent = e ? `${e.name} (${PID[e.id] || e.tag_no}) - ${STATE_TXT[e.status] || e.status} · ${modeTxt(e)}` : "No data";
+      }
+      if (svg && g.dataset.eq) amBadge(svg, g, e);
     });
+    // v3 (SC05): a line flows only while its IO machine runs and its valves are confirmed open (same rule on every sheet)
     box.querySelectorAll("[data-flow]").forEach((p) => {
-      const ids = p.dataset.flow ? p.dataset.flow.split(",") : [];
-      p.classList.toggle("on", ids.some(running));
+      const ids = p.dataset.flow ? p.dataset.flow.split(",") : [], need = p.dataset.need ? p.dataset.need.split(",") : [];
+      p.classList.toggle("on", flowOn(ids, need));
     });
     box.querySelectorAll("[data-val]").forEach((el) => {
       const t = tag(el.dataset.val);
@@ -1162,11 +1966,12 @@
     box.querySelectorAll("[data-spv]").forEach((el) => {       // set points from the PLC / HMI
       const [k, id, lk] = el.dataset.spv.split(":");
       let v = "--";
-      if (k === "aux") v = auxTxt(id);
+      if (k === "aux") v = spIsPct(id) ? spTxt(tag(id.startsWith("SP_SLUDGE") ? "LT_01" : id.slice(0, 5)), id) : auxTxt(id);
       else if (k === "alm") v = auxTxt(`${id}_ALM_SP`);
       else if (k === "lv") {
-        const t = tag(id), lv = levelsOf(t);
-        if (lv && lv[lk] != null) v = `${Number(lv[lk]).toFixed(t.decimals ?? 0)} ${t.unit || ""}${plcLevels(t) ? "" : " *"}`.trim();
+        const t = tag(id), lv = levelsOf(t), sid = `${id}_${lk.toUpperCase()}_SP`;
+        if (lv && lv[lk] != null) v = plcLevels(t) && spIsPct(sid) ? spTxt(t, sid)
+          : `${Number(lv[lk]).toFixed(t.decimals ?? 0)} ${t.unit || ""}${plcLevels(t) ? "" : " *"}`.trim();
       }
       if (k === "alm" && el.dataset.pre) {
         if (v === "--" && !((live.aux || {})[`${id}_ALM_SP`])) { el.textContent = ""; return; }
@@ -1174,11 +1979,14 @@
       }
       el.textContent = (el.dataset.pre || "") + v;
     });
-    box.querySelectorAll("[data-run]").forEach((g) => {        // package equipment: indicative state from the listed panel motors
-      const ids = g.dataset.run ? g.dataset.run.split(",") : [];
-      const on = ids.some(running);
-      g.classList.toggle("run", on);
-      g.classList.toggle("stop", !on);
+    // package equipment (not in our IO list, no signal to this panel): drawn as per the P&ID but NOT animated -
+    // no running / stopped state is guessed from other motors (user request 2026-11-04)
+    box.querySelectorAll("[data-run]").forEach((g) => {
+      if (g.classList.contains("na")) return;
+      g.classList.remove("run", "stop");
+      g.classList.add("na");
+      const t = g.querySelector(":scope > title") || g.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "title"));
+      t.textContent = "Package equipment - not in the panel IO list, no signal: shown for reference only (not animated)";
     });
     box.querySelectorAll("[data-pct]").forEach((el) => { const p = pct(tag(el.dataset.pct)); el.textContent = p == null ? "" : `${Math.round(p)} %`; });
     box.querySelectorAll("[data-lvl]").forEach((r) => fillRect(r, pct(tag(r.dataset.lvl))));
@@ -1232,14 +2040,22 @@
     if (!e || !pop) return;
     pop.innerHTML = `<div class="mp-h"><b>${esc(e.name)}</b><button class="btn sm" id="mpX" aria-label="Close">✕</button></div>
       <dl class="kv"><dt>P&amp;ID tag</dt><dd>${esc(PID[e.id] || e.tag_no || "-")}</dd>
-      <dt>State</dt><dd><span class="kp-eq ${eqCls(e)}"><i></i>${esc(STATE_TXT[e.status] || e.status)}</span></dd>
-      <dt>Mode (HMI)</dt><dd>${esc(modeTxt(e))}</dd>
+      ${e.type === "valve" ? (() => {                    // v3 (SC05): position + the four signals behind it
+        const v = vState(e), io = e.io || {}, sig = (x) => (x == null ? "no data" : x ? "ON" : "OFF");
+        return `<dt>Position</dt><dd><span class="kp-eq mm-vp v-${v.k}"><i></i>${esc(v.txt)}</span></dd>
+          <dt>Open limit switch</dt><dd>${sig(io.open)}</dd><dt>Closed limit switch</dt><dd>${sig(io.close)}</dd>
+          <dt>Open command</dt><dd>${sig(io.open_cmd)}</dd><dt>Close command</dt><dd>${sig(io.close_cmd)}</dd>`;
+      })() : `<dt>State</dt><dd><span class="kp-eq ${eqCls(e)}"><i></i>${esc(STATE_TXT[e.status] || e.status)}</span></dd>`}
+      <dt>Mode</dt><dd>${esc(modeTxt(e))}</dd>
       ${e.type === "motor" ? `<dt>Run hours</dt><dd class="num">${e.run_hours ?? "-"} h</dd>` : ""}
       ${e.kw ? `<dt>Rating</dt><dd>${esc(String(e.kw))} kW</dd>` : ""}</dl>`;
     const r = g.getBoundingClientRect(), host = hostBox.getBoundingClientRect();
     pop.style.left = `${Math.min(host.width - 260, Math.max(0, r.left - host.left + r.width / 2 - 130))}px`;
     pop.style.top = `${r.bottom - host.top + 8}px`;
     pop.classList.remove("hidden");
+    // v3: the canvas clips (zoom / pan) - open above the symbol when there is no room under it
+    const ph = pop.offsetHeight;
+    if (r.bottom - host.top + 8 + ph > host.height) pop.style.top = `${Math.max(0, r.top - host.top - ph - 8)}px`;
     pop.querySelector("#mpX").onclick = () => pop.classList.add("hidden");
   }
 
@@ -1247,17 +2063,14 @@
   // INSTRUMENTS - every transmitter with its range, PLC scaling and live 4-20 mA signal
   // ======================================================================================
   const INST_GROUPS = ["Level", "Pressure", "Temperature", "Analysis"];
-  let editing = null;                                    // instrument id whose scaling form is open (updates pause)
+  let editing = null;                                    // instrument id whose scaling pop-up is open
   function renderInstruments() {
     const box = $("instGrid");
-    if (!box || editing) return;
+    if (!box) return;
     const list = live.tags.filter((t) => INST_GROUPS.includes(t.group))
       .sort((a, b) => INST_GROUPS.indexOf(a.group) - INST_GROUPS.indexOf(b.group));
     box.innerHTML = list.map((t) => {
       const p = pct(t), d = t.decimals ?? 1;
-      const rmin = auxNum(`${t.id}_RMIN`), rmax = auxNum(`${t.id}_RMAX`);
-      const dash = t.scaling_mode === "signal";          // value calculated on the dashboard from this range
-      const lo = dash ? t.eng_min : rmin ?? t.eng_min, hi = dash ? t.eng_max : rmax ?? t.eng_max;
       const sp = t.setpoint_value, spp = pct(t, sp);
       const f = (x, dd = d) => (x == null ? "--" : Number(x).toFixed(dd));
       const zone = p == null ? "" : p < 10 ? "Very low" : p < 30 ? "Low" : p > 90 ? "Very high" : p > 75 ? "High" : "Normal";
@@ -1268,48 +2081,92 @@
         <div class="in-v"><b class="num">${esc(fmt(t))}</b> <small>${esc(t.unit || "")}</small><span class="in-pc">${p == null ? "" : `${Math.round(p)} % · ${zone}`}</span></div>
         <div class="in-bar"><span class="ib-f" style="width:${p ?? 0}%"></span>${spp != null ? `<span class="ib-sp" style="left:${spp}%" title="Alarm at ${f(sp)}"></span>` : ""}</div>
         <div class="in-ends"><span>${f(t.eng_min, 0)}</span><span>${f(t.eng_max, 0)} ${esc(t.unit || "")}</span></div>
-        <div class="in-sc">
-          <div class="sc-row"><span>Measuring range</span><b class="num">${f(lo, 0)} to ${f(hi, 0)} ${esc(t.unit || "")}</b>${dash ? '<em class="dash">set on dashboard</em>' : '<em class="plc">from PLC</em>'}</div>
-          ${sp != null ? `<div class="sc-row"><span>Alarm at</span><b class="num">${f(sp)} ${esc(t.unit || "")}</b>${overSp ? '<em class="hi">reached</em>' : ""}</div>` : ""}
-          <button class="btn sm sc-edit" data-edit="${esc(t.id)}" type="button">✎ Edit range</button>
-        </div></div>`;
+        ${sp != null ? `<div class="in-sc"><div class="sc-row"><span>Alarm at</span><b class="num">${f(sp)} ${esc(t.unit || "")}</b>${overSp ? '<em class="hi">reached</em>' : ""}</div></div>` : ""}
+        </div>`;
     }).join("") || '<div class="empty">No instruments</div>';
     box.querySelectorAll("[data-open]").forEach((el) => {
-      el.onclick = (ev) => { if (!ev.target.closest(".sc-edit")) MD.openTag(el.dataset.open); };
+      el.onclick = () => MD.openTag(el.dataset.open);
       el.onkeydown = (ev) => { if (ev.key === "Enter" && ev.target === el) MD.openTag(el.dataset.open); };
     });
-    box.querySelectorAll("[data-edit]").forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); openScaling(b.dataset.edit, b.closest(".inst")); }));
-    $("instNote").textContent = `Each card is one measuring instrument. The bar shows how far the value is between the lowest and highest it can measure; the red mark is where the alarm comes. "Edit range" changes only this dashboard - the PLC and HMI are not changed. Updated ${fmtTime(live.status.last_update)}.`;
+    $("instNote").textContent = `Each card is one measuring instrument. The bar shows where the value is in its range; the red mark is where the alarm comes. Scaling is set on IO list › Analog inputs. Updated ${fmtTime(live.status.last_update)}.`;
   }
-  // scaling editor (dashboard-side only; saved to the dashboard's tag config, nothing is written to the PLC)
-  function openScaling(id, card) {
+  // scaling editor (IO list › Analog inputs), shown as a pop-up. "PLC" source: the new lowest / highest are WRITTEN
+  // into the PLC scaling block (<AI>_RMIN / <AI>_RMAX, FC16, read back) - the PLC then scales with them and the
+  // panel shows the same; the dashboard's display range follows. "Calculate on dashboard": dashboard config only.
+  function openScaling(id) {
     const t = tag(id);
-    if (!t || !card) return;
+    if (!t) return;
+    document.querySelector(".sc-modal")?.remove();
+    const modal = document.createElement("div");
+    modal.className = "sc-modal";
+    modal.innerHTML = `<div class="sc-box" role="dialog" aria-modal="true"><div class="sc-head"><b>Scaling - ${esc(t.name)}</b>
+      <button class="sc-x" type="button" aria-label="Close">✕</button></div><div class="in-sc"></div></div>`;
+    document.body.appendChild(modal);
+    const close = () => { modal.remove(); editing = null; renderIO(); };
+    modal.querySelector(".sc-x").onclick = close;
+    modal.onclick = (ev) => { if (ev.target === modal) close(); };
+    const card = modal.querySelector(".sc-box");
     editing = id;
-    const hasSig = auxNum(`${id}_MA`) != null || (live.aux || {})[`${id}_MA`];
+    const aux = live.aux || {}, me = window.MD_ME || {};
+    const rMin = aux[`${id}_RMIN`], rMax = aux[`${id}_RMAX`];
+    const plcOk = !!(rMin && rMax && rMin.writable && rMax.writable && me.can_operate);
+    const curMin = auxNum(`${id}_RMIN`), curMax = auxNum(`${id}_RMAX`);
+    const hasSig = auxNum(`${id}_MA`) != null || aux[`${id}_MA`];
+    const plcSrc = t.scaling_mode !== "signal";
+    const startMin = plcSrc && curMin != null ? curMin : t.eng_min ?? 0, startMax = plcSrc && curMax != null ? curMax : t.eng_max ?? 100;
     const sc = card.querySelector(".in-sc");
     sc.innerHTML = `<form class="sc-form" novalidate>
       <label>Value comes from<select name="source">
-        <option value="plc" ${t.scaling_mode !== "signal" ? "selected" : ""}>PLC (same as HMI)</option>
-        ${hasSig ? `<option value="signal" ${t.scaling_mode === "signal" ? "selected" : ""}>Calculate on dashboard using this range</option>` : ""}</select></label>
-      <div class="sc-2"><label>Lowest value<input name="range_min" type="number" step="any" value="${t.eng_min ?? 0}" required></label>
-        <label>Highest value<input name="range_max" type="number" step="any" value="${t.eng_max ?? 100}" required></label></div>
+        <option value="plc" ${plcSrc ? "selected" : ""}>Plant (same as panel)</option>
+        ${hasSig ? `<option value="signal" ${!plcSrc ? "selected" : ""}>Calculate on dashboard using this range</option>` : ""}</select></label>
+      <div class="sc-2"><label>Lowest value<input name="range_min" type="number" step="any" value="${startMin}" required></label>
+        <label>Highest value<input name="range_max" type="number" step="any" value="${startMax}" required></label></div>
       <label>Decimal places<input name="decimals" type="number" min="0" max="4" step="1" value="${t.decimals ?? 1}"></label>
-      <p class="sc-hint">Lowest / highest = what the instrument can measure (for example 0 to 3600 mm). Only this dashboard changes.</p>
-      <div class="sc-btns"><button class="btn sm primary" type="submit">Save</button><button class="btn sm" type="button" data-cancel>Cancel</button></div>
+      <p class="sc-hint" data-hint></p>
+      <div class="sc-btns"><button class="btn sm primary" type="submit" data-save>Save</button><button class="btn sm" type="button" data-cancel>Cancel</button></div>
       <div class="sc-err" hidden></div></form>`;
     const form = sc.querySelector("form");
+    const hint = () => {
+      const plc = form.source.value === "plc";
+      form.querySelector("[data-hint]").innerHTML = !plc
+        ? "Lowest / highest = what the instrument can measure. Only this dashboard changes - the plant control is not changed."
+        : plcOk ? `<b>Save writes this range into the plant control</b> (scaling min / max${rMin.value == null ? "" : `, now ${curMin ?? "--"} … ${curMax ?? "--"}`}): the plant calculates the value with it.`
+          : !me.can_operate ? "Your account is view-only - it cannot change the plant range."
+            : "Writing this range is not enabled (Settings › Tags › _RMIN / _RMAX).";
+      form.querySelector("[data-save]").disabled = plc && !plcOk;
+    };
+    form.source.onchange = () => {
+      if (form.source.value === "plc" && curMin != null && curMax != null) { form.range_min.value = curMin; form.range_max.value = curMax; }
+      hint();
+    };
+    hint();
     form.onclick = (ev) => ev.stopPropagation();
-    form.querySelector("[data-cancel]").onclick = () => { editing = null; renderInstruments(); };
+    form.querySelector("[data-cancel]").onclick = close;
     form.onsubmit = async (ev) => {
       ev.preventDefault();
       const fd = new FormData(form), err = form.querySelector(".sc-err");
       const body = { id, source: fd.get("source"), range_min: +fd.get("range_min"), range_max: +fd.get("range_max"), decimals: +fd.get("decimals") };
       if (!(body.range_max > body.range_min)) { err.hidden = false; err.textContent = "Highest value must be greater than lowest value"; return; }
+      err.hidden = true;
       try {
-        await MD.api("/api/client/scaling", { method: "POST", body });
-        MD.toast(`Range saved for ${t.name}`);
-        editing = null;
+        if (body.source === "plc") {
+          if (!plcOk) return;
+          if (!confirm(`Write the scaling range of ${t.name}?\n\nLowest:  ${curMin ?? "--"}  →  ${body.range_min}\nHighest: ${curMax ?? "--"}  →  ${body.range_max}  ${t.unit || ""}\n\n`
+            + "The plant will calculate this value with the new range.")) return;
+          // write order keeps lowest < highest in the PLC at every moment
+          const steps = curMax != null && body.range_min >= curMax
+            ? [[`${id}_RMAX`, body.range_max], [`${id}_RMIN`, body.range_min]]
+            : [[`${id}_RMIN`, body.range_min], [`${id}_RMAX`, body.range_max]];
+          const back = {};
+          for (const [tid, v] of steps) back[tid] = (await MD.api("/api/client/write", { method: "POST", body: { id: tid, value: v } }));
+          await MD.api("/api/client/scaling", { method: "POST", body });          // dashboard display range follows the PLC
+          const sim = Object.values(back).some((r) => r.simulated);
+          MD.toast(`${t.name}: range ${back[`${id}_RMIN`].value} … ${back[`${id}_RMAX`].value} ${t.unit || ""}${sim ? " (demo mode - not written to the plant)" : " - read back from the plant"}`);
+        } else {
+          await MD.api("/api/client/scaling", { method: "POST", body });
+          MD.toast(`Dashboard range saved for ${t.name} (plant not changed)`);
+        }
+        close();
       } catch (e) { err.hidden = false; err.textContent = e.message; }
     };
     form.querySelector("select").focus();
@@ -1339,8 +2196,8 @@
       const cols = rep.columns;
       const rows = rep.rows.slice().reverse();
       tbl.innerHTML = `<thead><tr><th>Date</th><th>Time</th>${cols.map((c) => `<th>${esc(c.name.replace(/^[A-Z]+-\d+\s/, ""))}<small>${esc(c.unit)}</small></th>`).join("")}</tr></thead>
-        <tbody>${rows.map((r) => { const d = new Date(r.t * 1000); return `<tr><td>${d.toLocaleDateString()}</td><td>${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
-          ${r.values.map((v, i) => `<td class="num">${v == null ? "-" : Number(v).toFixed(cols[i].decimals)}</td>`).join("")}</tr>`; }).join("")}</tbody>`;
+        <tbody>${rows.map((r) => `<tr><td>${MD.istDate(r.t)}</td><td>${MD.fmtTime(r.t).slice(0, 5)}</td>
+          ${r.values.map((v, i) => `<td class="num">${v == null ? "-" : Number(v).toFixed(cols[i].decimals)}</td>`).join("")}</tr>`).join("")}</tbody>`;
       $("dlNote").textContent = `${rows.length} rows · average per interval · newest first${live && live.status.state === "demo" ? " · DEMO DATA" : ""}`;
     } catch (e) { $("dlNote").textContent = e.message; }
   }
@@ -1349,9 +2206,9 @@
   // TANK LEVELS - actual level against the HH / H / L / LL set points set on the HMI (LT Set Point screen)
   // ======================================================================================
   const LV_TANKS = [
-    { id: "LT_01", name: "Sludge storage tank", pid: "01-LT-101", fluid: "sludge",
+    { id: "LT_01", name: "Sludge storage tank", pid: "01-LT-101", fluid: "sludge", inlet: "MV_01", outlet: ["OP_P1A", "OP_P1B"], mixer: "AGIT",
       plc: [["Pump start", "SP_SLUDGE_PUMP_START"], ["Pump stop", "SP_SLUDGE_PUMP_STOP"], ["Valve open", "SP_SLUDGE_VALVE_OPEN"], ["Valve close", "SP_SLUDGE_VALVE_CLOSE"]] },
-    { id: "LT_02", name: "Filtrate tank", pid: "01-LT-102", fluid: "water", plc: [] },
+    { id: "LT_02", name: "Filtrate tank", pid: "01-LT-102", fluid: "water", outlet: ["OP_P5A", "OP_P5B"], plc: [] },
   ];
   const SW_TANKS = [
     { name: "Raw water storage tank", pid: "03-LS-301", sw: [["LS301_HL", "HL"], ["LS301_LL", "LL"]] },
@@ -1364,159 +2221,61 @@
     { name: "Pure water tank (CTP)", pid: "08-LS-803/804", sw: [["LS803", "HH"], ["LS804", "LL"]] },
   ];
   const GY0 = 22, GH = 268;                              // gauge tank top / height (viewBox 0 0 270 312)
-  // vertical storage tank: domed roof, dished bottom, legs, inlet / outlet nozzles; liquid drawn inside the shell
+  // vertical storage tank: domed roof, dished bottom, legs, inlet / outlet nozzles; liquid drawn inside the shell.
+  // Animated: the liquid group moves to the level (CSS transition), two waves roll on the surface, bubbles rise in
+  // water, the feed pours in while the inlet valve is open, the outlet flows while a pump runs, the side mixer turns.
+  const wave = (amp, y0) => {               // periodic (60 px) wave from x=-60 to 300, filled down to y=20
+    let d = `M-60 ${y0}`;
+    for (let x = -60; x < 300; x += 30) d += ` q15 ${amp * (x % 60 ? 1 : -1)} 30 0`;
+    return `${d} V20 H-60 Z`;
+  };
+  // flat tank in the Mimic style: light grey rounded body, grey outline, flat liquid colour (same look as the
+  // Mimic sheets), level readout lines and markers drawn by the card; liquid animated inside
+  const WX0 = 83, WX1 = 177;
   function tankSVG(c) {
     const id = c.id, B = GY0 + GH;
-    const shell = `M80 ${GY0} A50 13 0 0 1 180 ${GY0} V${B} A50 13 0 0 1 80 ${B} Z`;
-    const inner = `M83 ${GY0} A47 11 0 0 1 177 ${GY0} V${B} A47 11 0 0 1 83 ${B} Z`;
-    return `<defs>
-        <linearGradient id="shell_${id}" x1="0" x2="1"><stop offset="0" stop-color="#b9bdb3"/><stop offset=".3" stop-color="#f8f9f5"/><stop offset=".62" stop-color="#e2e4dc"/><stop offset="1" stop-color="#9ea296"/></linearGradient>
-        <linearGradient id="shade_${id}" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".22"/><stop offset=".3" stop-color="#fff" stop-opacity=".28"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
-        <clipPath id="clip_${id}"><path d="${inner}"/></clipPath></defs>
-      <rect class="lvg-leg" x="90" y="${B + 6}" width="6" height="${312 - B - 8}"/><rect class="lvg-leg" x="164" y="${B + 6}" width="6" height="${312 - B - 8}"/>
-      <rect class="lvg-noz" x="121" y="4" width="18" height="10"/><rect class="lvg-fl" x="117" y="1" width="26" height="4" rx="1"/>
-      <rect class="lvg-noz" x="180" y="${B - 16}" width="12" height="10"/><rect class="lvg-fl" x="191" y="${B - 19}" width="4" height="16" rx="1"/>
-      <path class="lvg-shell" d="${shell}" fill="url(#shell_${id})"/>
+    const shell = `M88 ${GY0} H172 Q180 ${GY0} 180 ${GY0 + 8} V${B - 8} Q180 ${B} 172 ${B} H88 Q80 ${B} 80 ${B - 8} V${GY0 + 8} Q80 ${GY0} 88 ${GY0} Z`;
+    const inner = `M88 ${GY0 + 3} H172 Q177 ${GY0 + 3} 177 ${GY0 + 8} V${B - 8} Q177 ${B - 3} 172 ${B - 3} H88 Q83 ${B - 3} 83 ${B - 8} V${GY0 + 8} Q83 ${GY0 + 3} 88 ${GY0 + 3} Z`;
+    const bubbles = c.fluid === "water" ? Array.from({ length: 8 }, (_, i) =>
+      `<circle class="lvg-bub" cx="${WX0 + 8 + ((i * 29) % 80)}" cy="${GH * 0.9}" r="${1.4 + (i % 3) * 0.7}" style="animation-delay:-${(i * 0.73).toFixed(2)}s;animation-duration:${(3.2 + (i % 4) * 0.6).toFixed(1)}s"/>`).join("")
+      : Array.from({ length: 6 }, (_, i) => `<circle class="lvg-part" cx="${WX0 + 10 + ((i * 23) % 70)}" cy="${30 + ((i * 53) % 150)}" r="${1.2 + (i % 2)}" style="animation-delay:-${i * 1.1}s"/>`).join("");
+    // scale inside the left wall: every 10 %, longer at 50 %
+    const ticks = Array.from({ length: 9 }, (_, i) => (i + 1) * 10).map((p) => { const y = GY0 + GH * (1 - p / 100); return `<line x1="${WX0}" x2="${WX0 + (p === 50 ? 12 : 6)}" y1="${y}" y2="${y}"/>`; }).join("");
+    // side-entry propeller mixer near the bottom (OP-A1)
+    const mixer = c.mixer ? `<g class="lvg-mix" data-mix transform="translate(${WX0 + 1} ${B - 22})"><title>Mixer OP-A1</title>
+        <rect class="lvg-mix-m" x="-1" y="-4" width="6" height="8" rx="1"/>
+        <line class="lvg-mix-s" x1="4" y1="0" x2="20" y2="0"/>
+        <g class="lvg-prop" transform="translate(22 0)"><ellipse cx="0" cy="-6.5" rx="2.6" ry="6.5"/><ellipse cx="0" cy="6.5" rx="2.6" ry="6.5"/></g>
+        <circle class="lvg-hub" cx="22" cy="0" r="2.2"/></g>` : "";
+    return `<defs><clipPath id="clip_${id}"><path d="${inner}"/></clipPath></defs>
+      <path class="lvg-mpipe" d="M130 2 V${GY0}"/>
+      <path class="lvg-mpipe" d="M180 ${B - 14} H232"/><path class="lvg-flow out ${c.fluid}" data-out d="M180 ${B - 14} H232"/>
+      <path class="lvg-body" d="${shell}"/>
       <g clip-path="url(#clip_${id})">
-        <rect class="lvg-fill ${c.fluid}" data-fill x="80" y="${B}" width="100" height="0"/>
-        <ellipse class="lvg-surf ${c.fluid}" data-surf cx="130" cy="${B}" rx="47" ry="5" style="display:none"/>
-        <path d="${inner}" fill="url(#shade_${id})" pointer-events="none"/>
+        <line class="lvg-pour ${c.fluid}" data-pour x1="130" x2="130" y1="${GY0}" y2="${B}"/>
+        <g class="lvg-liq ${c.fluid}" data-liq style="transform:translateY(${B}px)">
+          <g class="lvg-wave w2"><path class="lvg-w2 ${c.fluid}" d="${wave(3, 1)}"/></g>
+          <rect class="lvg-lq ${c.fluid}" x="70" y="8" width="120" height="${GH + 30}"/>
+          <g class="lvg-wave w1"><path class="lvg-lq ${c.fluid}" d="${wave(2.4, 3)}"/></g>
+          <g class="lvg-bubs">${bubbles}</g>
+        </g>
+        ${mixer}
+        <g class="lvg-ticks">${ticks}</g>
       </g>
-      <path class="lvg-seam" d="M80 ${GY0 + GH / 3} H180 M80 ${GY0 + (GH * 2) / 3} H180"/>
-      <path class="lvg-tank" d="${shell}"/>`;
+      <path class="lvg-tank flat" data-shell d="${shell}"/>
+      <g class="lvg-dir" data-dir transform="translate(130 ${GY0 + GH / 2 + 20})"><text text-anchor="middle" y="0"></text></g>`;
   }
   function lvStatus(t) {
     const v = num(t), lv = levelsOf(t);
     if (v == null || !lv) return ["nd", "No data"];
-    if (v >= lv.hh) return ["hh", "HIGH-HIGH - above the HH set point"];
-    if (v >= lv.h) return ["h", "HIGH - above the H set point"];
-    if (v <= lv.ll) return ["ll", "LOW-LOW - below the LL set point"];
-    if (v <= lv.l) return ["l", "LOW - below the L set point"];
-    return ["ok", "NORMAL - between L and H"];
+    if (v >= lv.hh) return ["hh", "High-high - at or above the HH set point"];
+    if (v >= lv.h) return ["h", "High - at or above the H set point"];
+    if (v <= lv.ll) return ["ll", "Low-low - at or below the LL set point"];
+    if (v <= lv.l) return ["l", "Low - at or below the L set point"];
+    return ["ok", "Normal - between L and H"];
   }
-  function lvCardHTML(c) {
-    const t = tag(c.id);
-    if (!t) return "";
-    const marks = LV_KEYS.map(([k, l]) => `<g class="lvg-ln ${k}" data-k="${k}"><line x1="78" x2="182" y1="0" y2="0"/><text x="188" y="4">${l}</text><text class="v num" x="210" y="4">--</text></g>`).join("");
-    const plcMarks = c.plc.map(([l, id], i) => `<g class="lvg-plc" data-sp="${id}"><path d="M72 0 l-7 -5 v10 Z"/><text x="62" y="4" text-anchor="end">${esc(l)}</text></g>`).join("");
-    return `<div class="card lvc" data-lt="${c.id}">
-      <div class="card-head"><h2>${esc(c.name)} <span class="muted small">${esc(c.pid)} · level transmitter</span></h2><span class="lv-src" data-src></span></div>
-      <div class="lvc-body">
-        <svg class="lvg" viewBox="0 0 270 312" role="img" aria-label="${esc(c.name)} level gauge">
-          ${tankSVG(c)}
-          ${marks}${plcMarks}
-          <text class="lvg-pct num" x="130" y="${GY0 + GH / 2}" text-anchor="middle" data-pct>--</text>
-          <text class="lvg-end" x="76" y="${GY0 + GH + 4}" text-anchor="end">${esc(String(t.eng_min ?? 0))}</text>
-          <text class="lvg-end" x="76" y="${GY0 + 6}" text-anchor="end">${esc(String(t.eng_max ?? ""))}</text>
-        </svg>
-        <div class="lvc-info">
-          <div class="lvc-val"><b class="num" data-v>--</b> <small>${esc(t.unit || "")}</small></div>
-          <div class="lvc-st" data-st>--</div>
-          <table class="lvc-t"><thead><tr><th>Level</th><th>Set point</th><th>Set delay</th><th>Actual delay</th><th></th></tr></thead>
-            <tbody>${LV_KEYS.map(([k, l]) => { const up = k.toUpperCase(); return `<tr data-row="${k}"><td><b>${l}</b></td>
-              <td class="num lv-cell" data-w="${c.id}_${up}_SP" data-lbl="${l} set point"><span data-sp>--</span><button class="lv-ed" type="button" title="Change ${l} set point">✎</button></td>
-              <td class="num lv-cell" data-w="${c.id}_${up}_DLY" data-lbl="${l} set delay"><span data-dly>--</span><button class="lv-ed" type="button" title="Change ${l} set delay">✎</button></td>
-              <td class="num" data-act>--</td><td><i class="lvc-lamp"></i></td></tr>`; }).join("")}</tbody></table>
-          <div class="lv-note muted small">✎ writes the new value into the PLC (same as changing it on the HMI). The dashboard then reads it back from the PLC.</div>
-          ${c.plc.length ? `<div class="lvc-plc"><b>Pump &amp; valve control levels (HMI selector screen)</b>
-            ${c.plc.map(([l, id]) => `<span>${esc(l)} <b class="num" data-plc="${id}">--</b></span>`).join("")}</div>` : ""}
-        </div>
-      </div>
-      <div class="lvc-trend"><div class="lvc-th">Level - last 8 hours <span class="muted small">dashed lines = set points</span></div><div class="chart" data-chart></div></div>
-    </div>`;
-  }
-  let lvTrendAt = 0;
-  function renderLevels() {
-    const box = $("lvCards"), swBox = $("lvSwitches");
-    if (!box) return;
-    if (!box.dataset.built) { box.innerHTML = LV_TANKS.map(lvCardHTML).join(""); box.dataset.built = "1"; lvTrendAt = 0;
-      box.querySelectorAll(".lvc").forEach((el) => el.querySelector(".lvc-val").onclick = () => MD.openTag(el.dataset.lt));
-      box.onclick = (ev) => { const b = ev.target.closest(".lv-ed"); if (b) lvEdit(b.closest(".lv-cell")); }; }
-    box.querySelectorAll(".lvc").forEach((el) => {
-      const t = tag(el.dataset.lt);
-      if (!t) return;
-      const lv = levelsOf(t), p = pct(t), [stc, stt] = lvStatus(t), d = t.decimals ?? 1;
-      const yOf = (val) => GY0 + GH * (1 - (pct(t, val) ?? 0) / 100);
-      const fh = GH * (p ?? 0) / 100, fill = el.querySelector("[data-fill]");
-      // liquid fills the dished bottom too (+14); the surface ellipse sits on top of the liquid
-      fill.setAttribute("y", GY0 + GH - fh); fill.setAttribute("height", p ? fh + 14 : 0);
-      const surf = el.querySelector("[data-surf]");
-      surf.setAttribute("cy", GY0 + GH - fh); surf.style.display = p ? "" : "none";
-      el.querySelector("[data-pct]").textContent = p == null ? "--" : `${Math.round(p)} %`;
-      el.querySelector("[data-v]").textContent = fmt(t);
-      const st = el.querySelector("[data-st]"); st.textContent = stt; st.className = `lvc-st ${stc}`;
-      el.querySelector("[data-src]").textContent = plcLevels(t) ? "Set points from HMI / PLC" : "Set points: default (HMI values not read)";
-      LV_KEYS.forEach(([k, l]) => {
-        const g = el.querySelector(`.lvg-ln[data-k="${k}"]`), y = yOf(lv[k]);
-        g.setAttribute("transform", `translate(0 ${y.toFixed(1)})`);
-        g.querySelector(".v").textContent = Number(lv[k]).toFixed(0);
-        g.classList.toggle("on", !!lvActive(t, k));
-        const row = el.querySelector(`tr[data-row="${k}"]`), up = k.toUpperCase();
-        const spEl = row.querySelector("[data-sp]"), dlyEl = row.querySelector("[data-dly]");
-        if (spEl) spEl.textContent = `${Number(lv[k]).toFixed(d)} ${t.unit || ""}`;   // (absent while that cell is being edited)
-        if (dlyEl) dlyEl.textContent = auxTxt(`${t.id}_${up}_DLY`);
-        row.querySelector("[data-act]").textContent = auxTxt(`${t.id}_${up}_ACT`);
-        row.className = lvActive(t, k) ? `on ${k}` : "";
-      });
-      el.querySelectorAll(".lvg-plc").forEach((g) => {
-        const v = auxNum(g.dataset.sp);
-        g.style.display = v == null ? "none" : "";
-        if (v != null) g.setAttribute("transform", `translate(0 ${yOf(v).toFixed(1)})`);
-      });
-      el.querySelectorAll("[data-plc]").forEach((b) => (b.textContent = auxTxt(b.dataset.plc)));
-    });
-    if (Date.now() - lvTrendAt > 60000) { lvTrendAt = Date.now(); loadLevelTrends(box); }
-    if (swBox) swBox.innerHTML = SW_TANKS.map((tk) => {
-      const st = tk.sw.map(([k, l]) => [l, sw(SW[k])]);
-      const top = st.find(([, v]) => v);
-      const nd = st.every(([, v]) => v == null);
-      const txt = nd ? "No data" : top ? `Water at ${top[0]} switch or above` : `Below the ${st[st.length - 1][0]} switch`;
-      return `<div class="lsw"><div class="lsw-h"><b>${esc(tk.name)}</b><span class="muted small">${esc(tk.pid)}</span></div>
-        <div class="lsw-lamps">${st.map(([l, v]) => `<span class="lsw-l ${v == null ? "nd" : v ? "on" : ""}">${l}</span>`).join("")}</div>
-        <div class="lsw-t ${top ? "" : "low"}">${esc(txt)}</div></div>`;
-    }).join("");
-  }
-  // write one set point / set delay to the PLC: inline input -> confirm -> POST -> show the value read back
-  function lvEdit(cell) {
-    if (!cell || cell.classList.contains("editing")) return;
-    const id = cell.dataset.w, a = (live.aux || {})[id] || {}, unit = a.unit || "";
-    const cur = typeof a.value === "number" ? a.value : "";
-    const saved = cell.innerHTML;
-    cell.classList.add("editing");
-    cell.innerHTML = `<form class="lv-form"><input type="number" step="any" value="${cur === "" ? "" : Number(cur).toFixed(a.decimals ?? 1)}" aria-label="${esc(cell.dataset.lbl)}">
-      <span class="u">${esc(unit)}</span><button class="btn sm primary" type="submit">Write</button><button class="btn sm" type="button" data-x>✕</button></form>`;
-    const form = cell.querySelector("form"), inp = form.querySelector("input");
-    const close = () => { cell.classList.remove("editing"); cell.innerHTML = saved; };
-    form.querySelector("[data-x]").onclick = close;
-    form.onsubmit = async (ev) => {
-      ev.preventDefault();
-      const v = Number(inp.value);
-      if (inp.value === "" || !isFinite(v)) { MD.toast("Enter a number", true); return; }
-      const demo = live.status.state === "demo";
-      if (!confirm(`Write ${cell.dataset.lbl} = ${v} ${unit} ${demo ? "(demo data - nothing is sent to the PLC)" : "to the PLC"}?\n\nThis changes the plant's level control, the same as changing it on the HMI.`)) return;
-      form.querySelectorAll("button,input").forEach((x) => (x.disabled = true));
-      try {
-        const r = await MD.api("/api/client/write", { method: "POST", body: { id, value: v } });
-        MD.toast(`${cell.dataset.lbl}: ${Number(r.value).toFixed(a.decimals ?? 1)} ${unit} ${r.simulated ? "(demo)" : "written - read back from PLC"}`);
-        if (live.aux && live.aux[id]) live.aux[id].value = r.value;
-        lvTrendAt = 0;
-        close();
-      } catch (e) { MD.toast(e.message, true); form.querySelectorAll("button,input").forEach((x) => (x.disabled = false)); }
-    };
-    inp.focus(); inp.select();
-  }
-  async function loadLevelTrends(box) {
-    for (const el of box.querySelectorAll(".lvc")) {
-      const t = tag(el.dataset.lt);
-      if (!t) continue;
-      try {
-        const r = await MD.api(`/api/trend?tags=${encodeURIComponent(t.id)}&minutes=480&points=240`);
-        const s = r.series[0], lv = levelsOf(t);
-        if (s) MDChart.render(el.querySelector("[data-chart]"), { name: s.name, unit: s.unit, decimals: s.decimals, color: "var(--s3)", points: s.points,
-          from: r.from, to: r.to, limits: LV_KEYS.map(([k, l]) => ({ v: lv[k], label: `${l} ${Number(lv[k]).toFixed(0)}` })), yMin: t.eng_min, yMax: t.eng_max });
-      } catch (_) { /* trend is optional */ }
-    }
-  }
+  // (v3: the Tank levels page - cards, set point table with inline edit, trends and float-switch tiles - moved into the
+  //  dashboard process cards; set point / set delay editing is on the Set points page, with the same write + read-back)
 
   // ======================================================================================
   // HELP - plain-language guide to every page (opens in the side drawer)
@@ -1526,14 +2285,15 @@
       <li><i class="trip"></i><b>Red (blinking)</b> - tripped or alarm: needs attention</li><li><i class="warn"></i><b>Orange</b> - warning, value outside its normal band</li>
       <li><i class="lamp"></i><b>Yellow lamp</b> - float switch ON (water has reached that level)</li></ul>
       <p><b>DEMO DATA</b> at the top means the values are simulated, not from the plant.</p>`],
-    ["Overview", `<p>The first page. The top row shows each plant area and how many of its machines are running - click one to see its drawing.</p>
-      <p>The six big cards are the most important values: tank levels, water pressure, pH, de-gasifier temperature and hot water to the dryer. Each card says in words whether the value is OK.</p>`],
+    ["Dashboard", `<p>The first page. The status bar at the top shows the panel and safety signals.</p>
+      <p>One card per process area: tank or gauge picture, the <b>Actual</b> value, a short <b>Set point</b> summary (the pencil opens it on the Set points page), and the pumps and valves with their state.
+      <b>Show more</b> opens the details and the trend. Drag a card by its handle (or use the arrows) to put it where you want - the order is kept for your user.</p>`],
     ["Mimic", `<p>Drawings of the plant. <b>Overall plant</b> shows all areas joined together; the other tabs show each area in detail.
       Pumps turn green when running, pipes show moving dashes when liquid is flowing (the arrow is the direction), tanks fill up with the real level. Click a pump or value for details.</p>`],
     ["Instruments", `<p>One card per measuring instrument (level, pressure, temperature, pH). The bar shows where the value is between the lowest and highest it can measure; the red mark is where the alarm comes.
-      <b>Edit range</b> changes the lowest / highest value used on this dashboard only - the PLC and HMI are not changed.</p>`],
-    ["Equipment", `<p>Every pump, fan and valve with its state, run hours and mode. <b>Auto</b> = the PLC starts and stops it by itself; <b>Manual</b> = an operator controls it.
-      For main / standby pump pairs it shows which pump is selected. The selector and set-value cards show the same settings as the HMI. <b>Field signals</b> lists every input and output ON / OFF.</p>`],
+      Scaling (lowest / highest value) is set on <b>IO list › Analog inputs › ✎ Scaling</b>.</p>`],
+    ["Equipment", `<p>Every pump, fan and valve with its state, run hours and mode. <b>Auto</b> = the plant control starts and stops it by itself; <b>Manual</b> = an operator controls it.
+      For main / standby pump pairs it shows which pump is selected. The selector and set-value cards show the plant settings. <b>Field signals</b> lists every input and output ON / OFF.</p>`],
     ["Trends & Data log", `<p><b>Trends</b> draws values over time (pick up to 6). <b>Data log</b> is a table of average values every 1 min to 1 hour, newest first, with an Excel download.</p>`],
     ["Alarms", `<p>Active alarms first, then history. The number on the bell in the menu shows how many alarms are active. Press <b>Acknowledge</b> on the Alarms page to mark one as seen - nothing is changed in the plant.</p>`],
   ];
@@ -1549,11 +2309,263 @@
   }
   if ($("helpBtn")) $("helpBtn").onclick = openHelp;
 
+  // ======================================================================================
+  // IO LIST - every PLC input / output with its address and live state (HMI screens IO DI 0-6, IO DO 0-3, IO AI)
+  // ======================================================================================
+  let ioTab = "di", ioAt = 0, ioData = null;
+  const IO_TABS = [["di", "Digital inputs"], ["do", "Digital outputs"], ["ai", "Analog inputs"]];
+  async function renderIO(force) {
+    const body = $("ioBody");
+    if (!body) return;
+    if (force || Date.now() - ioAt > 2000) {
+      ioAt = Date.now();
+      try { ioData = (await MD.api("/api/client/io")).io; } catch (e) { body.innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
+    }
+    if (!ioData) return;
+    ioWire();
+    const q = ($("ioSearch").value || "").trim().toLowerCase();
+    const count = (k) => ioData.filter((x) => x.kind === k).length;
+    // tabs rebuilt only when something changes, so keyboard focus stays on the tab (v3: they stay at the top while scrolling)
+    setH($("ioTabs"), IO_TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === ioTab}" class="${k === ioTab ? "active" : ""}" data-k="${k}">${l} <span class="muted">${count(k)}</span></button>`).join(""));
+    const order = (a) => { const m = a.match(/(\d+)\.(\d+)/); return m ? +m[1] * 100 + +m[2] : 0; };
+    const rows = ioData.filter((x) => x.kind === ioTab && (!q || `${x.name} ${x.addr} ${x.desc}`.toLowerCase().includes(q)))
+      .sort((a, b) => order(a.addr) - order(b.addr));
+    const dig = ioTab !== "ai", on = rows.filter((x) => dig && isOn(x.value)).length;
+    $("ioSum").textContent = dig ? `${rows.length} signals · ${on} ON · ${rows.length - on} OFF` : `${rows.length} analog channels`;
+    // one table per card, like the HMI pages: X0, X1 ... / Y0 ... / AI 0, AI 1 ...
+    const groups = {};
+    rows.forEach((x) => { const m = x.addr.match(/^(AI \d+|[XY]\d+)/); (groups[m ? m[1] : "?"] ||= []).push(x); });
+    const label = (g) => (g[0] === "X" ? `IO DI ${g.slice(1)} · inputs ${g}.0 - ${g}.15` : g[0] === "Y" ? `IO DO ${g.slice(1)} · outputs ${g}.0 - ${g}.15` : `IO ${g} · analog channels`);
+    const part = (d, i) => (d.split("·")[i] || "").trim();
+    // fixed column widths: every card's table lines up, the ON / OFF pills form one straight column
+    const cols = dig ? `<colgroup><col style="width:90px"><col><col style="width:32%"><col style="width:110px"></colgroup>`
+      : `<colgroup><col style="width:90px"><col><col style="width:120px"><col style="width:170px"><col style="width:26%"><col style="width:110px"></colgroup>`;
+    // analog scaling: the plant's scaling min / max (<AI>_RMIN / _RMAX) or the dashboard range when calculated here
+    const scTxt = (x) => {
+      const t = tag(x.id);
+      if (!t) return '<span class="muted">-</span>';
+      const lo = auxNum(`${x.id}_RMIN`), hi = auxNum(`${x.id}_RMAX`), dash = t.scaling_mode === "signal";
+      const a = dash ? t.eng_min : lo ?? t.eng_min, b = dash ? t.eng_max : hi ?? t.eng_max;
+      const f = (v) => (v == null ? "--" : Number(v).toFixed(Math.min(2, t.decimals ?? 1)));
+      return `<b class="num">${f(a)} … ${f(b)}</b> ${esc(t.unit || "")}<br><em class="io-scsrc ${dash ? "dash" : "plc"}">${dash ? "set on dashboard" : "from plant"}</em>`;
+    };
+    body.innerHTML = Object.keys(groups).map((g) => `<div class="io-grp"><h3>${esc(label(g))}</h3><table class="io-t io-fixed ${dig ? "io-dig" : "io-ai"}">${cols}<thead><tr><th>Address</th><th>Signal</th>
+        ${dig ? `<th>${ioTab === "di" ? "Contact" : "Drives"}</th><th class="io-stc">State</th>` : '<th>Value</th><th>Scaling (min … max)</th><th>Range / signal</th><th class="no-export"><span class="sr">Scaling</span></th>'}</tr></thead><tbody>
+      ${groups[g].map((x) => {
+        const nd = x.value == null || x.quality === "NODATA", spare = /spare/i.test(`${x.name} ${x.desc}`);
+        return `<tr class="${spare ? "spare" : ""}"><td class="num">${esc(x.addr)}</td><td>${esc(x.name)}</td>` + (dig
+          ? `<td class="muted">${esc(part(x.desc, 1))}</td><td class="io-stc"><span class="io-st ${nd ? "nd" : isOn(x.value) ? "on" : "off"}"><i></i>${nd ? "No data" : isOn(x.value) ? "ON" : "OFF"}</span></td>`
+          : `<td class="num"><b>${nd ? "--" : Number(x.value).toFixed(x.decimals ?? 1)}</b> ${esc(x.unit || "")}</td><td>${scTxt(x)}</td>
+            <td class="muted">${esc(x.desc.split("·").slice(2).join("·").trim())}</td>
+            <td class="no-export">${tag(x.id) ? `<button class="btn sm io-sc" type="button" data-sc="${esc(x.id)}">✎ Scaling</button>` : ""}</td>`) + "</tr>";
+      }).join("")}</tbody></table></div>`).join("") || `<p class="muted">No signal matches "${esc(q)}".</p>`;
+    body.querySelectorAll("[data-sc]").forEach((b) => (b.onclick = () => openScaling(b.dataset.sc)));
+  }
+  // v3 (brief SC05): tabs + search stay at the top while the list scrolls (below the phone top bar when it is sticky),
+  // list stays read-only, CSV / PDF export of the rows shown (current tab + search)
+  function ioTop() {
+    const card = $("ioCard"), rail = document.querySelector(".rail");
+    if (!card) return;
+    const railTop = rail && getComputedStyle(rail).position === "sticky" && rail.getBoundingClientRect().height < 160 ? Math.ceil(rail.getBoundingClientRect().height) : 0;
+    card.style.setProperty("--io-top", `${railTop}px`);
+  }
+  function ioWire() {
+    const tabs = $("ioTabs");
+    if (!tabs || tabs._wired) return;
+    tabs._wired = true;
+    tabs.addEventListener("click", (e) => { const b = e.target.closest("button[data-k]"); if (b) { ioTab = b.dataset.k; renderIO(); } });
+    $("ioSearch").addEventListener("input", () => renderIO());
+    if ($("ioCsv")) $("ioCsv").onclick = () => {
+      const tables = [...$("ioBody").querySelectorAll("table")];
+      if (!tables.length) { MD.toast("No signals to export", true); return; }
+      const rows = [];
+      tables.forEach((tb) => {
+        const r = MD.v3.tableRows(tb), grp = (tb.closest(".io-grp").querySelector("h3") || {}).textContent || "";
+        if (!rows.length && r.length) rows.push(["Group", ...r[0]]);
+        r.slice(1).forEach((x) => rows.push([grp, ...x]));
+      });
+      MD.v3.exportCsv(`io-list-${ioTab}-${MD.istDate(Date.now() / 1000)}.csv`, rows);
+    };
+    if ($("ioPdf")) $("ioPdf").onclick = () => {
+      const l = (IO_TABS.find(([k]) => k === ioTab) || [])[1] || "";
+      const q = $("ioSearch").value.trim();
+      MD.v3.printPdf($("ioCard"), `IO list · ${l}${q ? ` · search "${q}"` : ""}`);
+    };
+    ioTop();
+    window.addEventListener("resize", ioTop);
+  }
+
+  // ======================================================================================
+  // SET POINTS (v3, brief SC03) - alarm set points, tank level HH / H / L / LL and process set values together.
+  // The pencil sits right beside the value it changes -> small pop-up (Save / Cancel) -> confirm -> write -> read back
+  // (same write path and checks as before). Built once and patched every second, so search, focus and the pop-up stay.
+  // ======================================================================================
+  const ALM_SP = ["T_01", "T_02", "T_03", "T_04", "PT_01", "PT_02", "PT_03", "PT_04", "PH_01"];
+  // Alarm direction. Each instrument has ONE alarm set point (no separate hi / lo configured); its set delay and
+  // "delay now" count while the value is above it and the plant alarm comes at or above it, so all of these are
+  // HIGH-limit alarms (pH too: one high set point). A low-limit alarm would be listed here as "low" - the warning
+  // band then works downwards (MD.v3.level).
+  const ALM_DIR = {};
+  const almDir = (id) => ALM_DIR[id] || "high";
+  const LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+  const canWrite = () => !!(window.MD_ME || {}).can_operate && document.body.dataset.role !== "viewer";
+  // pencil per set point: only for operator / admin (viewers see none), only for values the admin marked "writable"
+  function spBtn(id, what) {
+    const a = (live.aux || {})[id];
+    if (!a || !canWrite()) return "";
+    if (!a.writable) return `<span class="sp-lock" role="img" aria-label="Read-only" title="Read-only: writing is not enabled for this value yet (its data format must be confirmed first)">${LOCK}</span>`;
+    return `<button class="v3-pen" type="button" data-sp="${esc(id)}" aria-label="Change ${esc(what || a.name)}" title="Change">${MD.v3.PEN}</button>`;
+  }
+  function openSpEdit(id) {
+    const a = (live.aux || {})[id];
+    if (!a) return;
+    const lo = a.eng_min, hi = a.eng_max, d = a.decimals ?? 1;
+    const lvTag = id.startsWith("LT_0") ? tag(id.slice(0, 5)) : id.startsWith("SP_SLUDGE") ? tag("LT_01") : null;
+    const chk = "<b>Check that the current value above matches the panel</b> before saving. If it doesn't match, don't save - tell Medge.";
+    const warn = id.endsWith("_ALM_DLY") ? `<div class="sp-warn">⚠ Address from our IO list; format (Word, seconds) inferred from the tank set delays, not confirmed. ${chk}</div>`
+      : id.endsWith("_ALM_SP") ? `<div class="sp-warn">⚠ Written as Double Word ×10 (e.g. 50.0 → 500), like the tank set points. ${chk}</div>`
+      : id.startsWith("SP_") ? `<div class="sp-warn">⚠ The format of this value (REAL) is assumed, not confirmed. ${chk}</div>` : "";
+    const demo = live.status && live.status.state === "demo";
+    const pop = MD.v3.popup({ title: a.name, saveLabel: "Save",
+      body: `<p class="sp-cur">Current value: <b class="num">${esc(lvTag && a.unit === "%" ? spTxt(lvTag, id) : auxTxt(id))}</b></p>${warn}
+        <label for="spNew">New value ${a.unit ? `(${esc(a.unit)})` : ""}</label>
+        <input id="spNew" type="number" inputmode="decimal" step="${Math.pow(10, -d)}" ${lo != null ? `min="${lo}"` : ""} ${hi != null ? `max="${hi}"` : ""} value="${a.value ?? ""}">
+        <div class="v3-hint" id="spHint">${lo != null && hi != null ? `Allowed ${lo} … ${hi} ${esc(a.unit || "")}` : ""}</div>
+        <p class="v3-hint">${demo ? "Demo data - nothing is sent to the plant. " : ""}The value is written to the plant and read back. Every change is logged with your user name.</p>`,
+      onSave: async (box) => {
+        const v = parseFloat(box.querySelector("#spNew").value);
+        if (isNaN(v)) { MD.toast("Enter a number", true); return false; }
+        if (!confirm(`Write ${a.name}\n\n${auxTxt(id)}  →  ${v.toFixed(d)} ${a.unit || ""}\n\nto the plant?`)) return false;
+        try {
+          const r = await MD.api("/api/client/write", { method: "POST", body: { id, value: v } });
+          MD.toast(`${a.name}: ${Number(r.value).toFixed(d)} ${a.unit || ""}${r.simulated ? " (demo - not written to the plant)" : " - read back from the plant"}`);
+          if (live.aux && live.aux[id]) live.aux[id].value = r.value;
+          return true;
+        } catch (e) { MD.toast(e.message, true); throw e; }   // pop-up stays open with the typed value + the reason
+      } });
+    if (lvTag && a.unit === "%") pop.box.querySelector("#spNew").oninput = (ev) => {
+      const v = parseFloat(ev.target.value);
+      pop.box.querySelector("#spHint").textContent = isNaN(v) ? "" : `= ${Math.round(spToLevel(lvTag, id, v))} ${lvTag.unit || "mm"} · allowed ${lo} … ${hi} %`;
+    };
+  }
+  // (Selectors page removed on request 2026-11-14 - Auto / Manual is shown read-only on Equipment and the Mimic)
+  const SP_PROC = [   // process set values (control philosophy): label, value id, note
+    ["Sludge pump start (normal level)", "SP_SLUDGE_PUMP_START", "pumps 01-P-101/102 start at or above"],
+    ["Sludge pump stop (very low level)", "SP_SLUDGE_PUMP_STOP", "dry-run protection"],
+    ["Sludge feed valve open", "SP_SLUDGE_VALVE_OPEN", "sludge tank level"],
+    ["Sludge feed valve close", "SP_SLUDGE_VALVE_CLOSE", "sludge tank level"],
+    ["LP steam valve open", "SP_LP_STEAM_OPEN", "de-gasifier temperature"],
+    ["LP steam valve close", "SP_LP_STEAM_CLOSE", "de-gasifier temperature"],
+  ];
+  const SP_LT = ["LT_01", "LT_02"];
+  function spSig() {                                    // rebuild the tables only when rows / pencils change
+    const ids = [...ALM_SP.flatMap((i) => [`${i}_ALM_SP`, `${i}_ALM_DLY`]), ...SP_LT.flatMap((i) => LV_KEYS.flatMap(([, L]) => [`${i}_${L}_SP`, `${i}_${L}_DLY`])), ...SP_PROC.map((p) => p[1])];
+    const aux = live.aux || {};
+    return `${canWrite()}|${ids.map((i) => (aux[i] ? (aux[i].writable ? "w" : "r") : "-")).join("")}|${[...ALM_SP, ...SP_LT].map((i) => (tag(i) ? 1 : 0)).join("")}`;
+  }
+  function spBuild(box) {
+    const keep = Object.fromEntries(Object.entries(box._srch || {}).map(([k, s]) => [k, s.value]));
+    const almRows = ALM_SP.filter(tag).map((id) => {
+      const t = tag(id), no = t.name.split(" ")[0], nm = t.name.split(" ").slice(1).join(" ");
+      return `<tr data-id="${id}"><td><b>${esc(no)}</b><span class="sp-nm">${esc(nm)}</span></td>
+        <td class="num" data-f="v"></td>
+        <td class="num"><span class="sp-val" data-f="sp"></span>${spBtn(`${id}_ALM_SP`, `${no} alarm set point`)}</td>
+        <td class="num" data-f="diff"></td><td data-f="st"></td>
+        <td class="num"><span class="sp-val" data-f="dly"></span>${spBtn(`${id}_ALM_DLY`, `${no} set delay`)}</td>
+        <td class="num" data-f="act"></td></tr>`;
+    }).join("");
+    const lvBlocks = SP_LT.filter(tag).map((id) => {
+      const t = tag(id);
+      return `<div class="sp-lv" id="sp-tank-${id}" data-group><div class="sp-lv-h"><h3>${esc(t.name)}</h3><span class="num" data-f="now"></span></div>
+        <div class="table-wrap"><table class="dv-t sp-t sp-lt"><thead><tr><th>Level</th><th>Set point</th><th>Reached</th><th>Set delay</th><th>Delay now</th></tr></thead><tbody>
+        ${LV_KEYS.map(([k, L]) => `<tr data-lv="${k}" data-search="${esc(`${t.name} ${TAG_PID[id] || ""}`)}"><td><b>${L}</b></td>
+          <td class="num"><span class="sp-val" data-f="sp"></span>${spBtn(`${id}_${L}_SP`, `${t.name} ${L} set point`)}</td>
+          <td data-f="reach"></td>
+          <td class="num"><span class="sp-val" data-f="dly"></span>${spBtn(`${id}_${L}_DLY`, `${t.name} ${L} set delay`)}</td>
+          <td class="num" data-f="act"></td></tr>`).join("")}</tbody></table></div>
+        <div class="sp-src" data-f="src"></div></div>`;
+    }).join("");
+    const procRows = SP_PROC.map(([n, id, note]) => `<tr data-pid="${id}"><td>${esc(n)}</td><td class="num"><span class="sp-val" data-f="v"></span>${spBtn(id, n)}</td><td class="muted">${esc(note)}</td></tr>`).join("");
+    const band = (window.MD_META || {}).warn_band_pct ?? 90;
+    box.innerHTML = `
+      <div class="card sp-card" id="sp-alarm"><div class="card-head"><h2>Alarm set points</h2>${MD.v3.info(`Each instrument has one alarm set point. The plant raises its alarm when the live value stays at or above the set point for the set delay; "Delay now" counts while it is above. The live value turns amber from ${band} % of the set point and red at or above it. Plant alarm = the plant's own alarm signal.`, "Alarm set points")}</div>
+        <div class="sp-bar" data-srch="alm"></div>
+        <div class="table-wrap"><table class="dv-t sp-t sp-alm"><thead><tr><th>Instrument</th><th>Live value</th><th>Alarm set point</th>
+          <th><span class="sp-th">Difference${MD.v3.info("Difference = live value − alarm set point, with its sign. Negative: the value is below its set point. Zero or positive: the value is at or above the set point.", "Difference")}</span></th>
+          <th>Plant alarm</th><th>Set delay</th><th>Delay now</th></tr></thead><tbody>${almRows}</tbody></table></div></div>
+      <div class="card sp-card" id="sp-tank"><div class="card-head"><h2>Tank level set points</h2>${MD.v3.info("HH / H / L / LL of the two tanks with a level transmitter, set in % of the transmitter range (mm in brackets). HH and H are reached at or above, L and LL at or below. Set delay = how long the level must stay there before the alarm is raised.", "Tank level set points")}</div>
+        <div class="sp-bar" data-srch="tank"></div><div class="sp-lvs">${lvBlocks}</div></div>
+      <div class="card sp-card" id="sp-process"><div class="card-head"><h2>Process set values</h2>${MD.v3.info("Values the plant control uses to start and stop pumps and valves (control philosophy), read from the plant. Sludge levels are in % of the tank level range, mm in brackets.", "Process set values")}</div>
+        <div class="sp-bar" data-srch="proc"></div>
+        <div class="table-wrap"><table class="dv-t sp-t sp-proc"><thead><tr><th>Set value</th><th>Value</th><th>Note</th></tr></thead><tbody>${procRows}</tbody></table></div></div>`;
+    box._srch = {};
+    [["alm", "#sp-alarm", "Search instrument, e.g. PT-02"], ["tank", "#sp-tank", "Search tank or level, e.g. HH"], ["proc", "#sp-process", "Search set value, e.g. steam"]].forEach(([k, sel, ph]) => {
+      const host = box.querySelector(`[data-srch="${k}"]`);
+      box._srch[k] = MD.v3.tableSearch(host, box.querySelector(sel), { placeholder: ph });
+      if (keep[k]) { host.querySelector("input").value = keep[k]; box._srch[k].run(); }
+    });
+  }
+  function spUpdate(box) {
+    const nd = '<span class="muted">--</span>';
+    const chip = (s, txt) => `<span class="dc-st st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(txt)}</span>`;
+    box.querySelectorAll("#sp-alarm tr[data-id]").forEach((tr) => {
+      const id = tr.dataset.id, t = tag(id), f = (n) => tr.querySelector(`[data-f="${n}"]`);
+      if (!t) return;
+      const d = t.decimals ?? 1, v = num(t), sp = auxNum(`${id}_ALM_SP`), bit = sw(`${id}_ALM`), u = esc(t.unit || "");
+      const lvl = MD.v3.level(v, sp, almDir(id)), cls = lvl === "alarm" ? "lv-alarm" : lvl === "warn" ? "lv-warn" : "";
+      const diff = v != null && sp != null ? v - sp : null;
+      setH(f("v"), v == null ? nd : `<b class="${cls}">${Number(v).toFixed(d)}</b> <span class="muted">${u}</span>`);
+      setH(f("sp"), sp == null ? nd : `<b>${Number(sp).toFixed(d)}</b> <span class="muted">${u}</span>`);       // set point: black
+      setH(f("diff"), diff == null ? nd : `${diff >= 0 ? "+" : "-"}${Math.abs(diff).toFixed(d)} <span class="muted">${u}</span>`);
+      setH(f("st"), bit == null ? chip("unk", "No data") : bit ? chip("alarm", "Alarm") : chip("ok", "Normal"));
+      const dly = auxNum(`${id}_ALM_DLY`), act = auxNum(`${id}_ALM_ACT`);
+      setH(f("dly"), dly == null ? nd : `<b>${dly}</b> <span class="muted">s</span>`);
+      setH(f("act"), act == null ? nd : `${act} <span class="muted">s</span>`);
+    });
+    SP_LT.forEach((id) => {
+      const blk = box.querySelector(`#sp-tank-${id}`), t = tag(id);
+      if (!blk || !t) return;
+      const v = num(t), p = pct(t, v), lv = levelsOf(t);
+      setH(blk.querySelector('[data-f="now"]'), v == null ? "Actual --" : `Actual <b>${Math.round(v)} ${esc(t.unit || "mm")}</b>${p == null ? "" : ` <span class="muted">(${p.toFixed(1)} %)</span>`}`);
+      setH(blk.querySelector('[data-f="src"]'), plcLevels(t) ? "Set points read from the plant" : "Plant values not read - the dashboard uses default levels");
+      blk.querySelectorAll("tr[data-lv]").forEach((tr) => {
+        const k = tr.dataset.lv, L = k.toUpperCase(), f = (n) => tr.querySelector(`[data-f="${n}"]`);
+        setH(f("sp"), `<b>${esc(spTxt(t, `${id}_${L}_SP`))}</b>`);
+        // reached: HH / H at or above, L / LL at or below; "near" inside the warning band
+        const s = MD.v3.level(v, lv ? lv[k] : null, k === "hh" || k === "h" ? "high" : "low");
+        setH(f("reach"), !s ? nd : s === "alarm" ? chip(k === "hh" || k === "ll" ? "alarm" : "warn", "Reached") : s === "warn" ? chip("warn", "Near") : chip("ok", "No"));
+        setH(f("dly"), `<b>${esc(auxTxt(`${id}_${L}_DLY`))}</b>`);
+        setH(f("act"), esc(auxTxt(`${id}_${L}_ACT`)));
+      });
+    });
+    box.querySelectorAll("#sp-process tr[data-pid]").forEach((tr) => {
+      const id = tr.dataset.pid;
+      setH(tr.querySelector('[data-f="v"]'), `<b>${esc(id.startsWith("SP_SLUDGE") ? spTxt(tag("LT_01"), id) : auxTxt(id))}</b>`);
+    });
+  }
+  function renderSetpoints() {
+    const box = $("spBody");
+    if (!box || !live) return;
+    if (!box._bound) {
+      box._bound = true;
+      box.addEventListener("click", (ev) => {
+        const b = ev.target.closest("[data-sp]");
+        if (b) openSpEdit(b.dataset.sp);
+      });
+    }
+    const sig = spSig();
+    if (box._sig !== sig) { box._sig = sig; spBuild(box); }
+    spUpdate(box);
+    Object.values(box._srch || {}).forEach((s) => { if (s.value) s.run(); });
+    spScroll();
+  }
+
   window.Plant = {
     render(l, view) {
       live = l;
+      if (view === "setpoints") renderSetpoints();
+      if (view === "io") renderIO();
       if (view === "overview") renderKeyPoints();
-      if (view === "levels") renderLevels();
       if (view === "mimic") renderMimic();
       if (view === "instruments") renderInstruments();
       if (view === "datalog") renderDatalog(false);
@@ -1561,7 +2573,7 @@
     show(view) {
       if (view === "mimic") { const b = $("mimicSvg"); if (b) b._sheet = null; const t = $("mimicTabs"); if (t) t._sheet = null; }
       if (view === "datalog") { renderDatalog(true); return; }
-      if (view === "levels") lvTrendAt = 0;
+      if (view === "io") { renderIO(true); return; }
       if (view !== "instruments") editing = null;
       if (live) this.render(live, view);
     },

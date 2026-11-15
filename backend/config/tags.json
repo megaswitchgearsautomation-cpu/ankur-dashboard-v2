@@ -15,8 +15,8 @@
     },
     "unit": "°C",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 200,
+    "eng_min": 0.0,
+    "eng_max": 20.0,
     "poll_ms": 1000,
     "show_on_dashboard": true,
     "trend": true,
@@ -45,11 +45,13 @@
     "description": "T-01 alarm set point (HMI)",
     "plc_tag": "",
     "device": "D13000",
-    "data_type": "REAL",
+    "data_type": "UINT32",
     "word_order": "default",
     "invert": false,
     "scaling": {
-      "mode": "none"
+      "mode": "gain_offset",
+      "gain": 0.1,
+      "offset": 0
     },
     "unit": "°C",
     "decimals": 1,
@@ -66,11 +68,86 @@
     },
     "mapping_verified": false,
     "source_ref": "Our IO list 16_03_2026 / Analog input row 4; client R1 + motor list for tag/range",
-    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13002, actual delay D13004."
+    "notes": "Double Word unsigned, 1 decimal (raw x10) - INFERRED: same D13000 block (6-word spacing) as the HMI LT set points D13024.. which DIAScreen shows as Double Word x10 (was assumed REAL). Compare with the HMI before writing. Set delay D13002, actual delay D13004.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "T_01_ALM_DLY",
+    "name": "T-01 Dryer to Radiator Temp - alarm set delay",
+    "device": "D13002",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 3600,
+    "sim_value": 5,
+    "notes": "alarm set delay of T_01: D13002, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "T_01_ALM_ACT",
+    "name": "T-01 Dryer to Radiator Temp - alarm actual delay",
+    "device": "D13004",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 600,
+    "sim_value": 0,
+    "notes": "alarm actual delay of T_01: D13004, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": false
   },
   {
     "id": "T_01_ALM",
-    "name": "T-01 Dryer to Radiator Temp - PLC alarm",
+    "name": "T-01 Dryer to Radiator Temp - alarm",
     "group": "PLC alarms",
     "area": "Process",
     "description": "T-01 alarm indication bit from PLC",
@@ -97,7 +174,7 @@
       "enabled": true,
       "on": true,
       "priority": "red",
-      "message": "T-01 Dryer to Radiator Temp: PLC alarm (above set point)",
+      "message": "T-01 Dryer to Radiator Temp: alarm (above set point)",
       "delay_s": 0
     },
     "mapping_verified": false,
@@ -150,11 +227,13 @@
     "description": "T-02 alarm set point (HMI)",
     "plc_tag": "",
     "device": "D13006",
-    "data_type": "REAL",
+    "data_type": "UINT32",
     "word_order": "default",
     "invert": false,
     "scaling": {
-      "mode": "none"
+      "mode": "gain_offset",
+      "gain": 0.1,
+      "offset": 0
     },
     "unit": "°C",
     "decimals": 1,
@@ -171,11 +250,86 @@
     },
     "mapping_verified": false,
     "source_ref": "Our IO list 16_03_2026 / Analog input row 5; client R1 + motor list for tag/range",
-    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13008, actual delay D13010."
+    "notes": "Double Word unsigned, 1 decimal (raw x10) - INFERRED: same D13000 block (6-word spacing) as the HMI LT set points D13024.. which DIAScreen shows as Double Word x10 (was assumed REAL). Compare with the HMI before writing. Set delay D13008, actual delay D13010.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "T_02_ALM_DLY",
+    "name": "T-02 Hot Water Tank to Sludge Dryer Temp - alarm set delay",
+    "device": "D13008",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 3600,
+    "sim_value": 5,
+    "notes": "alarm set delay of T_02: D13008, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "T_02_ALM_ACT",
+    "name": "T-02 Hot Water Tank to Sludge Dryer Temp - alarm actual delay",
+    "device": "D13010",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 600,
+    "sim_value": 0,
+    "notes": "alarm actual delay of T_02: D13010, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": false
   },
   {
     "id": "T_02_ALM",
-    "name": "T-02 Hot Water Tank to Sludge Dryer Temp - PLC alarm",
+    "name": "T-02 Hot Water Tank to Sludge Dryer Temp - alarm",
     "group": "PLC alarms",
     "area": "Process",
     "description": "T-02 alarm indication bit from PLC",
@@ -202,7 +356,7 @@
       "enabled": true,
       "on": true,
       "priority": "red",
-      "message": "T-02 Hot Water Tank to Sludge Dryer Temp: PLC alarm (above set point)",
+      "message": "T-02 Hot Water Tank to Sludge Dryer Temp: alarm (above set point)",
       "delay_s": 0
     },
     "mapping_verified": false,
@@ -225,8 +379,8 @@
     },
     "unit": "°C",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 200,
+    "eng_min": 0.0,
+    "eng_max": 200.0,
     "poll_ms": 1000,
     "show_on_dashboard": true,
     "trend": true,
@@ -255,11 +409,13 @@
     "description": "T-03 alarm set point (HMI)",
     "plc_tag": "",
     "device": "D13012",
-    "data_type": "REAL",
+    "data_type": "UINT32",
     "word_order": "default",
     "invert": false,
     "scaling": {
-      "mode": "none"
+      "mode": "gain_offset",
+      "gain": 0.1,
+      "offset": 0
     },
     "unit": "°C",
     "decimals": 1,
@@ -276,11 +432,86 @@
     },
     "mapping_verified": false,
     "source_ref": "Our IO list 16_03_2026 / Analog input row 6; client R1 + motor list for tag/range",
-    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13014, actual delay D13016."
+    "notes": "Double Word unsigned, 1 decimal (raw x10) - INFERRED: same D13000 block (6-word spacing) as the HMI LT set points D13024.. which DIAScreen shows as Double Word x10 (was assumed REAL). Compare with the HMI before writing. Set delay D13014, actual delay D13016.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "T_03_ALM_DLY",
+    "name": "T-03 Radiator to Surface Condenser Temp - alarm set delay",
+    "device": "D13014",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 3600,
+    "sim_value": 5,
+    "notes": "alarm set delay of T_03: D13014, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "T_03_ALM_ACT",
+    "name": "T-03 Radiator to Surface Condenser Temp - alarm actual delay",
+    "device": "D13016",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 600,
+    "sim_value": 0,
+    "notes": "alarm actual delay of T_03: D13016, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": false
   },
   {
     "id": "T_03_ALM",
-    "name": "T-03 Radiator to Surface Condenser Temp - PLC alarm",
+    "name": "T-03 Radiator to Surface Condenser Temp - alarm",
     "group": "PLC alarms",
     "area": "Process",
     "description": "T-03 alarm indication bit from PLC",
@@ -307,7 +538,7 @@
       "enabled": true,
       "on": true,
       "priority": "red",
-      "message": "T-03 Radiator to Surface Condenser Temp: PLC alarm (above set point)",
+      "message": "T-03 Radiator to Surface Condenser Temp: alarm (above set point)",
       "delay_s": 0
     },
     "mapping_verified": false,
@@ -360,11 +591,13 @@
     "description": "T-04 alarm set point (HMI)",
     "plc_tag": "",
     "device": "D13018",
-    "data_type": "REAL",
+    "data_type": "UINT32",
     "word_order": "default",
     "invert": false,
     "scaling": {
-      "mode": "none"
+      "mode": "gain_offset",
+      "gain": 0.1,
+      "offset": 0
     },
     "unit": "°C",
     "decimals": 1,
@@ -381,11 +614,86 @@
     },
     "mapping_verified": false,
     "source_ref": "Our IO list 16_03_2026 / Analog input row 7; client R1 + motor list for tag/range",
-    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13020, actual delay D13022."
+    "notes": "Double Word unsigned, 1 decimal (raw x10) - INFERRED: same D13000 block (6-word spacing) as the HMI LT set points D13024.. which DIAScreen shows as Double Word x10 (was assumed REAL). Compare with the HMI before writing. Set delay D13020, actual delay D13022.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "T_04_ALM_DLY",
+    "name": "T-04 PHE-1 to Degasifier Temp - alarm set delay",
+    "device": "D13020",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 3600,
+    "sim_value": 5,
+    "notes": "alarm set delay of T_04: D13020, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "T_04_ALM_ACT",
+    "name": "T-04 PHE-1 to Degasifier Temp - alarm actual delay",
+    "device": "D13022",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 600,
+    "sim_value": 0,
+    "notes": "alarm actual delay of T_04: D13022, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": false
   },
   {
     "id": "T_04_ALM",
-    "name": "T-04 PHE-1 to Degasifier Temp - PLC alarm",
+    "name": "T-04 PHE-1 to Degasifier Temp - alarm",
     "group": "PLC alarms",
     "area": "Process",
     "description": "T-04 alarm indication bit from PLC",
@@ -412,7 +720,7 @@
       "enabled": true,
       "on": true,
       "priority": "red",
-      "message": "T-04 PHE-1 to Degasifier Temp: PLC alarm (above set point)",
+      "message": "T-04 PHE-1 to Degasifier Temp: alarm (above set point)",
       "delay_s": 0
     },
     "mapping_verified": false,
@@ -512,13 +820,13 @@
     "unit": "mm",
     "decimals": 1,
     "eng_min": 0.0,
-    "eng_max": 3600.0,
+    "eng_max": 500.0,
     "poll_ms": 1000,
     "show_on_dashboard": true,
     "trend": true,
     "log": true,
     "kpi": true,
-    "setpoint_tag": "LT_01_ALM_SP",
+    "setpoint_tag": null,
     "alarm": {
       "enabled": false,
       "hi": null,
@@ -534,41 +842,8 @@
     "notes": "PLC final scaled value (REAL, confirmed). Raw count D12, 4-20mA D11064, min D11060, max D11062, sim value D11066, sim bit M2006."
   },
   {
-    "id": "LT_01_ALM_SP",
-    "name": "LT-01 Sludge Water Tank Level - alarm set point",
-    "group": "Level",
-    "area": "Process",
-    "description": "LT-01 alarm set point (HMI)",
-    "plc_tag": "",
-    "device": "D13036",
-    "data_type": "UINT32",
-    "word_order": "default",
-    "invert": false,
-    "scaling": {
-      "mode": "gain_offset",
-      "gain": 0.1,
-      "offset": 0
-    },
-    "unit": "mm",
-    "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 3600,
-    "poll_ms": 1000,
-    "show_on_dashboard": false,
-    "trend": false,
-    "log": true,
-    "kpi": false,
-    "setpoint_tag": null,
-    "alarm": {
-      "enabled": false
-    },
-    "mapping_verified": false,
-    "source_ref": "Our IO list 16_03_2026 / Analog input row 10; client R1 + motor list for tag/range",
-    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13038, actual delay D13040. Same register as the HMI LT Set Point H value (Double Word unsigned, 1 decimal)."
-  },
-  {
     "id": "LT_01_ALM",
-    "name": "LT-01 Sludge Water Tank Level - PLC alarm",
+    "name": "LT-01 Sludge Water Tank Level - alarm",
     "group": "PLC alarms",
     "area": "Process",
     "description": "LT-01 alarm indication bit from PLC",
@@ -595,7 +870,7 @@
       "enabled": true,
       "on": true,
       "priority": "red",
-      "message": "LT-01 Sludge Water Tank Level: PLC alarm (above set point)",
+      "message": "LT-01 Sludge Water Tank Level: alarm (above set point)",
       "delay_s": 0
     },
     "mapping_verified": false,
@@ -618,14 +893,14 @@
     },
     "unit": "mm",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 3600,
+    "eng_min": 0.0,
+    "eng_max": 201.0,
     "poll_ms": 1000,
     "show_on_dashboard": true,
     "trend": true,
     "log": true,
     "kpi": false,
-    "setpoint_tag": "LT_02_ALM_SP",
+    "setpoint_tag": null,
     "alarm": {
       "enabled": false,
       "hi": null,
@@ -641,41 +916,8 @@
     "notes": "PLC final scaled value (REAL, confirmed). Raw count D14, 4-20mA D11074, min D11070, max D11072, sim value D11076, sim bit M2007."
   },
   {
-    "id": "LT_02_ALM_SP",
-    "name": "LT-02 Filtrate Tank Level - alarm set point",
-    "group": "Level",
-    "area": "Process",
-    "description": "LT-02 alarm set point (HMI)",
-    "plc_tag": "",
-    "device": "D13042",
-    "data_type": "UINT32",
-    "word_order": "default",
-    "invert": false,
-    "scaling": {
-      "mode": "gain_offset",
-      "gain": 0.1,
-      "offset": 0
-    },
-    "unit": "mm",
-    "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 3600,
-    "poll_ms": 1000,
-    "show_on_dashboard": false,
-    "trend": false,
-    "log": true,
-    "kpi": false,
-    "setpoint_tag": null,
-    "alarm": {
-      "enabled": false
-    },
-    "mapping_verified": false,
-    "source_ref": "Our IO list 16_03_2026 / Analog input row 11; client R1 + motor list for tag/range",
-    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13044, actual delay D13046. Same register as the HMI LT Set Point H value (Double Word unsigned, 1 decimal)."
-  },
-  {
     "id": "LT_02_ALM",
-    "name": "LT-02 Filtrate Tank Level - PLC alarm",
+    "name": "LT-02 Filtrate Tank Level - alarm",
     "group": "PLC alarms",
     "area": "Process",
     "description": "LT-02 alarm indication bit from PLC",
@@ -702,7 +944,7 @@
       "enabled": true,
       "on": true,
       "priority": "red",
-      "message": "LT-02 Filtrate Tank Level: PLC alarm (above set point)",
+      "message": "LT-02 Filtrate Tank Level: alarm (above set point)",
       "delay_s": 0
     },
     "mapping_verified": false,
@@ -725,8 +967,8 @@
     },
     "unit": "pH",
     "decimals": 2,
-    "eng_min": 0,
-    "eng_max": 14,
+    "eng_min": 0.0,
+    "eng_max": 14.0,
     "poll_ms": 1000,
     "show_on_dashboard": true,
     "trend": true,
@@ -755,14 +997,16 @@
     "description": "PH-01 alarm set point (HMI)",
     "plc_tag": "",
     "device": "D13048",
-    "data_type": "REAL",
+    "data_type": "UINT32",
     "word_order": "default",
     "invert": false,
     "scaling": {
-      "mode": "none"
+      "mode": "gain_offset",
+      "gain": 0.1,
+      "offset": 0
     },
     "unit": "pH",
-    "decimals": 2,
+    "decimals": 1,
     "eng_min": 0,
     "eng_max": 14,
     "poll_ms": 1000,
@@ -776,11 +1020,86 @@
     },
     "mapping_verified": false,
     "source_ref": "Our IO list 16_03_2026 / Analog input row 12; client R1 + motor list for tag/range",
-    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13050, actual delay D13052."
+    "notes": "Double Word unsigned, 1 decimal (raw x10) - INFERRED: same D13000 block (6-word spacing) as the HMI LT set points D13024.. which DIAScreen shows as Double Word x10 (was assumed REAL). Compare with the HMI before writing. Set delay D13050, actual delay D13052.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "PH_01_ALM_DLY",
+    "name": "PH-01 Process Water pH - alarm set delay",
+    "device": "D13050",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 3600,
+    "sim_value": 5,
+    "notes": "alarm set delay of PH_01: D13050, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "PH_01_ALM_ACT",
+    "name": "PH-01 Process Water pH - alarm actual delay",
+    "device": "D13052",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 600,
+    "sim_value": 0,
+    "notes": "alarm actual delay of PH_01: D13052, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": false
   },
   {
     "id": "PH_01_ALM",
-    "name": "PH-01 Process Water pH - PLC alarm",
+    "name": "PH-01 Process Water pH - alarm",
     "group": "PLC alarms",
     "area": "Process",
     "description": "PH-01 alarm indication bit from PLC",
@@ -807,7 +1126,7 @@
       "enabled": true,
       "on": true,
       "priority": "red",
-      "message": "PH-01 Process Water pH: PLC alarm (above set point)",
+      "message": "PH-01 Process Water pH: alarm (above set point)",
       "delay_s": 0
     },
     "mapping_verified": false,
@@ -830,8 +1149,8 @@
     },
     "unit": "barg",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 10,
+    "eng_min": 0.0,
+    "eng_max": 11.0,
     "poll_ms": 1000,
     "show_on_dashboard": true,
     "trend": true,
@@ -860,11 +1179,13 @@
     "description": "PT-01 alarm set point (HMI)",
     "plc_tag": "",
     "device": "D13054",
-    "data_type": "REAL",
+    "data_type": "UINT32",
     "word_order": "default",
     "invert": false,
     "scaling": {
-      "mode": "none"
+      "mode": "gain_offset",
+      "gain": 0.1,
+      "offset": 0
     },
     "unit": "barg",
     "decimals": 1,
@@ -881,11 +1202,86 @@
     },
     "mapping_verified": false,
     "source_ref": "Our IO list 16_03_2026 / Analog input row 13; client R1 + motor list for tag/range",
-    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13056, actual delay D13058."
+    "notes": "Double Word unsigned, 1 decimal (raw x10) - INFERRED: same D13000 block (6-word spacing) as the HMI LT set points D13024.. which DIAScreen shows as Double Word x10 (was assumed REAL). Compare with the HMI before writing. Set delay D13056, actual delay D13058.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "PT_01_ALM_DLY",
+    "name": "PT-01 Raw Water Tank Distribution Line Pressure - alarm set delay",
+    "device": "D13056",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 3600,
+    "sim_value": 5,
+    "notes": "alarm set delay of PT_01: D13056, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "PT_01_ALM_ACT",
+    "name": "PT-01 Raw Water Tank Distribution Line Pressure - alarm actual delay",
+    "device": "D13058",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 600,
+    "sim_value": 0,
+    "notes": "alarm actual delay of PT_01: D13058, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": false
   },
   {
     "id": "PT_01_ALM",
-    "name": "PT-01 Raw Water Tank Distribution Line Pressure - PLC alarm",
+    "name": "PT-01 Raw Water Tank Distribution Line Pressure - alarm",
     "group": "PLC alarms",
     "area": "Process",
     "description": "PT-01 alarm indication bit from PLC",
@@ -912,7 +1308,7 @@
       "enabled": true,
       "on": true,
       "priority": "red",
-      "message": "PT-01 Raw Water Tank Distribution Line Pressure: PLC alarm (above set point)",
+      "message": "PT-01 Raw Water Tank Distribution Line Pressure: alarm (above set point)",
       "delay_s": 0
     },
     "mapping_verified": false,
@@ -965,11 +1361,13 @@
     "description": "PT-02 alarm set point (HMI)",
     "plc_tag": "",
     "device": "D13060",
-    "data_type": "REAL",
+    "data_type": "UINT32",
     "word_order": "default",
     "invert": false,
     "scaling": {
-      "mode": "none"
+      "mode": "gain_offset",
+      "gain": 0.1,
+      "offset": 0
     },
     "unit": "barg",
     "decimals": 1,
@@ -986,11 +1384,86 @@
     },
     "mapping_verified": false,
     "source_ref": "Our IO list 16_03_2026 / Analog input row 14; client R1 + motor list for tag/range",
-    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13062, actual delay D13064."
+    "notes": "Double Word unsigned, 1 decimal (raw x10) - INFERRED: same D13000 block (6-word spacing) as the HMI LT set points D13024.. which DIAScreen shows as Double Word x10 (was assumed REAL). Compare with the HMI before writing. Set delay D13062, actual delay D13064.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "PT_02_ALM_DLY",
+    "name": "PT-02 Dryer to Radiator Pressure - alarm set delay",
+    "device": "D13062",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 3600,
+    "sim_value": 5,
+    "notes": "alarm set delay of PT_02: D13062, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "PT_02_ALM_ACT",
+    "name": "PT-02 Dryer to Radiator Pressure - alarm actual delay",
+    "device": "D13064",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 600,
+    "sim_value": 0,
+    "notes": "alarm actual delay of PT_02: D13064, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": false
   },
   {
     "id": "PT_02_ALM",
-    "name": "PT-02 Dryer to Radiator Pressure - PLC alarm",
+    "name": "PT-02 Dryer to Radiator Pressure - alarm",
     "group": "PLC alarms",
     "area": "Process",
     "description": "PT-02 alarm indication bit from PLC",
@@ -1017,7 +1490,7 @@
       "enabled": true,
       "on": true,
       "priority": "red",
-      "message": "PT-02 Dryer to Radiator Pressure: PLC alarm (above set point)",
+      "message": "PT-02 Dryer to Radiator Pressure: alarm (above set point)",
       "delay_s": 0
     },
     "mapping_verified": false,
@@ -1070,11 +1543,13 @@
     "description": "PT-03 alarm set point (HMI)",
     "plc_tag": "",
     "device": "D13066",
-    "data_type": "REAL",
+    "data_type": "UINT32",
     "word_order": "default",
     "invert": false,
     "scaling": {
-      "mode": "none"
+      "mode": "gain_offset",
+      "gain": 0.1,
+      "offset": 0
     },
     "unit": "barg",
     "decimals": 1,
@@ -1091,11 +1566,86 @@
     },
     "mapping_verified": false,
     "source_ref": "Our IO list 16_03_2026 / Analog input row 15; client R1 + motor list for tag/range",
-    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13068, actual delay D13070."
+    "notes": "Double Word unsigned, 1 decimal (raw x10) - INFERRED: same D13000 block (6-word spacing) as the HMI LT set points D13024.. which DIAScreen shows as Double Word x10 (was assumed REAL). Compare with the HMI before writing. Set delay D13068, actual delay D13070.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "PT_03_ALM_DLY",
+    "name": "PT-03 Hot Water Tank to Sludge Dryer Pressure - alarm set delay",
+    "device": "D13068",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 3600,
+    "sim_value": 5,
+    "notes": "alarm set delay of PT_03: D13068, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "PT_03_ALM_ACT",
+    "name": "PT-03 Hot Water Tank to Sludge Dryer Pressure - alarm actual delay",
+    "device": "D13070",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 600,
+    "sim_value": 0,
+    "notes": "alarm actual delay of PT_03: D13070, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": false
   },
   {
     "id": "PT_03_ALM",
-    "name": "PT-03 Hot Water Tank to Sludge Dryer Pressure - PLC alarm",
+    "name": "PT-03 Hot Water Tank to Sludge Dryer Pressure - alarm",
     "group": "PLC alarms",
     "area": "Process",
     "description": "PT-03 alarm indication bit from PLC",
@@ -1122,7 +1672,7 @@
       "enabled": true,
       "on": true,
       "priority": "red",
-      "message": "PT-03 Hot Water Tank to Sludge Dryer Pressure: PLC alarm (above set point)",
+      "message": "PT-03 Hot Water Tank to Sludge Dryer Pressure: alarm (above set point)",
       "delay_s": 0
     },
     "mapping_verified": false,
@@ -1175,11 +1725,13 @@
     "description": "PT-04 alarm set point (HMI)",
     "plc_tag": "",
     "device": "D13072",
-    "data_type": "REAL",
+    "data_type": "UINT32",
     "word_order": "default",
     "invert": false,
     "scaling": {
-      "mode": "none"
+      "mode": "gain_offset",
+      "gain": 0.1,
+      "offset": 0
     },
     "unit": "barg",
     "decimals": 1,
@@ -1196,11 +1748,86 @@
     },
     "mapping_verified": false,
     "source_ref": "Our IO list 16_03_2026 / Analog input row 16; client R1 + motor list for tag/range",
-    "notes": "ASSUMED REAL (2-word spacing) - verify. Set delay D13074, actual delay D13076."
+    "notes": "Double Word unsigned, 1 decimal (raw x10) - INFERRED: same D13000 block (6-word spacing) as the HMI LT set points D13024.. which DIAScreen shows as Double Word x10 (was assumed REAL). Compare with the HMI before writing. Set delay D13074, actual delay D13076.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "PT_04_ALM_DLY",
+    "name": "PT-04 Radiator to Surface Condenser Pressure - alarm set delay",
+    "device": "D13074",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 3600,
+    "sim_value": 5,
+    "notes": "alarm set delay of PT_04: D13074, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": true
+  },
+  {
+    "group": "Alarm delays",
+    "area": "Process",
+    "word_order": "default",
+    "invert": false,
+    "poll_ms": 5000,
+    "show_on_dashboard": false,
+    "trend": false,
+    "log": false,
+    "kpi": false,
+    "alarm": {
+      "enabled": false,
+      "hi": null,
+      "lo": null,
+      "hihi": null,
+      "lolo": null,
+      "deadband": 0,
+      "priority": "yellow",
+      "delay_s": 5
+    },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026, sheet 'Analog input' (Alarm Set Point / Set Delay / Actual Delay columns)",
+    "id": "PT_04_ALM_ACT",
+    "name": "PT-04 Radiator to Surface Condenser Pressure - alarm actual delay",
+    "device": "D13076",
+    "data_type": "UINT16",
+    "scaling": {
+      "mode": "none"
+    },
+    "unit": "s",
+    "decimals": 0,
+    "eng_min": 0,
+    "eng_max": 600,
+    "sim_value": 0,
+    "notes": "alarm actual delay of PT_04: D13076, Word unsigned (s) - type inferred from the HMI-confirmed LT delays in the same block (D13038). Compare with the HMI before writing.",
+    "writable": false
   },
   {
     "id": "PT_04_ALM",
-    "name": "PT-04 Radiator to Surface Condenser Pressure - PLC alarm",
+    "name": "PT-04 Radiator to Surface Condenser Pressure - alarm",
     "group": "PLC alarms",
     "area": "Process",
     "description": "PT-04 alarm indication bit from PLC",
@@ -1227,7 +1854,7 @@
       "enabled": true,
       "on": true,
       "priority": "red",
-      "message": "PT-04 Radiator to Surface Condenser Pressure: PLC alarm (above set point)",
+      "message": "PT-04 Radiator to Surface Condenser Pressure: alarm (above set point)",
       "delay_s": 0
     },
     "mapping_verified": false,
@@ -1298,15 +1925,19 @@
     "mapping_verified": false,
     "scale_of": "T_01",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 4; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of T_01 (from IO list notes).",
+    "notes": "PLC scaling block of T_01 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "T_01_RMIN",
     "name": "T-01 range min",
     "device": "D11000",
     "unit": "°C",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 200,
-    "scale_role": "min"
+    "eng_min": 0.0,
+    "eng_max": 20.0,
+    "scale_role": "min",
+    "write_min": -2000.0,
+    "write_max": 2200.0,
+    "writable": true,
+    "must_be_below": "T_01_RMAX"
   },
   {
     "group": "Scaling",
@@ -1335,15 +1966,19 @@
     "mapping_verified": false,
     "scale_of": "T_01",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 4; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of T_01 (from IO list notes).",
+    "notes": "PLC scaling block of T_01 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "T_01_RMAX",
     "name": "T-01 range max",
     "device": "D11002",
     "unit": "°C",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 200,
-    "scale_role": "max"
+    "eng_min": 0.0,
+    "eng_max": 20.0,
+    "scale_role": "max",
+    "write_min": -2000.0,
+    "write_max": 2200.0,
+    "writable": true,
+    "must_be_above": "T_01_RMIN"
   },
   {
     "group": "Scaling",
@@ -1409,15 +2044,19 @@
     "mapping_verified": false,
     "scale_of": "T_02",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 5; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of T_02 (from IO list notes).",
+    "notes": "PLC scaling block of T_02 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "T_02_RMIN",
     "name": "T-02 range min",
     "device": "D11010",
     "unit": "°C",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 200,
-    "scale_role": "min"
+    "eng_min": 0.0,
+    "eng_max": 200.0,
+    "scale_role": "min",
+    "write_min": -2000.0,
+    "write_max": 2200.0,
+    "writable": true,
+    "must_be_below": "T_02_RMAX"
   },
   {
     "group": "Scaling",
@@ -1446,15 +2085,19 @@
     "mapping_verified": false,
     "scale_of": "T_02",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 5; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of T_02 (from IO list notes).",
+    "notes": "PLC scaling block of T_02 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "T_02_RMAX",
     "name": "T-02 range max",
     "device": "D11012",
     "unit": "°C",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 200,
-    "scale_role": "max"
+    "eng_min": 0.0,
+    "eng_max": 200.0,
+    "scale_role": "max",
+    "write_min": -2000.0,
+    "write_max": 2200.0,
+    "writable": true,
+    "must_be_above": "T_02_RMIN"
   },
   {
     "group": "Scaling",
@@ -1520,15 +2163,19 @@
     "mapping_verified": false,
     "scale_of": "T_03",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 6; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of T_03 (from IO list notes).",
+    "notes": "PLC scaling block of T_03 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "T_03_RMIN",
     "name": "T-03 range min",
     "device": "D11020",
     "unit": "°C",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 200,
-    "scale_role": "min"
+    "eng_min": 0.0,
+    "eng_max": 200.0,
+    "scale_role": "min",
+    "write_min": -2000.0,
+    "write_max": 2200.0,
+    "writable": true,
+    "must_be_below": "T_03_RMAX"
   },
   {
     "group": "Scaling",
@@ -1557,15 +2204,19 @@
     "mapping_verified": false,
     "scale_of": "T_03",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 6; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of T_03 (from IO list notes).",
+    "notes": "PLC scaling block of T_03 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "T_03_RMAX",
     "name": "T-03 range max",
     "device": "D11022",
     "unit": "°C",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 200,
-    "scale_role": "max"
+    "eng_min": 0.0,
+    "eng_max": 200.0,
+    "scale_role": "max",
+    "write_min": -2000.0,
+    "write_max": 2200.0,
+    "writable": true,
+    "must_be_above": "T_03_RMIN"
   },
   {
     "group": "Scaling",
@@ -1631,15 +2282,19 @@
     "mapping_verified": false,
     "scale_of": "T_04",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 7; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of T_04 (from IO list notes).",
+    "notes": "PLC scaling block of T_04 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "T_04_RMIN",
     "name": "T-04 range min",
     "device": "D11030",
     "unit": "°C",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 200,
-    "scale_role": "min"
+    "eng_min": 0.0,
+    "eng_max": 200.0,
+    "scale_role": "min",
+    "write_min": -2000.0,
+    "write_max": 2200.0,
+    "writable": true,
+    "must_be_below": "T_04_RMAX"
   },
   {
     "group": "Scaling",
@@ -1668,15 +2323,19 @@
     "mapping_verified": false,
     "scale_of": "T_04",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 7; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of T_04 (from IO list notes).",
+    "notes": "PLC scaling block of T_04 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "T_04_RMAX",
     "name": "T-04 range max",
     "device": "D11032",
     "unit": "°C",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 200,
-    "scale_role": "max"
+    "eng_min": 0.0,
+    "eng_max": 200.0,
+    "scale_role": "max",
+    "write_min": -2000.0,
+    "write_max": 2200.0,
+    "writable": true,
+    "must_be_above": "T_04_RMIN"
   },
   {
     "group": "Scaling",
@@ -1742,15 +2401,19 @@
     "mapping_verified": false,
     "scale_of": "LT_01",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 10; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of LT_01 (from IO list notes).",
+    "notes": "PLC scaling block of LT_01 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "LT_01_RMIN",
     "name": "LT-01 range min",
     "device": "D11060",
     "unit": "mm",
     "decimals": 1,
     "eng_min": 0.0,
-    "eng_max": 3600.0,
-    "scale_role": "min"
+    "eng_max": 500.0,
+    "scale_role": "min",
+    "write_min": -36000.0,
+    "write_max": 39600.0,
+    "writable": true,
+    "must_be_below": "LT_01_RMAX"
   },
   {
     "group": "Scaling",
@@ -1779,15 +2442,19 @@
     "mapping_verified": false,
     "scale_of": "LT_01",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 10; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of LT_01 (from IO list notes).",
+    "notes": "PLC scaling block of LT_01 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "LT_01_RMAX",
     "name": "LT-01 range max",
     "device": "D11062",
     "unit": "mm",
     "decimals": 1,
     "eng_min": 0.0,
-    "eng_max": 3600.0,
-    "scale_role": "max"
+    "eng_max": 500.0,
+    "scale_role": "max",
+    "write_min": -36000.0,
+    "write_max": 39600.0,
+    "writable": true,
+    "must_be_above": "LT_01_RMIN"
   },
   {
     "group": "Scaling",
@@ -1853,15 +2520,19 @@
     "mapping_verified": false,
     "scale_of": "LT_02",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 11; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of LT_02 (from IO list notes).",
+    "notes": "PLC scaling block of LT_02 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "LT_02_RMIN",
     "name": "LT-02 range min",
     "device": "D11070",
     "unit": "mm",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 3600,
-    "scale_role": "min"
+    "eng_min": 0.0,
+    "eng_max": 201.0,
+    "scale_role": "min",
+    "write_min": -6000.0,
+    "write_max": 6600.0,
+    "writable": true,
+    "must_be_below": "LT_02_RMAX"
   },
   {
     "group": "Scaling",
@@ -1890,15 +2561,19 @@
     "mapping_verified": false,
     "scale_of": "LT_02",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 11; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of LT_02 (from IO list notes).",
+    "notes": "PLC scaling block of LT_02 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "LT_02_RMAX",
     "name": "LT-02 range max",
     "device": "D11072",
     "unit": "mm",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 3600,
-    "scale_role": "max"
+    "eng_min": 0.0,
+    "eng_max": 201.0,
+    "scale_role": "max",
+    "write_min": -6000.0,
+    "write_max": 6600.0,
+    "writable": true,
+    "must_be_above": "LT_02_RMIN"
   },
   {
     "group": "Scaling",
@@ -1964,15 +2639,19 @@
     "mapping_verified": false,
     "scale_of": "PH_01",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 12; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of PH_01 (from IO list notes).",
+    "notes": "PLC scaling block of PH_01 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "PH_01_RMIN",
     "name": "PH-01 range min",
     "device": "D11080",
     "unit": "pH",
     "decimals": 2,
-    "eng_min": 0,
-    "eng_max": 14,
-    "scale_role": "min"
+    "eng_min": 0.0,
+    "eng_max": 14.0,
+    "scale_role": "min",
+    "write_min": -140.0,
+    "write_max": 154.0,
+    "writable": true,
+    "must_be_below": "PH_01_RMAX"
   },
   {
     "group": "Scaling",
@@ -2001,15 +2680,19 @@
     "mapping_verified": false,
     "scale_of": "PH_01",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 12; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of PH_01 (from IO list notes).",
+    "notes": "PLC scaling block of PH_01 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "PH_01_RMAX",
     "name": "PH-01 range max",
     "device": "D11082",
     "unit": "pH",
     "decimals": 2,
-    "eng_min": 0,
-    "eng_max": 14,
-    "scale_role": "max"
+    "eng_min": 0.0,
+    "eng_max": 14.0,
+    "scale_role": "max",
+    "write_min": -140.0,
+    "write_max": 154.0,
+    "writable": true,
+    "must_be_above": "PH_01_RMIN"
   },
   {
     "group": "Scaling",
@@ -2075,15 +2758,19 @@
     "mapping_verified": false,
     "scale_of": "PT_01",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 13; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of PT_01 (from IO list notes).",
+    "notes": "PLC scaling block of PT_01 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "PT_01_RMIN",
     "name": "PT-01 range min",
     "device": "D11090",
     "unit": "barg",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 10,
-    "scale_role": "min"
+    "eng_min": 0.0,
+    "eng_max": 11.0,
+    "scale_role": "min",
+    "write_min": -110.0,
+    "write_max": 121.0,
+    "writable": true,
+    "must_be_below": "PT_01_RMAX"
   },
   {
     "group": "Scaling",
@@ -2112,15 +2799,19 @@
     "mapping_verified": false,
     "scale_of": "PT_01",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 13; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of PT_01 (from IO list notes).",
+    "notes": "PLC scaling block of PT_01 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "PT_01_RMAX",
     "name": "PT-01 range max",
     "device": "D11092",
     "unit": "barg",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 10,
-    "scale_role": "max"
+    "eng_min": 0.0,
+    "eng_max": 11.0,
+    "scale_role": "max",
+    "write_min": -110.0,
+    "write_max": 121.0,
+    "writable": true,
+    "must_be_above": "PT_01_RMIN"
   },
   {
     "group": "Scaling",
@@ -2186,15 +2877,19 @@
     "mapping_verified": false,
     "scale_of": "PT_02",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 14; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of PT_02 (from IO list notes).",
+    "notes": "PLC scaling block of PT_02 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "PT_02_RMIN",
     "name": "PT-02 range min",
     "device": "D11100",
     "unit": "barg",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 10,
-    "scale_role": "min"
+    "eng_min": 0.0,
+    "eng_max": 10.0,
+    "scale_role": "min",
+    "write_min": -100.0,
+    "write_max": 110.0,
+    "writable": true,
+    "must_be_below": "PT_02_RMAX"
   },
   {
     "group": "Scaling",
@@ -2223,15 +2918,19 @@
     "mapping_verified": false,
     "scale_of": "PT_02",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 14; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of PT_02 (from IO list notes).",
+    "notes": "PLC scaling block of PT_02 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "PT_02_RMAX",
     "name": "PT-02 range max",
     "device": "D11102",
     "unit": "barg",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 10,
-    "scale_role": "max"
+    "eng_min": 0.0,
+    "eng_max": 10.0,
+    "scale_role": "max",
+    "write_min": -100.0,
+    "write_max": 110.0,
+    "writable": true,
+    "must_be_above": "PT_02_RMIN"
   },
   {
     "group": "Scaling",
@@ -2297,15 +2996,19 @@
     "mapping_verified": false,
     "scale_of": "PT_03",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 15; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of PT_03 (from IO list notes).",
+    "notes": "PLC scaling block of PT_03 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "PT_03_RMIN",
     "name": "PT-03 range min",
     "device": "D11110",
     "unit": "barg",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 10,
-    "scale_role": "min"
+    "eng_min": 0.0,
+    "eng_max": 10.0,
+    "scale_role": "min",
+    "write_min": -100.0,
+    "write_max": 110.0,
+    "writable": true,
+    "must_be_below": "PT_03_RMAX"
   },
   {
     "group": "Scaling",
@@ -2334,15 +3037,19 @@
     "mapping_verified": false,
     "scale_of": "PT_03",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 15; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of PT_03 (from IO list notes).",
+    "notes": "PLC scaling block of PT_03 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "PT_03_RMAX",
     "name": "PT-03 range max",
     "device": "D11112",
     "unit": "barg",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 10,
-    "scale_role": "max"
+    "eng_min": 0.0,
+    "eng_max": 10.0,
+    "scale_role": "max",
+    "write_min": -100.0,
+    "write_max": 110.0,
+    "writable": true,
+    "must_be_above": "PT_03_RMIN"
   },
   {
     "group": "Scaling",
@@ -2408,15 +3115,19 @@
     "mapping_verified": false,
     "scale_of": "PT_04",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 16; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of PT_04 (from IO list notes).",
+    "notes": "PLC scaling block of PT_04 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "PT_04_RMIN",
     "name": "PT-04 range min",
     "device": "D11120",
     "unit": "barg",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 10,
-    "scale_role": "min"
+    "eng_min": 0.0,
+    "eng_max": 10.0,
+    "scale_role": "min",
+    "write_min": -100.0,
+    "write_max": 110.0,
+    "writable": true,
+    "must_be_below": "PT_04_RMAX"
   },
   {
     "group": "Scaling",
@@ -2445,15 +3156,19 @@
     "mapping_verified": false,
     "scale_of": "PT_04",
     "source_ref": "Our IO list 16_03_2026 / Analog input row 16; client R1 + motor list for tag/range",
-    "notes": "PLC scaling block of PT_04 (from IO list notes).",
+    "notes": "PLC scaling block of PT_04 (from IO list notes). Writable from the Instruments page (Edit range, value from PLC); REAL in the PLC scaling block (min +0, max +2, final +8).",
     "id": "PT_04_RMAX",
     "name": "PT-04 range max",
     "device": "D11122",
     "unit": "barg",
     "decimals": 1,
-    "eng_min": 0,
-    "eng_max": 10,
-    "scale_role": "max"
+    "eng_min": 0.0,
+    "eng_max": 10.0,
+    "scale_role": "max",
+    "write_min": -100.0,
+    "write_max": 110.0,
+    "writable": true,
+    "must_be_above": "PT_04_RMIN"
   },
   {
     "id": "AI_SPARE_1_5",
@@ -8657,45 +9372,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6000 (ON = Auto)."
-  },
-  {
-    "area": "Panel",
-    "word_order": "default",
-    "invert": false,
-    "scaling": {
-      "mode": "none"
-    },
-    "poll_ms": 2000,
-    "show_on_dashboard": false,
-    "trend": false,
-    "log": false,
-    "kpi": false,
-    "alarm": {
-      "enabled": false,
-      "hi": null,
-      "lo": null,
-      "hihi": null,
-      "lolo": null,
-      "deadband": 0,
-      "priority": "yellow",
-      "delay_s": 5
-    },
-    "mapping_verified": false,
-    "source_ref": "HMI R1_op_panel_Final_backup_08_04_26 (selector screens 110-121)",
-    "id": "SEL_MS_SLUDGE",
-    "group": "Selectors",
-    "data_type": "BOOL",
-    "device": "M7000",
-    "unit": "",
-    "decimals": 0,
-    "name": "UG sludge pumps to volute press - Main/Standby selector",
-    "states": {
-      "true": "Standby",
-      "false": "Main"
-    },
-    "sim_value": false,
-    "notes": "HMI soft selector M7000 (ON = Standby selected)."
+    "notes": "HMI soft selector M6000 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -8733,7 +9411,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6002 (ON = Auto)."
+    "notes": "HMI soft selector M6002 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -8771,7 +9450,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6003 (ON = Auto)."
+    "notes": "HMI soft selector M6003 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -8809,7 +9489,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6004 (ON = Auto)."
+    "notes": "HMI soft selector M6004 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -8847,7 +9528,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6005 (ON = Auto)."
+    "notes": "HMI soft selector M6005 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -8885,45 +9567,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6006 (ON = Auto)."
-  },
-  {
-    "area": "Panel",
-    "word_order": "default",
-    "invert": false,
-    "scaling": {
-      "mode": "none"
-    },
-    "poll_ms": 2000,
-    "show_on_dashboard": false,
-    "trend": false,
-    "log": false,
-    "kpi": false,
-    "alarm": {
-      "enabled": false,
-      "hi": null,
-      "lo": null,
-      "hihi": null,
-      "lolo": null,
-      "deadband": 0,
-      "priority": "yellow",
-      "delay_s": 5
-    },
-    "mapping_verified": false,
-    "source_ref": "HMI R1_op_panel_Final_backup_08_04_26 (selector screens 110-121)",
-    "id": "SEL_MS_FILTRATE",
-    "group": "Selectors",
-    "data_type": "BOOL",
-    "device": "M7006",
-    "unit": "",
-    "decimals": 0,
-    "name": "Filtrate tank pumps - Main/Standby selector",
-    "states": {
-      "true": "Standby",
-      "false": "Main"
-    },
-    "sim_value": false,
-    "notes": "HMI soft selector M7006 (ON = Standby selected)."
+    "notes": "HMI soft selector M6006 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -8961,45 +9606,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6008 (ON = Auto)."
-  },
-  {
-    "area": "Panel",
-    "word_order": "default",
-    "invert": false,
-    "scaling": {
-      "mode": "none"
-    },
-    "poll_ms": 2000,
-    "show_on_dashboard": false,
-    "trend": false,
-    "log": false,
-    "kpi": false,
-    "alarm": {
-      "enabled": false,
-      "hi": null,
-      "lo": null,
-      "hihi": null,
-      "lolo": null,
-      "deadband": 0,
-      "priority": "yellow",
-      "delay_s": 5
-    },
-    "mapping_verified": false,
-    "source_ref": "HMI R1_op_panel_Final_backup_08_04_26 (selector screens 110-121)",
-    "id": "SEL_MS_UG",
-    "group": "Selectors",
-    "data_type": "BOOL",
-    "device": "M7008",
-    "unit": "",
-    "decimals": 0,
-    "name": "UG submersible pumps - Main/Standby selector",
-    "states": {
-      "true": "Standby",
-      "false": "Main"
-    },
-    "sim_value": false,
-    "notes": "HMI soft selector M7008 (ON = Standby selected)."
+    "notes": "HMI soft selector M6008 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9037,7 +9645,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6010 (ON = Auto)."
+    "notes": "HMI soft selector M6010 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9075,7 +9684,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6011 (ON = Auto)."
+    "notes": "HMI soft selector M6011 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9113,7 +9723,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6012 (ON = Auto)."
+    "notes": "HMI soft selector M6012 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9151,7 +9762,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6014 (ON = Auto)."
+    "notes": "HMI soft selector M6014 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9189,7 +9801,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6017 (ON = Auto)."
+    "notes": "HMI soft selector M6017 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9227,7 +9840,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6018 (ON = Auto)."
+    "notes": "HMI soft selector M6018 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9265,7 +9879,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6019 (ON = Auto)."
+    "notes": "HMI soft selector M6019 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9303,7 +9918,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6020 (ON = Auto)."
+    "notes": "HMI soft selector M6020 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9341,7 +9957,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6022 (ON = Auto)."
+    "notes": "HMI soft selector M6022 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9379,45 +9996,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6023 (ON = Auto)."
-  },
-  {
-    "area": "Panel",
-    "word_order": "default",
-    "invert": false,
-    "scaling": {
-      "mode": "none"
-    },
-    "poll_ms": 2000,
-    "show_on_dashboard": false,
-    "trend": false,
-    "log": false,
-    "kpi": false,
-    "alarm": {
-      "enabled": false,
-      "hi": null,
-      "lo": null,
-      "hihi": null,
-      "lolo": null,
-      "deadband": 0,
-      "priority": "yellow",
-      "delay_s": 5
-    },
-    "mapping_verified": false,
-    "source_ref": "HMI R1_op_panel_Final_backup_08_04_26 (selector screens 110-121)",
-    "id": "SEL_MS_MAKEUP",
-    "group": "Selectors",
-    "data_type": "BOOL",
-    "device": "M7023",
-    "unit": "",
-    "decimals": 0,
-    "name": "Make-up / transfer water pumps - Main/Standby selector",
-    "states": {
-      "true": "Standby",
-      "false": "Main"
-    },
-    "sim_value": false,
-    "notes": "HMI soft selector M7023 (ON = Standby selected)."
+    "notes": "HMI soft selector M6023 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9455,7 +10035,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6025 (ON = Auto)."
+    "notes": "HMI soft selector M6025 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9493,7 +10074,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6026 (ON = Auto)."
+    "notes": "HMI soft selector M6026 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9531,7 +10113,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6027 (ON = Auto)."
+    "notes": "HMI soft selector M6027 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9569,7 +10152,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6028 (ON = Auto)."
+    "notes": "HMI soft selector M6028 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9607,7 +10191,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6029 (ON = Auto)."
+    "notes": "HMI soft selector M6029 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9645,7 +10230,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6031 (ON = Auto)."
+    "notes": "HMI soft selector M6031 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9683,7 +10269,8 @@
       "false": "Manual"
     },
     "sim_value": true,
-    "notes": "HMI soft selector M6033 (ON = Auto)."
+    "notes": "HMI soft selector M6033 (ON = Auto). Switchable from the dashboard Set points page (FC05, read back) - user request 2026-11-04.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9714,13 +10301,15 @@
     "group": "Set values",
     "data_type": "REAL",
     "device": "D16000",
-    "unit": "mm",
+    "unit": "%",
     "decimals": 1,
     "eng_min": 0,
-    "eng_max": 3600,
-    "sim_value": 2400,
+    "eng_max": 100,
+    "sim_value": 66.7,
     "set_for": "LT_01",
-    "notes": "HMI set value D16000; read only on the dashboard."
+    "notes": "HMI set value D16000; writable from the Set points page (user request 2026-11-04). Unit % of the 0-3600 mm range (client philosophy R1: levels are '% settable'); dashboard converts to mm for comparisons. Unit assumed from the philosophy - verify on the PLC. Data type REAL is ASSUMED (not confirmed on the HMI): the server refuses a write when the value read now looks implausible.",
+    "must_be_above": "SP_SLUDGE_PUMP_STOP",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9751,13 +10340,15 @@
     "group": "Set values",
     "data_type": "REAL",
     "device": "D16002",
-    "unit": "mm",
+    "unit": "%",
     "decimals": 1,
     "eng_min": 0,
-    "eng_max": 3600,
-    "sim_value": 600,
+    "eng_max": 100,
+    "sim_value": 16.7,
     "set_for": "LT_01",
-    "notes": "HMI set value D16002; read only on the dashboard."
+    "notes": "HMI set value D16002; writable from the Set points page (user request 2026-11-04). Unit % of the 0-3600 mm range (client philosophy R1: levels are '% settable'); dashboard converts to mm for comparisons. Unit assumed from the philosophy - verify on the PLC. Data type REAL is ASSUMED (not confirmed on the HMI): the server refuses a write when the value read now looks implausible.",
+    "must_be_below": "SP_SLUDGE_PUMP_START",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9788,13 +10379,14 @@
     "group": "Set values",
     "data_type": "REAL",
     "device": "D16032",
-    "unit": "mm",
+    "unit": "%",
     "decimals": 1,
     "eng_min": 0,
-    "eng_max": 3600,
-    "sim_value": 900,
+    "eng_max": 100,
+    "sim_value": 25.0,
     "set_for": "LT_01",
-    "notes": "HMI set value D16032; read only on the dashboard."
+    "notes": "HMI set value D16032; writable from the Set points page (user request 2026-11-04). Unit % of the 0-3600 mm range (client philosophy R1: levels are '% settable'); dashboard converts to mm for comparisons. Unit assumed from the philosophy - verify on the PLC. Data type REAL is ASSUMED (not confirmed on the HMI): the server refuses a write when the value read now looks implausible.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9825,13 +10417,14 @@
     "group": "Set values",
     "data_type": "REAL",
     "device": "D16034",
-    "unit": "mm",
+    "unit": "%",
     "decimals": 1,
     "eng_min": 0,
-    "eng_max": 3600,
-    "sim_value": 3200,
+    "eng_max": 100,
+    "sim_value": 88.9,
     "set_for": "LT_01",
-    "notes": "HMI set value D16034; read only on the dashboard."
+    "notes": "HMI set value D16034; writable from the Set points page (user request 2026-11-04). Unit % of the 0-3600 mm range (client philosophy R1: levels are '% settable'); dashboard converts to mm for comparisons. Unit assumed from the philosophy - verify on the PLC. Data type REAL is ASSUMED (not confirmed on the HMI): the server refuses a write when the value read now looks implausible.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9868,7 +10461,8 @@
     "eng_max": 200,
     "sim_value": 70,
     "set_for": "T_04",
-    "notes": "HMI set value D16036; read only on the dashboard."
+    "notes": "HMI set value D16036; writable from the Set points page (user request 2026-11-04). Data type REAL is ASSUMED (not confirmed on the HMI): the server refuses a write when the value read now looks implausible.",
+    "writable": true
   },
   {
     "area": "Panel",
@@ -9905,7 +10499,8 @@
     "eng_max": 200,
     "sim_value": 90,
     "set_for": "T_04",
-    "notes": "HMI set value D16038; read only on the dashboard."
+    "notes": "HMI set value D16038; writable from the Set points page (user request 2026-11-04). Data type REAL is ASSUMED (not confirmed on the HMI): the server refuses a write when the value read now looks implausible.",
+    "writable": true
   },
   {
     "group": "Level set points",
@@ -9938,14 +10533,14 @@
       "gain": 0.1,
       "offset": 0
     },
-    "unit": "mm",
+    "unit": "%",
     "decimals": 1,
     "eng_min": 0,
-    "eng_max": 3600,
-    "sim_value": 3240,
+    "eng_max": 100,
+    "sim_value": 90.0,
     "level_of": "LT_01",
     "level_key": "hh",
-    "notes": "HMI LT Set Point HH: D13024 Double Word unsigned, 1 decimal (raw x10).",
+    "notes": "HMI LT Set Point HH: D13024 Double Word unsigned, 1 decimal (raw x10). Unit % of the 0-3600 mm range (client philosophy R1: levels are '% settable'); dashboard converts to mm for comparisons. Unit assumed from the philosophy - verify on the PLC.",
     "writable": true
   },
   {
@@ -10052,14 +10647,14 @@
       "gain": 0.1,
       "offset": 0
     },
-    "unit": "mm",
+    "unit": "%",
     "decimals": 1,
     "eng_min": 0,
-    "eng_max": 3600,
-    "sim_value": 2700,
+    "eng_max": 100,
+    "sim_value": 75.0,
     "level_of": "LT_01",
     "level_key": "h",
-    "notes": "HMI LT Set Point H: D13036 Double Word unsigned, 1 decimal (raw x10).",
+    "notes": "HMI LT Set Point H: D13036 Double Word unsigned, 1 decimal (raw x10). Unit % of the 0-3600 mm range (client philosophy R1: levels are '% settable'); dashboard converts to mm for comparisons. Unit assumed from the philosophy - verify on the PLC.",
     "writable": true
   },
   {
@@ -10166,14 +10761,14 @@
       "gain": 0.1,
       "offset": 0
     },
-    "unit": "mm",
+    "unit": "%",
     "decimals": 1,
     "eng_min": 0,
-    "eng_max": 3600,
-    "sim_value": 900,
+    "eng_max": 100,
+    "sim_value": 25.0,
     "level_of": "LT_01",
     "level_key": "l",
-    "notes": "HMI LT Set Point L: D13114 Double Word unsigned, 1 decimal (raw x10).",
+    "notes": "HMI LT Set Point L: D13114 Double Word unsigned, 1 decimal (raw x10). Unit % of the 0-3600 mm range (client philosophy R1: levels are '% settable'); dashboard converts to mm for comparisons. Unit assumed from the philosophy - verify on the PLC.",
     "writable": true
   },
   {
@@ -10280,14 +10875,14 @@
       "gain": 0.1,
       "offset": 0
     },
-    "unit": "mm",
+    "unit": "%",
     "decimals": 1,
     "eng_min": 0,
-    "eng_max": 3600,
-    "sim_value": 360,
+    "eng_max": 100,
+    "sim_value": 10.0,
     "level_of": "LT_01",
     "level_key": "ll",
-    "notes": "HMI LT Set Point LL: D13102 Double Word unsigned, 1 decimal (raw x10).",
+    "notes": "HMI LT Set Point LL: D13102 Double Word unsigned, 1 decimal (raw x10). Unit % of the 0-3600 mm range (client philosophy R1: levels are '% settable'); dashboard converts to mm for comparisons. Unit assumed from the philosophy - verify on the PLC.",
     "writable": true
   },
   {
@@ -10394,14 +10989,14 @@
       "gain": 0.1,
       "offset": 0
     },
-    "unit": "mm",
+    "unit": "%",
     "decimals": 1,
     "eng_min": 0,
-    "eng_max": 3600,
-    "sim_value": 3300,
+    "eng_max": 100,
+    "sim_value": 91.7,
     "level_of": "LT_02",
     "level_key": "hh",
-    "notes": "HMI LT Set Point HH: D13030 Double Word unsigned, 1 decimal (raw x10).",
+    "notes": "HMI LT Set Point HH: D13030 Double Word unsigned, 1 decimal (raw x10). Unit % of the 0-3600 mm range (client philosophy R1: levels are '% settable'); dashboard converts to mm for comparisons. Unit assumed from the philosophy - verify on the PLC.",
     "writable": true
   },
   {
@@ -10508,14 +11103,14 @@
       "gain": 0.1,
       "offset": 0
     },
-    "unit": "mm",
+    "unit": "%",
     "decimals": 1,
     "eng_min": 0,
-    "eng_max": 3600,
-    "sim_value": 2800,
+    "eng_max": 100,
+    "sim_value": 77.8,
     "level_of": "LT_02",
     "level_key": "h",
-    "notes": "HMI LT Set Point H: D13042 Double Word unsigned, 1 decimal (raw x10).",
+    "notes": "HMI LT Set Point H: D13042 Double Word unsigned, 1 decimal (raw x10). Unit % of the 0-3600 mm range (client philosophy R1: levels are '% settable'); dashboard converts to mm for comparisons. Unit assumed from the philosophy - verify on the PLC.",
     "writable": true
   },
   {
@@ -10622,14 +11217,14 @@
       "gain": 0.1,
       "offset": 0
     },
-    "unit": "mm",
+    "unit": "%",
     "decimals": 1,
     "eng_min": 0,
-    "eng_max": 3600,
-    "sim_value": 800,
+    "eng_max": 100,
+    "sim_value": 22.2,
     "level_of": "LT_02",
     "level_key": "l",
-    "notes": "HMI LT Set Point L: D13120 Double Word unsigned, 1 decimal (raw x10).",
+    "notes": "HMI LT Set Point L: D13120 Double Word unsigned, 1 decimal (raw x10). Unit % of the 0-3600 mm range (client philosophy R1: levels are '% settable'); dashboard converts to mm for comparisons. Unit assumed from the philosophy - verify on the PLC.",
     "writable": true
   },
   {
@@ -10736,14 +11331,14 @@
       "gain": 0.1,
       "offset": 0
     },
-    "unit": "mm",
+    "unit": "%",
     "decimals": 1,
     "eng_min": 0,
-    "eng_max": 3600,
-    "sim_value": 400,
+    "eng_max": 100,
+    "sim_value": 11.1,
     "level_of": "LT_02",
     "level_key": "ll",
-    "notes": "HMI LT Set Point LL: D13108 Double Word unsigned, 1 decimal (raw x10).",
+    "notes": "HMI LT Set Point LL: D13108 Double Word unsigned, 1 decimal (raw x10). Unit % of the 0-3600 mm range (client philosophy R1: levels are '% settable'); dashboard converts to mm for comparisons. Unit assumed from the philosophy - verify on the PLC.",
     "writable": true
   },
   {

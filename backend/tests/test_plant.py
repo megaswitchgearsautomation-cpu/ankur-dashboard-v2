@@ -57,9 +57,11 @@ class TestScalingTags(unittest.TestCase):
     def test_selectors_linked(self):
         with open(os.path.join(os.path.dirname(TAGS), "equipment.json"), encoding="utf-8") as f:
             eq = {e["id"]: e for e in json.load(f)}
-        # verified on the HMI: sludge pair M6000/M7000, filtrate pair M6006/M7006, sludge feed valve M6029
+        # verified on the HMI: sludge pair A/M M6000, filtrate pair M6006, sludge feed valve M6029.
+        # No Main/Standby selector in the PLC logic (main / standby run by push buttons in Auto): no ms_tag, no SEL_MS_*.
         self.assertEqual(self.by_id[eq["OP_P1B"]["am_tag"]]["device"], "M6000")
-        self.assertEqual(self.by_id[eq["OP_P5A"]["ms_tag"]]["device"], "M7006")
+        self.assertFalse(any(e.get("ms_tag") for e in eq.values()))
+        self.assertFalse(any(t.startswith("SEL_MS_") for t in self.by_id))
         self.assertEqual(self.by_id[eq["MV_01"]["am_tag"]]["device"], "M6029")
         self.assertTrue(all(e.get("am_tag") in self.by_id for e in eq.values()))
 

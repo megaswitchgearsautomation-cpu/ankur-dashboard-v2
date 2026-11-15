@@ -18,6 +18,7 @@ from app.config_store import ConfigStore  # noqa: E402
 from app.engine import Engine  # noqa: E402
 from app.historian import Historian  # noqa: E402
 from app.server import serve  # noqa: E402
+from app.whatsapp import WhatsAppNotifier  # noqa: E402
 
 
 class App:
@@ -28,7 +29,11 @@ class App:
         self.auth = Auth(self.store)
         self.engine = Engine(self.store, self.historian)
         self.assistant = Assistant(data_dir)
+        # WhatsApp alarm alerts (Meta Cloud API): watches the active alarm list, settings in data/whatsapp.json
+        self.whatsapp = WhatsAppNotifier(data_dir, self.engine, self.historian,
+                                         site_name=lambda: (self.store.settings.get("site") or {}).get("name", ""))
         self.frontend_dir = frontend_dir
+        self.data_dir = data_dir          # v3: per-user prefs (user_prefs.json)
         self.verbose = verbose
 
 
@@ -46,6 +51,7 @@ def main():
     host = a.host or app.store.settings["server"]["host"]
     port = a.port or app.store.settings["server"]["port"]
     app.engine.start()
+    app.whatsapp.start()
     httpd = serve(app, host, port)
 
     s = app.store.settings
@@ -72,6 +78,7 @@ def main():
     try:
         httpd.serve_forever(poll_interval=0.5)
     finally:
+        app.whatsapp.stop()
         app.engine.stop()
         app.historian.close()
         print("stopped")

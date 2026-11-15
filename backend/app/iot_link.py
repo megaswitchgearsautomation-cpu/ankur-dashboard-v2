@@ -43,7 +43,7 @@ def modbus_target(settings: dict):
 def find_comlink(configured: str = ""):
     cands = [configured] if configured else []
     backend = os.path.dirname(HERE)
-    cands += [os.path.join(backend, "bin", "comlink.exe"), os.path.join(backend, "bin", "cloudflared.exe")]
+    cands += [os.path.join(backend, "bin", n) for n in ("comlink.exe", "cloudflared.exe", "comlink", "cloudflared")]   # Windows / Linux (cloud)
     for c in cands:
         if c and os.path.isfile(c):
             return c

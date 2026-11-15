@@ -8,8 +8,9 @@ import math
 import random
 import threading
 import time
+from urllib.parse import urlsplit
 
-from . import codec, config_store, delta_ah500, plc_buffer
+from . import codec, config_store, delta_ah500, gateway_api, plc_buffer
 from .iot_link import IotLink, modbus_target
 from .modbus_tcp import ModbusError, ModbusException, ModbusTcpClient
 
@@ -64,6 +65,7 @@ class Engine:
         self._sim_override = {}          # demo mode: values "written" from the dashboard
         self.iot = IotLink()
         self.backfill = plc_buffer.Backfiller(historian)   # history the PLC kept while no dashboard PC was on
+        self._api_next = 0.0                               # next gateway API read (gateway_api mode)
         for a in historian.open_alarms():
             self._open_alarms[(a["tag"], a["kind"])] = a
 
@@ -143,11 +145,13 @@ class Engine:
             if self.mode == "simulation":
                 self.stats["state"] = "SIMULATION"
                 self._simulate(due, now)
+            elif self.mode == "gateway_api":
+                self._poll_api(now)
             else:
                 self._poll(due, now)
             for t in due:
                 self.states[t["id"]].next_due = now + t.get("poll_ms", 1000) / 1000.0
-        if self.mode != "simulation" and self.stats["state"] == "CONNECTED" and self.backfill.due(now):
+        if self.mode == "modbus" and self.stats["state"] == "CONNECTED" and self.backfill.due(now):
             self._backfill(now)
         self._mark_stale(now)
         self._derive_equipment(now)
@@ -319,10 +323,65 @@ class Engine:
     def _mark_stale(self, now):
         if self.mode == "simulation":
             return
+        api_s = int(self.store.settings["gateway_api"].get("poll_s") or 5) if self.mode == "gateway_api" else 0
         for t in self.store.tags:
             st = self.states.get(t["id"])
-            if st and st.quality == Q_GOOD and st.ts and now - st.ts > max(3 * t.get("poll_ms", 1000) / 1000, 5):
+            # not refreshed for 3 read cycles -> STALE (shown greyed with its time, never as a live value)
+            if st and st.quality == Q_GOOD and st.ts and now - st.ts > max(3 * t.get("poll_ms", 1000) / 1000, 3 * api_s, 5):
                 st.quality = Q_STALE
+
+    # -- gateway HTTP API source --------------------------------------------------------
+    def _poll_api(self, now):
+        """One GET to the gateway API every poll_s seconds; every tag is matched by its source_id."""
+        cfg = self.store.settings["gateway_api"]
+        if now < self._api_next:
+            return
+        self._api_next = now + int(cfg.get("poll_s") or 5)
+        t0 = time.perf_counter()
+        self.stats["requests"] += 1
+        try:
+            vals = gateway_api.readings(gateway_api.fetch(cfg), cfg)
+        except gateway_api.ApiError as e:
+            self.stats["errors"] += 1
+            self.stats["consecutive_failures"] += 1
+            self._window.append((False, None))
+            self.stats["last_error"], self.stats["last_error_ts"] = str(e), time.time()
+            if self.stats["state"] != "DISCONNECTED":
+                self.hist.event("comm", f"gateway API lost: {e}")
+            self.stats["state"], self.stats["connected_since"] = "DISCONNECTED", None
+            for t in self.store.tags:
+                if t["id"] in self.states:
+                    self._set_bad(t, now, str(e))
+            return
+        self._window.append((True, (time.perf_counter() - t0) * 1000))
+        if self.stats["state"] != "CONNECTED":
+            self.stats["connected_since"] = time.time()
+            self.hist.event("comm", "gateway API connected")
+        self.stats.update(state="CONNECTED", last_ok=time.time(), consecutive_failures=0)
+        for t in self.store.tags:
+            st = self.states.get(t["id"])
+            if not st:
+                continue
+            r = vals.get(gateway_api.source_id(t))
+            if r is None:
+                self._set_bad(t, now, "not in the gateway reply - check its source id", cfg=True)
+                continue
+            v, ts, good = r
+            if v is None or not good:
+                self._set_bad(t, now, "the gateway marks this value invalid")
+                continue
+            try:
+                if t["data_type"] == "BOOL":
+                    on = bool(v) if isinstance(v, (int, float)) else str(v).strip().lower() in ("1", "true", "on")
+                    val = on ^ bool(t.get("invert"))
+                else:
+                    val = codec.apply_scaling(float(v), t.get("scaling"))
+            except (TypeError, ValueError):
+                self._set_bad(t, now, f"value {v!r} is not a number", cfg=True)
+                continue
+            # the gateway's own time stamp when it sends one: an old reading then turns STALE, not live.
+            # A time stamp in the future (gateway clock ahead) is capped at now, so it cannot stay "fresh" forever.
+            st.raw, st.value, st.quality, st.ts, st.error = v, val, Q_GOOD, (min(ts, now) if ts else now), None
 
     # -- simulation ------------------------------------------------------------------
     def _simulate(self, due, now):
@@ -358,6 +417,8 @@ class Engine:
         return ((now / period + ph * 3) % 1.0) < (90 / period)
 
     def _sim_bool(self, t, eq, now, ph):
+        if t["id"] in self._sim_override:                # demo: selector switched from the dashboard
+            return bool(self._sim_override[t["id"]])
         if eq:
             e, role = eq
             running = self._sim_running(e["id"], now)
@@ -471,7 +532,7 @@ class Engine:
         conds = {}   # (tag, kind) -> (priority, message, value, limit)
         sim = self.mode == "simulation"
         if not sim and self.stats["state"] == "DISCONNECTED":
-            conds[("_COMM", "comm_loss")] = ("red", f"PLC communication lost ({self.stats['last_error']})", None, None)
+            conds[("_COMM", "comm_loss")] = ("red", f"Plant communication lost ({self.stats['last_error']})", None, None)
         for t in self.store.tags:
             al = t.get("alarm") or {}
             if not al.get("enabled"):
@@ -572,8 +633,9 @@ class Engine:
         return {
             "mode": self.mode,
             "state": "SIMULATION" if self.mode == "simulation" else s["state"],
-            "comm_verified": bool(src.get("comm_verified")) and self.mode == "modbus",
-            "plc": f"{plc['model']} @ {host}:{port} (unit {plc['unit_id']}){via}",
+            "comm_verified": bool(src.get("comm_verified")) and self.mode in ("modbus", "gateway_api"),
+            "plc": (f"Gateway API {urlsplit(self.store.settings['gateway_api'].get('url') or '').netloc or '(no URL)'}"
+                    if self.mode == "gateway_api" else f"{plc['model']} @ {host}:{port} (unit {plc['unit_id']}){via}"),
             "iot": self.iot.status(self.store.settings),
             "quality_pct": None if self.mode == "simulation" or not win else round(100 * len(oks) / len(win), 1),
             "avg_latency_ms": round(sum(lat) / len(lat), 1) if lat else None,
@@ -624,9 +686,16 @@ class Engine:
         t = self.store.tag_map().get(tag_id)
         if not t or not t.get("writable"):
             raise ValueError("This value cannot be changed from the dashboard")
-        lo, hi = t.get("eng_min"), t.get("eng_max")
+        if t["data_type"] == "BOOL":
+            return self._write_bit(t, value)
+        # write limits: write_min / write_max when given (e.g. PLC scaling range registers may be re-ranged
+        # beyond today's display range), else the display range eng_min / eng_max
+        lo = t.get("write_min", t.get("eng_min"))
+        hi = t.get("write_max", t.get("eng_max"))
         if (lo is not None and value < float(lo)) or (hi is not None and value > float(hi)):
             raise ValueError(f"Value must be between {lo:g} and {hi:g} {t.get('unit', '')}".strip())
+        if self.mode == "gateway_api":     # no command interface documented for the gateway API: read-only
+            raise ValueError("Writing is not available through the gateway API (read-only data source)")
         sc = t.get("scaling") or {}
         raw = (value - float(sc.get("offset", 0))) / float(sc.get("gain", 1) or 1) if sc.get("mode") == "gain_offset" else value
         dt = t["data_type"]
@@ -659,6 +728,33 @@ class Engine:
             st.raw, st.value, st.quality, st.ts, st.error = back, rb, Q_GOOD, time.time(), None
         return {"value": rb, "simulated": False}
 
+    def _write_bit(self, t, value):
+        """FC05 one coil (HMI soft selector M bit, e.g. M6000 Auto/Manual), read back with FC01."""
+        if not isinstance(value, bool):
+            raise ValueError("Selector value must be ON or OFF")
+        if self.mode == "gateway_api":
+            raise ValueError("Writing is not available through the gateway API (read-only data source)")
+        if self.mode == "simulation":
+            self._sim_override[t["id"]] = value
+            st = self.states.get(t["id"])
+            if st:
+                st.value, st.quality, st.ts = value, Q_SIM, time.time()
+            return {"value": value, "simulated": True}
+        ma = self.resolved.get(t["id"])
+        if isinstance(ma, str) or ma is None or ma.function_code != 1 or not ma.is_bit_table:
+            raise ValueError("Only internal relays / coils (M) can be switched")
+        on = value ^ bool(t.get("invert"))
+        with self._lock:
+            if not self._client:
+                raise ValueError("Not connected to the PLC")
+            self._client.write_coil(ma.address, on)
+            back = self._client.read(1, ma.address, 1)[0]
+        rb = bool(back) ^ bool(t.get("invert"))
+        st = self.states.get(t["id"])
+        if st:
+            st.raw, st.value, st.quality, st.ts, st.error = back, rb, Q_GOOD, time.time(), None
+        return {"value": rb, "simulated": False}
+
     def equipment(self):
         out = []
         for e in self.store.equipment:
@@ -666,7 +762,7 @@ class Engine:
             rt = self.runtime.get(e["id"], {"seconds": 0, "starts": 0, "sim_seconds": 0})
             sim = self.mode == "simulation"
             am, _ = self._tv(e.get("am_tag"))          # HMI Auto/Manual soft selector (M60xx)
-            ms, _ = self._tv(e.get("ms_tag"))          # HMI Main/Standby soft selector (M70xx), pairs only
+            ms, _ = self._tv(e.get("ms_tag"))          # optional Main/Standby selector (none in this plant's PLC logic)
             # raw field signals of this equipment (HMI IO screens): command output + feedback inputs
             io = {}
             for k in ("cmd_tag", "run_tag", "trip_tag", "open_cmd_tag", "close_cmd_tag", "open_tag", "close_tag"):
@@ -685,7 +781,7 @@ class Engine:
     def active_alarms(self):
         rows = sorted(self._open_alarms.values(), key=lambda a: (a["priority"] != "red", -a["raised_at"]))
         tagmap = self.store.tag_map()
-        return [dict(a, tag_name=tagmap.get(a["tag"], {}).get("name", "PLC communication" if a["tag"] == "_COMM" else a["tag"])) for a in rows]
+        return [dict(a, tag_name=tagmap.get(a["tag"], {}).get("name", "Plant communication" if a["tag"] == "_COMM" else a["tag"])) for a in rows]
 
     # -- admin: one-shot test read ---------------------------------------------------------------
     def test_read(self, tag: dict):

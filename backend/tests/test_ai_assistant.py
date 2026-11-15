@@ -73,9 +73,10 @@ class TestAiAssistant(unittest.TestCase):
         self.assertIn("UTC", s)
         self.assertIn("IST", s)
         self.assertIn("LT_01 LT-01 Sludge Water Tank Level = 120.0 mm (3% of range)", s)
-        self.assertIn("HMI levels HH 3240 H 2700 L 900 LL 360", s)
+        self.assertIn("Level set points HH 3240 H 2700 L 900 LL 360", s)
         self.assertIn("alarm SP 8.5", s)
-        self.assertIn("OP_P1A | OP-P1A | UG Sludge Pump (Main) | TRIP | Auto, main selected", s)
+        self.assertIn("OP_P1A | 01-P-101 / OP-P1A | UG Sludge Pump (Main) | - | TRIP | Auto, main selected", s)
+        self.assertNotIn("PLC", s.split("ANALOG VALUES")[0])          # header says "plant", not PLC
         self.assertIn("Raw Water Tank LL = OFF", s)
         self.assertIn("LP steam valve open temperature = 70.0 °C", s)
         self.assertIn("ACTIVE ALARMS (1)", s)
@@ -91,6 +92,22 @@ class TestAiAssistant(unittest.TestCase):
         self.assertIn("MPCB", al)
         self.assertIn("last fix: MPCB reset", al)
 
+    def test_offline_process_values_vs_set_points(self):
+        """'Are pressures and temperatures within their set points?' (a suggestion button) must answer that -
+        not fall back to the alarm / tank summary."""
+        live = json.loads(json.dumps(LIVE))
+        live["tags"].append({"id": "T_01", "name": "T-01 Dryer to Radiator Temp", "group": "Temperature", "unit": "°C",
+                             "decimals": 1, "value": 175.0, "quality": "SIMULATED"})
+        live["aux"]["T_01_ALM_SP"] = {"value": 170.0}
+        a = offline_answer("Are pressures and temperatures within their set points?", live)
+        self.assertNotIn("active alarm", a)
+        self.assertIn("PT-01 Raw Water Header Pressure: **6.7 barg** / set point 8.5 barg - within", a)
+        self.assertIn("T-01 Dryer to Radiator Temp: **175.0 °C** / set point 170.0 °C - **ABOVE set point**", a)
+        self.assertTrue(a.startswith("_Demo data._\n**1 above the alarm set point:** T-01"))
+        p = offline_answer("क्या प्रेशर सेट पॉइंट के अंदर है?", live)       # Hindi / mic
+        self.assertIn("All pressures are within their alarm set points", p)
+        self.assertNotIn("Dryer to Radiator Temp", p)                       # only pressures were asked
+
     def test_offline_specific_pump_trip_is_brief(self):
         a = offline_answer("why is 01-P-101 stopped?", LIVE)
         self.assertTrue(a.startswith("_Demo data._\n**01-P-101**"))
@@ -100,6 +117,16 @@ class TestAiAssistant(unittest.TestCase):
         self.assertLessEqual(len(a.splitlines()), 8)
         h = offline_answer("sludge pump trip kyu hua?", LIVE)        # by name, Hinglish
         self.assertIn("01-P-101", h)
+
+    def test_level_set_points_in_percent(self):
+        live = json.loads(json.dumps(LIVE))
+        for k, v in (("HH", 90), ("H", 75), ("L", 25), ("LL", 10)):
+            live["aux"][f"LT_01_{k}_SP"] = {"value": v, "unit": "%", "group": "Level set points", "name": k}
+        s = snapshot_text(live)
+        self.assertIn("Level set points HH 90% (3240 mm) H 75% (2700 mm) L 25% (900 mm) LL 10% (360 mm)", s)
+        a = offline_answer("sludge tank level?", live)
+        self.assertIn("120 mm (3%) - **at / below LL**", a)          # 120 mm compared with LL = 360 mm, not with "10"
+        self.assertIn("LL 10% (360 mm)", a)
 
     def test_offline_specific_tank_level(self):
         a = offline_answer("sludge tank level kitna hai?", LIVE)
@@ -142,6 +169,68 @@ class TestAiAssistant(unittest.TestCase):
         self.assertTrue(all(self.a.rate_ok("s1") for _ in range(n)))
         self.assertFalse(self.a.rate_ok("s1"))
         self.assertTrue(self.a.rate_ok("s2"))
+
+    def test_snapshot_has_selectors_delays_history(self):
+        live = json.loads(json.dumps(LIVE))
+        live["aux"]["SEL_AM_SLUDGE"] = {"value": False, "group": "Selectors", "name": "UG sludge pumps - Auto/Manual selector"}
+        live["aux"]["PT_01_ALM_DLY"] = {"value": 5, "group": "Alarm delays"}
+        live["aux"]["PT_01_ALM_ACT"] = {"value": 2, "group": "Alarm delays"}
+        live["recent_alarms"] = [{"message": "PT-01 high", "priority": "amber", "raised_at": 1793690000.0, "cleared_at": 1793690600.0}]
+        live["recent_changes"] = [{"ts": 1793691000.0, "detail": "admin wrote PT_01_ALM_SP: 8 -> 8.5"}]
+        s = snapshot_text(live)
+        self.assertIn("UG sludge pumps = MANUAL", s)
+        self.assertIn("alarm delay 5 s (running 2 s)", s)
+        self.assertIn("ALARM HISTORY - LAST 24 H (1", s)
+        self.assertIn("PT-01 high - cleared", s)
+        self.assertIn("admin wrote PT_01_ALM_SP", s)
+
+    def test_offline_new_intents(self):
+        live = json.loads(json.dumps(LIVE))
+        live["equipment"][1]["auto"] = False
+        live["aux"]["PT_01_ALM_DLY"] = {"value": 5}
+        live["recent_alarms"] = []
+        rh = offline_answer("show run hours of all machines", live)
+        self.assertIn("highest: **01-P-101**", rh)
+        self.assertIn("| Machine | Name | Run hours |", rh)
+        m = offline_answer("which machines are in manual?", live)
+        self.assertIn("**1 of 2 machines in Manual**", m)
+        self.assertIn("Dryer Hot Water Pump - Manual", m)
+        live["tags"][1]["alarm"] = {"hi": None, "lo": None, "hihi": None, "lolo": None}      # no limit active
+        pt = offline_answer("PT-01 kitna hai?", live)
+        self.assertNotIn("ALARM", pt)
+        self.assertNotIn("ALARM", snapshot_text(live).split("PT_01")[1].split("\n")[0])
+        self.assertIn("**PT-01 Raw Water Header Pressure** = **6.7 barg**", pt)
+        self.assertIn("Alarm set point 8.5 barg - below", pt)
+        self.assertIn("Alarm delay 5 s", pt)
+        self.assertNotIn("T-01", offline_answer("pt01 value", live).replace("PT-01", ""))
+        self.assertIn("No alarms in the last 24 hours", offline_answer("what alarms came in the last 24 hours?", live))
+        sp = offline_answer("show all set points", live)
+        self.assertIn("LP steam valve open temperature: **70.0 °C**", sp)
+        full = offline_answer("give me the full plant status", live)
+        self.assertIn("active alarm", full)
+        self.assertIn("pressures", full)
+        self.assertIn("in Manual", full)
+        self.assertIn("Basic mode", offline_answer("help", live))
+
+    def test_admin_settings_never_return_key(self):
+        s = self.a.save_admin_settings({"api_key": "sk-ant-test-0123456789abcdefghij", "model": "claude-sonnet-5-5", "effort": "high", "enabled": True})
+        self.assertTrue(s["key_set"])
+        self.assertNotIn("sk-ant-test", json.dumps(s))
+        self.assertEqual((s["model"], s["effort"]), ("claude-sonnet-5-5", "high"))
+        with self.assertRaises(ValueError):
+            self.a.save_admin_settings({"model": "gpt-4"})
+        with self.assertRaises(ValueError):
+            self.a.save_admin_settings({"api_key": "short"})
+        s = self.a.save_admin_settings({"model": "claude-opus-5-5"})          # key kept when not sent
+        self.assertTrue(s["key_set"])
+        self.assertFalse(self.a.save_admin_settings({"clear_key": True})["key_set"])
+        self.assertFalse(self.a.test_connection()["ok"])
+
+    def test_haiku_has_no_fallback_param(self):
+        fake = FakeClient()
+        self.a._get_client = lambda: (fake, {"model": "claude-haiku-5-5"})
+        self.a.ask("alarms?", [], LIVE)
+        self.assertNotIn("fallbacks", fake.calls[0])
 
     def test_disabled_in_config(self):
         with open(os.path.join(self.tmp, "ai_config.json"), "w", encoding="utf-8") as f:

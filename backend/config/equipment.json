@@ -12,7 +12,6 @@
     "cmd_tag": "DO_Under_Ground_Sludge_Pump_to_Volute_Press_Main",
     "fb_timeout_s": 5,
     "am_tag": "SEL_AM_SLUDGE",
-    "ms_tag": "SEL_MS_SLUDGE",
     "pair": "sludge"
   },
   {
@@ -28,7 +27,6 @@
     "cmd_tag": "DO_Under_Ground_Sludge_Pump_to_Volute_Press_Standby",
     "fb_timeout_s": 5,
     "am_tag": "SEL_AM_SLUDGE",
-    "ms_tag": "SEL_MS_SLUDGE",
     "pair": "sludge"
   },
   {
@@ -100,7 +98,6 @@
     "cmd_tag": "DO_Filtrate_Tank_Pump_Main",
     "fb_timeout_s": 5,
     "am_tag": "SEL_AM_FILTRATE",
-    "ms_tag": "SEL_MS_FILTRATE",
     "pair": "filtrate"
   },
   {
@@ -116,7 +113,6 @@
     "cmd_tag": "DO_Filtrate_Tank_Pump_Standby",
     "fb_timeout_s": 5,
     "am_tag": "SEL_AM_FILTRATE",
-    "ms_tag": "SEL_MS_FILTRATE",
     "pair": "filtrate"
   },
   {
@@ -132,7 +128,6 @@
     "cmd_tag": "DO_Under_Ground_Submersible_Pump_Main",
     "fb_timeout_s": 5,
     "am_tag": "SEL_AM_UG",
-    "ms_tag": "SEL_MS_UG",
     "pair": "ug"
   },
   {
@@ -148,7 +143,6 @@
     "cmd_tag": "DO_Under_Ground_Submersible_Pump_Standby",
     "fb_timeout_s": 5,
     "am_tag": "SEL_AM_UG",
-    "ms_tag": "SEL_MS_UG",
     "pair": "ug"
   },
   {
@@ -291,7 +285,6 @@
     "cmd_tag": "DO_Make_Up_Water_Pump_Main",
     "fb_timeout_s": 5,
     "am_tag": "SEL_AM_MAKEUP",
-    "ms_tag": "SEL_MS_MAKEUP",
     "pair": "makeup"
   },
   {
@@ -307,7 +300,6 @@
     "cmd_tag": "DO_Make_Up_Water_Pump_Standby",
     "fb_timeout_s": 5,
     "am_tag": "SEL_AM_MAKEUP",
-    "ms_tag": "SEL_MS_MAKEUP",
     "pair": "makeup"
   },
   {
