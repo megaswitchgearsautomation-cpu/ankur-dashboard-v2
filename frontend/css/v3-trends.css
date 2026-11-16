@@ -19,6 +19,11 @@
 .mdc-btns button:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 2px; }
 .mdc-btns button:disabled { opacity: .4; cursor: default; }
 @media (max-width: 560px) { .mdc-hint { display: none; } }
+/* scroll bar under a zoomed chart: thumb = visible window inside the selected range (drag it, or click the track) */
+.mdc-scroll { position: relative; height: 12px; margin: 4px 0 2px; border-radius: 6px; background: #f1f1f2; cursor: pointer; touch-action: none; }
+.mdc-thumb { position: absolute; top: 0; bottom: 0; min-width: 24px; border-radius: 6px; background: #a1a1aa; cursor: grab; touch-action: none; }
+.mdc-thumb:hover, .mdc-thumb.drag { background: #71717a; }
+.mdc-thumb.drag { cursor: grabbing; }
 
 /* chart layers (same look as the existing .chart rules, so a chart outside a .chart box looks the same) */
 body.client .mdc svg .tick { fill: var(--ink-3, #6b6b66); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }

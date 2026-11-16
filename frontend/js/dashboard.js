@@ -33,14 +33,15 @@
   const nowS = () => Date.now() / 1000;
   function appliedLabel(f, t, suffix = "") { return `${fmtTime(f, true).slice(0, 16)} – ${fmtTime(t, true).slice(0, 16)} IST${suffix}`; }
   function setApplied(host, f, t, suffix) { const e = host && host.querySelector(".dr-txt"); if (e) e.textContent = appliedLabel(f, t, suffix); }
-  // never ask for more history than is kept (MD_META.history): a 7-day preset on a 2-day-old history shows 2 days
+  // a preset always spans its full period (only the retention limit applies): "7 days" on a 2-day-old history shows
+  // 7 days, with the time before the first sample drawn as empty, so the range matches what was picked
   function availMin(min) {
-    const keep = MD.v3 ? Math.ceil((nowS() - MD.v3.historyStart()) / 60) + 60 : min;
+    const keep = MD.v3 ? Math.floor((nowS() - MD.v3.retentionStart()) / 60) : min;
     return Math.max(15, Math.min(min, keep));
   }
   function syncPickerLimits(host) {
     if (!host || !MD.v3) return;
-    const lo = MD.istDate(MD.v3.historyStart()), hi = MD.istDate(nowS());
+    const lo = MD.istDate(MD.v3.retentionStart()), hi = MD.istDate(nowS());
     host.querySelectorAll(".dr-from, .dr-to").forEach((i) => { i.min = lo; i.max = hi; });
   }
   // onRange({minutes} | {from, to}, key)

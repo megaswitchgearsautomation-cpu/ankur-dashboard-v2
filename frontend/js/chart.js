@@ -272,8 +272,8 @@ const MDChart = (() => {
       <span class="mdc-btns">
         <button type="button" data-z="out" title="Zoom out" aria-label="Zoom out"${z ? "" : " disabled"}>−</button>
         <button type="button" data-z="in" title="Zoom in" aria-label="Zoom in"${vt - vf <= MIN_W * 1.01 ? " disabled" : ""}>+</button>
-        <button type="button" data-z="left" title="Move left (earlier)" aria-label="Move left"${z && vf > h0 + 1 ? "" : " disabled"}>‹</button>
-        <button type="button" data-z="right" title="Move right (later)" aria-label="Move right"${z && vt < h1 - 1 ? "" : " disabled"}>›</button>
+        <button type="button" data-z="left" title="${z ? (vf > h0 + 1 ? "Move left (earlier)" : "Already at the start of the range") : "Zoom in first (+ or drag across the chart), then move left / right"}" aria-label="Move left"${z && vf > h0 + 1 ? "" : " disabled"}>‹</button>
+        <button type="button" data-z="right" title="${z ? (vt < h1 - 1 ? "Move right (later)" : "Already at the end of the range") : "Zoom in first (+ or drag across the chart), then move left / right"}" aria-label="Move right"${z && vt < h1 - 1 ? "" : " disabled"}>›</button>
         <button type="button" data-z="reset" class="mdc-reset" title="Show the full selected range"${z ? "" : " disabled"}>Full range</button>
       </span>`;
     bar.querySelectorAll("button").forEach((b) => (b.onclick = () => {
@@ -287,6 +287,62 @@ const MDChart = (() => {
     return bar;
   }
 
+  // scroll bar under the plot while zoomed: the thumb is the visible window inside the selected range.
+  // Drag the thumb to move (previewed, applied on release); click the track to centre the window there.
+  function scrollbar(box, vf, vt) {
+    const st = box._mdState;
+    if (!st || !st.view || !st.home) return;
+    const [h0, h1] = st.home, span = h1 - h0;
+    if (span <= 0) return;
+    const track = document.createElement("div");
+    track.className = "mdc-scroll";
+    track.setAttribute("role", "scrollbar");
+    track.setAttribute("aria-label", "Move the zoomed window");
+    track.setAttribute("aria-valuemin", "0");
+    track.setAttribute("aria-valuemax", "100");
+    track.setAttribute("aria-valuenow", String(Math.round(((vf - h0) / Math.max(1, span - (vt - vf))) * 100)));
+    track.title = "Drag to move left / right";
+    const thumb = document.createElement("div");
+    thumb.className = "mdc-thumb";
+    const wPct = ((vt - vf) / span) * 100;
+    thumb.style.width = `${Math.max(2, wPct)}%`;
+    thumb.style.left = `${((vf - h0) / span) * 100}%`;
+    track.appendChild(thumb);
+    const mm = box._mdM;                                  // line the track up with the plot area (last draw's margins)
+    if (mm) { track.style.marginLeft = `${mm.l}px`; track.style.marginRight = `${mm.r}px`; }
+    box.appendChild(track);
+    const w = vt - vf;
+    thumb.addEventListener("pointerdown", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const x0 = ev.clientX, tw = track.getBoundingClientRect().width || 1;
+      let dt = 0;
+      thumb.setPointerCapture(ev.pointerId);
+      thumb.classList.add("drag");
+      const move = (e) => {
+        dt = Math.max(h0 - vf, Math.min(h1 - vt, ((e.clientX - x0) / tw) * span));
+        thumb.style.left = `${((vf + dt - h0) / span) * 100}%`;
+      };
+      const up = () => {
+        thumb.removeEventListener("pointermove", move);
+        thumb.removeEventListener("pointerup", up);
+        thumb.removeEventListener("pointercancel", up);
+        thumb.classList.remove("drag");
+        if (Math.abs(dt) > 0.5) setView(st, vf + dt, vt + dt);
+      };
+      thumb.addEventListener("pointermove", move);
+      thumb.addEventListener("pointerup", up);
+      thumb.addEventListener("pointercancel", up);
+    });
+    track.addEventListener("pointerdown", (ev) => {
+      if (ev.target !== track) return;
+      const r = track.getBoundingClientRect();
+      const c = h0 + ((ev.clientX - r.left) / (r.width || 1)) * span;
+      const a = Math.max(h0, Math.min(h1 - w, c - w / 2));
+      setView(st, a, a + w);
+    });
+  }
+
   // common frame: clears the box, toolbar, svg; wheel handler is attached once per box
   function frame(box, o, vf, vt, defH, label) {
     box.innerHTML = "";
@@ -295,6 +351,7 @@ const MDChart = (() => {
     const W = box.clientWidth || 600, H = o.height || defH;
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": label }, box);
     svg.style.height = H + "px";
+    if (o.controls !== false) scrollbar(box, vf, vt);
     if (!box._mdWheel) {
       box._mdWheel = true;
       let lastW = 0;
@@ -362,7 +419,7 @@ const MDChart = (() => {
     const { W, H, svg, bar } = frame(box, s, vf, vt, 220, `${s.name} trend`);
     const all = (s.points || []).filter((p) => p.avg !== null && p.avg !== undefined).sort(byT);
     const { drawn, vis } = windowPts(all, vf, vt);
-    if (!drawn.length) { emptyMsg(svg, W, H, all.length ? "No data in this part of the range - zoom out or move" : "No data in this time range yet"); return; }
+    if (!drawn.length) { emptyMsg(svg, W, H, all.length || box._mdState.view ? "No data in this part of the range - zoom out or move" : "No data in this time range yet"); return; }
     const sc = vis.length ? vis : drawn;
     let lo = Math.min(...sc.map((p) => p.min ?? p.avg));
     let hi = Math.max(...sc.map((p) => p.max ?? p.avg));
@@ -516,7 +573,7 @@ const MDChart = (() => {
     const scPts = vis.flatMap((x) => (x.vis.length ? x.vis : x.drawn));
     if (!scPts.length) {
       emptyMsg(svg, W, H, !vis.length ? "All values hidden - click a value above to show it"
-        : vis.some((x) => x.all.length) ? "No data in this part of the range - zoom out or move" : "Collecting data…");
+        : vis.some((x) => x.all.length) || box._mdState.view ? "No data in this part of the range - zoom out or move" : "Collecting data…");
       return;
     }
     let lo = Math.min(...scPts.map((p) => p.avg)), hi = Math.max(...scPts.map((p) => p.avg));
@@ -615,7 +672,7 @@ const MDChart = (() => {
     const bw0 = diffs.length ? diffs[Math.floor(diffs.length / 2)] : (o.to - o.from) / 24;
     const wOf = (b) => b.w || bw0;
     const vis = all.filter((b) => b.t + wOf(b) / 2 >= vf && b.t - wOf(b) / 2 <= vt);
-    if (!vis.length) { emptyMsg(svg, W, H, all.length ? "No data in this part of the range - zoom out or move" : "No data in this time range yet"); return; }
+    if (!vis.length) { emptyMsg(svg, W, H, all.length || box._mdState.view ? "No data in this part of the range - zoom out or move" : "No data in this time range yet"); return; }
     let lo = Math.min(0, ...vis.map((b) => b.v)), hi = Math.max(0, ...vis.map((b) => b.v));
     (o.limits || []).forEach((l) => { lo = Math.min(lo, l.v); hi = Math.max(hi, l.v); });
     const nt = axisRange(lo, hi, o.yMin, o.yMax);

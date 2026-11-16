@@ -20,6 +20,12 @@
     const byRetention = now - (h.retention_days || 30) * DAY;
     return Math.max(byRetention, h.first_ts || byRetention);
   }
+  // oldest time a trend range may start: the retention limit only. A range is never shortened to the first logged
+  // sample - "7 days" always spans 7 days, and time without data is drawn as empty (no data), not cut off.
+  function retentionStart() {
+    const h = (window.MD_META || {}).history || {};
+    return Date.now() / 1000 - (h.retention_days || 30) * DAY;
+  }
 
   // ---------- date range picker ----------
   // host: element. opts: { presets: [[label, key]], onApply(fromTs, toTs, key), value: {from, to} , withTime: false }
@@ -36,7 +42,7 @@
     const q = (s) => host.querySelector(s);
     const from = q(".dr-from"), to = q(".dr-to");
     const now = () => Date.now() / 1000;
-    const minIso = MD.istDate(historyStart()), maxIso = MD.istDate(now());
+    const minIso = MD.istDate(retentionStart()), maxIso = MD.istDate(now());
     [from, to].forEach((i) => { i.min = minIso; i.max = maxIso; });
     from.value = MD.istDate(now() - 6 * DAY); to.value = maxIso;
     let key = opts.initial || presets[0][1];
@@ -59,7 +65,7 @@
       q(".dr-pick").hidden = k !== "custom";
       if (k === "custom" && fire === "open") return;            // wait for Show
       let [f, t] = windowOf(k);
-      f = Math.max(f, historyStart() - 3600);
+      f = Math.max(f, retentionStart());
       if (t <= f) { MD.toast("The end date must be after the start date", true); return; }
       q(".dr-txt").textContent = label(f, t);
       if (fire && opts.onApply) opts.onApply(f, t, k);
@@ -226,5 +232,5 @@
     try { await MD.api("/api/client/prefs", { method: "PUT", body: { prefs: p } }); } catch (e) { MD.toast("Could not save your layout: " + e.message, true); }
   }
 
-  MD.v3 = { CAL, INFO, PEN, SEARCH, historyStart, rangePicker, info, popup, closeTip, tableSearch, level, exportCsv, tableRows, printPdf, prefs, savePrefs };
+  MD.v3 = { CAL, INFO, PEN, SEARCH, historyStart, retentionStart, rangePicker, info, popup, closeTip, tableSearch, level, exportCsv, tableRows, printPdf, prefs, savePrefs };
 })();
