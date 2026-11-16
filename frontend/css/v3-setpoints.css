@@ -9,7 +9,9 @@
 .sp-card .card-head h2 { margin: 0; min-width: 0; }
 .sp-card .card-head .v3-info { margin-left: auto; width: 44px; height: 44px; min-width: 44px; }   /* info icon on the right */
 .sp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 16px; }
-.sp-bar .v3-search { min-height: 44px; }
+.sp-bar .v3-search { min-height: 48px; width: min(520px, 100%); }
+.sp-bar .v3-search svg { width: 20px; height: 20px; }
+.sp-bar .v3-search input { min-height: 46px; font-size: 17px; }
 
 /* tables: one left alignment for every header and cell (forced in v3-base.css) - nothing here re-aligns */
 .sp-t { width: 100%; border-collapse: collapse; }
@@ -17,10 +19,22 @@
 .sp-t td { font-size: 16px; padding: 12px; vertical-align: middle; white-space: nowrap; }
 .sp-t td:first-child { white-space: normal; min-width: 200px; }
 .sp-t td:first-child b { font-size: 16px; }
-.sp-nm { display: block; font-size: 14px; color: #52525b; line-height: 1.35; }
+.sp-nm { display: block; font-size: 14px; color: #52525b; line-height: 1.2; margin-top: 2px; }   /* a 2-line name reads as one item */
+.sp-oor { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--st-alarm-bg, #fef2f2); border: 1px solid var(--st-alarm, #b91c1c);
+  color: var(--st-alarm, #b91c1c); font-size: 12px; font-weight: 700; line-height: 1.5; cursor: help; }
+/* edit pop-up: value outside the range - red box with the two ways out */
+.sp-range-err { margin: 12px 0 4px; padding: 12px 16px; border: 1px solid var(--st-alarm, #b91c1c); border-left-width: 4px; border-radius: 8px;
+  background: var(--st-alarm-bg, #fef2f2); color: #7f1d1d; font-size: 15px; line-height: 1.4; }
+.sp-range-err p { margin: 0 0 12px; }
+.sp-range-err b { color: var(--st-alarm, #b91c1c); }
+.sp-range-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.sp-range-btns .btn { min-height: 40px; }
 .sp-t td.num, .sp-t .sp-val { font-variant-numeric: tabular-nums; }
 .sp-val b, .sp-t .sp-val b { color: var(--fx-ink, #18181b); font-weight: 700; }        /* set point numbers black */
-.sp-val + .v3-pen, .sp-val + .sp-lock { margin-left: 8px; }                            /* pencil right beside the value */
+.sp-val + .v3-pen, .sp-val + .sp-lock { margin-left: 8px; }
+/* in tables the pencil (or lock) sits at the right edge of its column, so every pencil lines up whatever the value length */
+.sp-t td > .sp-val + .v3-pen, .sp-t td > .sp-val + .sp-lock { float: right; margin-left: 16px; }
+.sp-t td > .sp-val:has(+ .v3-pen, + .sp-lock) { display: inline-block; line-height: 36px; }
 .sp-t .v3-pen { width: 36px; height: 36px; }
 .sp-lock { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; vertical-align: middle; color: #71717a; cursor: help; }
 .sp-lock svg { width: 16px; height: 16px; }

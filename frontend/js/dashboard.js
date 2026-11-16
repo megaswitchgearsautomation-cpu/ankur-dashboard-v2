@@ -386,7 +386,7 @@
       box.innerHTML = `
         <div class="ps-sum" id="psSum"><svg viewBox="0 0 64 64" class="shield"><path d="M32 4 L54 12 V30 C54 45 44 55 32 60 C20 55 10 45 10 30 V12 Z" class="sh"/>
           <path d="M21 32 L29 40 L44 24" class="ok-mark"/><path d="M32 18 V36 M32 44 V46" class="bad-mark"/></svg>
-          <div class="ps-sum-txt"><div class="ps-k"><span>Panel &amp; safety</span> · <span class="ps-s" id="psSub"></span></div><div class="ps-t" id="psTitle"></div></div></div>
+          <div class="ps-sum-txt"><div class="ps-k">Panel &amp; safety</div><div class="ps-t" id="psTitle"></div><span class="ps-s" id="psSub"></span></div></div>
         <div class="ps-dev">${safety.map((t) => `<div class="psd" data-id="${esc(t.id)}">${safetyIcon(t)}<div class="psd-txt"><span class="psd-n" title="${esc(t.name)}">${esc(psShort(t.name))}</span>
           <b class="psd-v"></b></div><span class="psd-mark"></span></div>`).join("")}</div>
         <div class="ps-panel">
@@ -490,7 +490,7 @@
     return `<div class="eqc" data-id="${esc(e.id)}" data-kind="${kind}" tabindex="0">
       <div class="eqc-ic">${eqIcon(kind)}</div>
       <div class="eqc-main">
-        <div class="eqc-top">${e.tag_no ? `<span class="eqc-tag">${esc(e.tag_no)}</span>` : ""}<span class="eqc-pill"><span class="dot"></span><b class="st"></b></span></div>
+        <div class="eqc-top">${e.tag_no ? `<span class="eqc-tag">${esc(e.tag_no)}</span>` : `<span class="eqc-tag none" title="No tag number on the P&amp;ID">–</span>`}<span class="eqc-pill"><span class="dot"></span><b class="st"></b></span></div>
         <div class="eqc-name" title="${esc(e.name)}">${esc(e.name)}</div>
         <div class="eqc-meta">${esc(e.area || "")}${spec ? " · " + esc(spec) : ""}${e.simulated ? ' · <span class="q SIMULATED">DEMO</span>' : ""}</div>
       </div>
@@ -501,13 +501,12 @@
       <div class="eqc-io" title="Field signals (lit = ON)">${(motor ? [["cmd", "CMD"], ["run", "RUN"], ["trip", "TRIP"]]
         : [["open_cmd", "OPEN CMD"], ["close_cmd", "CLOSE CMD"], ["open", "OPEN"], ["close", "CLOSED"]])
         .filter(([k]) => e.io && k in e.io).map(([k, l]) => `<span class="sig" data-io="${k}"><i></i>${l}</span>`).join("")}</div>
-      ${motor ? '<div class="eqc-bar" title="Run hours compared with the most-used motor"><i></i></div>' : ""}
-    </div>`;
+    </div>`;   // (run-hours comparison bar removed 16-11-2026: there is no fixed maximum, so the bar had no meaning)
   }
   function eqRowHTML(e) {
     const kind = eqKind(e);
     return `<div class="eql" data-id="${esc(e.id)}" data-kind="${kind}"><span class="eqc-ic sm">${eqIcon(kind)}</span>
-      <span class="eqc-tag">${esc(e.tag_no || "-")}</span><span class="eql-name" title="${esc(e.name)}">${esc(e.name)}</span>
+      <span class="eqc-tag${e.tag_no ? "" : " none"}"${e.tag_no ? "" : ' title="No tag number on the P&amp;ID"'}>${esc(e.tag_no || "–")}</span><span class="eql-name" title="${esc(e.name)}">${esc(e.name)}</span>
       <span class="muted eql-area">${esc(e.area || "")}</span><span class="eqc-pill"><span class="dot"></span><b class="st"></b></span>
       <b class="mode">-</b><b class="num rh">${e.type === "motor" ? "-" : ""}</b><b class="num starts">${e.type === "motor" ? "-" : ""}</b></div>`;
   }
@@ -524,7 +523,7 @@
     if (e.pair && e.standby_selected != null) s += e.standby_selected ? " · Standby sel." : " · Main sel.";
     return s;
   }
-  function fillEq(el, e, maxH) {
+  function fillEq(el, e) {
     const st = eqState(e);
     if (el.dataset.state !== st) el.dataset.state = st;
     const q = (s) => el.querySelector(s);
@@ -540,13 +539,10 @@
         q(".rh").classList.toggle("counting", e.status === "RUNNING");
       }
       if (q(".starts")) q(".starts").textContent = e.starts ?? 0;
-      const bar = q(".eqc-bar i");
-      if (bar) bar.style.width = `${Math.max(2, ((e.run_hours || 0) / maxH) * 100)}%`;
     } else if (q(".pos")) q(".pos").textContent = EQ_TXT[e.status] || "-";
   }
   function renderEqInto(box, list, { view = "cards", group = false, empty = "No equipment matches" } = {}) {
-    const maxH = Math.max(0.01, ...live.equipment.filter((m) => m.type === "motor").map((m) => m.run_hours || 0));
-    const sig = `${view}|${group}|${list.map((e) => e.id).join(",")}|${list.length ? "" : empty}`;
+    const sig =`${view}|${group}|${list.map((e) => e.id).join(",")}|${list.length ? "" : empty}`;
     if (box._sig !== sig) {
       box._sig = sig;
       if (!list.length) box.innerHTML = `<div class="empty">${esc(empty)}</div>`;
@@ -562,7 +558,7 @@
       box.classList.add("eq-anim");
       setTimeout(() => box.classList.remove("eq-anim"), 1400);
     }
-    list.forEach((e) => { const el = box.querySelector(`[data-id="${CSS.escape(e.id)}"]`); if (el) fillEq(el, e, maxH); });
+    list.forEach((e) => { const el = box.querySelector(`[data-id="${CSS.escape(e.id)}"]`); if (el) fillEq(el, e); });
     box.querySelectorAll(".eq-area").forEach((sec) => {
       const inA = list.filter((e) => (e.area || "Other") === sec.dataset.area);
       const run = inA.filter((e) => ["run", "open"].includes(eqState(e))).length, bad = inA.filter((e) => eqState(e) === "trip").length;

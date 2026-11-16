@@ -223,8 +223,8 @@
   // ======================================================================================
   const EQ_LABEL = { MV_01: "Feed valve", AGIT: "Mixer", OP_SV1: "LP steam valve", OP_SV2: "Outlet valve", OP_M1: "Hot air blower",
     OP_F1: "CT-1 fan", OP_F2: "CT-2 fan" };
-  const ST_IC = { ok: "✓", on: "✓", off: "■", warn: "⚠", alarm: "✕", unk: "?", info: "▶" };
-  const ST_TXT = { ok: "Normal", warn: "Check", alarm: "Needs attention", unk: "No data" };
+  const ST_IC = { ok: "✓", on: "✓", off: "■", warn: "⚠", alarm: "!", unk: "?", info: "▶" };   // alarm "!" is drawn as a red alert badge (css)
+  const ST_TXT = { ok: "Normal", warn: "Check", alarm: "Alert", unk: "No data" };
   const SYM = {        // one simple symbol per equipment type (P&ID style)
     // centrifugal pump: base + volute casing with the outlet nozzle on top, impeller inside (turns while running)
     pump: '<path class="b" d="M11 31 H29 L32 37 H8 Z"/><path class="b" d="M20 8 H34 V14.5 H29.9 A12 12 0 1 1 20 8 Z"/>'
@@ -239,6 +239,7 @@
   const GRIP = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
   const ARW = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="${d}"/></svg>`;
   const UP = ARW("M6 15l6-6 6 6"), DOWN = ARW("M6 9l6 6 6-6"), CHEV = ARW("M6 9l6 6 6-6");
+  const FS_IC = ARW("M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5");
   const RANK = ["alarm", "unk", "warn", "ok"];
   const worst = (list) => RANK.find((r) => list.includes(r)) || "ok";
   function eqKind(id, e) {
@@ -263,6 +264,30 @@
       <span class="dc-eq-s"><span class="dc-st st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(txt)}</span>${e && e.auto != null ? `<em>${e.auto ? "Auto" : "Manual"}</em>` : ""}</span></div>`;
   }
   const chipHTML = (s, txt) => `<span class="dc-st big st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(txt || ST_TXT[s])}</span>`;
+  // card header chip: when something needs a look it is a button - hover lists the problems, click jumps to them
+  const PROB_SEL = ".dc-st.st-alarm, .dc-st.st-warn, .dc-st.st-unk, .dc-note.st-alarm, .dc-note.st-warn";
+  function dcProblems(card) {                         // [element, text] for each problem shown inside the card body / details
+    const seen = new Set(), out = [];
+    card.querySelectorAll(PROB_SEL).forEach((st) => {
+      if (st.closest(".dc-chip")) return;
+      const row = st.closest(".dc-eq, .dc-r, tr, .dc-sw, .dc-note, .dc-stl") || st;
+      if (seen.has(row)) return;
+      seen.add(row);
+      let txt;
+      if (row.matches(".dc-eq")) txt = row.title;
+      else if (row.matches(".dc-r")) txt = `${row.querySelector(".dc-r-l").textContent}: ${st.textContent.replace(/^\W\s*/, "")}`;
+      else if (row.matches("tr")) txt = `${row.cells[0].textContent} level: ${st.textContent.replace(/^\W\s*/, "")}`;
+      else if (row.matches(".dc-sw")) txt = `${row.querySelector(".dc-sw-i > b").textContent}: ${st.textContent.replace(/^\W\s*/, "")}`;
+      else txt = row.textContent.replace(/^\W\s*/, "");
+      out.push([row, txt.replace(/\s+/g, " ").trim()]);
+    });
+    return out;
+  }
+  function chipBtnHTML(s, probs) {
+    if (s === "ok" || !probs.length) return chipHTML(s);
+    const tip = probs.map(([, t]) => `• ${t}`).join("\n");
+    return `<button type="button" class="dc-chip-b" data-prob title="${esc(tip + "\n\nClick to show it")}" aria-label="${esc(`${ST_TXT[s]}: ${probs.map(([, t]) => t).join("; ")}. Show it`)}">${chipHTML(s, `${ST_TXT[s]}${probs.length > 1 ? ` (${probs.length})` : ""}`)}</button>`;
+  }
   const stLine = (s, txt) => `<div class="dc-stl"><span class="dc-st st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(txt)}</span></div>`;
   function dRow(label, val, st = "info") {             // one secondary detail: label | value (status icon when it is a state)
     return `<div class="dc-r"><span class="dc-r-l">${esc(label)}</span><span class="dc-r-v">${st === "info" ? esc(val)
@@ -352,24 +377,31 @@
 
   // ---- switch-only tanks: outline + the switch positions (no level fill - these tanks have no level transmitter) ----
   const swT = (pid) => SW_TANKS.find((x) => x.pid === pid);
+  // switches are listed top (HH / HL) to bottom (LL). Water at a higher switch is above every lower one too, so the lower
+  // switches show as reached ("implied"); a lower switch that still reads OFF is reported as a switch to check.
   function swInfo(tk) {
-    const st = tk.sw.map(([k, l]) => [l, sw(SW[k])]);
-    const top = st.find(([, v]) => v), nd = st.every(([, v]) => v == null);
-    return { st, s: nd ? "unk" : top ? "ok" : "warn",
-      txt: nd ? "No data" : top ? `Water at ${top[0]} switch or above` : `Below the ${st[st.length - 1][0]} switch` };
+    const raw = tk.sw.map(([k, l]) => [l, sw(SW[k])]);
+    const topI = raw.findIndex(([, v]) => v), nd = raw.every(([, v]) => v == null);
+    const st = raw.map(([l, v], i) => [l, topI >= 0 && i > topI ? true : v, topI >= 0 && i > topI && !v]);   // [label, shown, implied]
+    const odd = st.filter(([, , imp], i) => imp && raw[i][1] === false).map(([l]) => l);
+    const top = topI >= 0 ? raw[topI] : null;
+    return { st, s: nd ? "unk" : odd.length ? "warn" : top ? "ok" : "warn",
+      txt: nd ? "No data" : top ? `Water at ${top[0]} switch or above${odd.length ? ` · ${odd.join(", ")} switch reads OFF - check it` : ""}`
+        : `Below the ${raw[raw.length - 1][0]} switch` };
   }
   const swState = (tk) => (tk ? swInfo(tk).s : "ok");
   function swTile(tk) {
     if (!tk) return "";
     const { st, s, txt } = swInfo(tk), n = st.length;
-    const marks = st.map(([l, v], i) => {
+    const marks = st.map(([l, v, imp], i) => {
       const y = n === 1 ? 50 : 16 + (68 * i) / (n - 1);
-      return `<g class="sw-m ${v == null ? "nd" : v ? "on" : ""}" transform="translate(0 ${y.toFixed(1)})"><line x1="12" x2="50" y1="0" y2="0"/><circle cx="50" cy="0" r="5"/><text x="60" y="5">${l}</text></g>`;
+      return `<g class="sw-m ${v == null ? "nd" : v ? "on" : ""}${imp ? " imp" : ""}" transform="translate(0 ${y.toFixed(1)})"><line x1="12" x2="50" y1="0" y2="0"/><circle cx="50" cy="0" r="5"/><text x="60" y="5">${l}</text></g>`;
     }).join("");
+    const lampTip = (l, v, imp) => imp ? `${l} - water is above it (a higher switch is ON)` : `${l} switch ${v == null ? "no data" : v ? "ON - water has reached it" : "OFF"}`;
     return `<div class="dc-sw">
       <svg class="dc-swg" viewBox="0 0 92 100" role="img" aria-label="${esc(`${tk.name} ${tk.pid}: ${txt}`)}"><rect class="sw-tank" x="6" y="4" width="46" height="92" rx="6"/>${marks}</svg>
       <div class="dc-sw-i"><b>${esc(tk.name)}</b><span class="dc-subt">${esc(tk.pid)} · level switches</span>
-        <div class="lsw-lamps">${st.map(([l, v]) => `<span class="lsw-l ${v == null ? "nd" : v ? "on" : ""}" title="${l} switch ${v == null ? "no data" : v ? "ON - water has reached it" : "OFF"}">${l}</span>`).join("")}</div>
+        <div class="lsw-lamps">${st.map(([l, v, imp]) => `<span class="lsw-l ${v == null ? "nd" : v ? "on" : ""}${imp ? " imp" : ""}" title="${esc(lampTip(l, v, imp))}">${l}</span>`).join("")}</div>
         <span class="dc-st st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(txt)}</span></div></div>`;
   }
 
@@ -548,7 +580,8 @@
       <div class="dc-more" id="dcm-${c.k}" hidden>
         <div data-slot="more"></div>
         ${c.sp2 ? `<div class="dc-sp"><span class="dc-lbl">${esc(c.sp2.label)}</span><span class="dc-sp-v" data-slot="sp2"></span>${pen(c.sp2.goto, c.sp2.what)}</div>` : ""}
-        ${c.trend ? `<div class="dc-trend"><div class="dc-trend-h"><h4>${esc(c.trend.title)}</h4><div class="dc-rp"></div></div><div class="chart dc-chart"></div></div>` : ""}
+        ${c.trend ? `<div class="dc-trend"><div class="dc-trend-h"><h4>${esc(c.trend.title)}</h4><div class="dc-rp"></div>
+          <button class="dc-fs" type="button" aria-pressed="false" title="Show the trend on the whole screen (Esc to close)">${FS_IC}<span>Full screen</span></button></div><div class="chart dc-chart"></div></div>` : ""}
       </div>
       <button class="dc-tog" type="button" aria-expanded="false" aria-controls="dcm-${c.k}"><span>Show more</span>${CHEV}</button>
     </article>`;
@@ -562,6 +595,62 @@
     cards.sort((a, b) => rank(a.dataset.card) - rank(b.dataset.card)).forEach((c) => box.appendChild(c));
   }
   const dcSave = (box) => MD.v3.savePrefs({ card_order: [...box.children].map((c) => c.dataset.card) });
+  const REDUCED = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function dcSetOpen(card, open) {
+    const more = card.querySelector(".dc-more"), tog = card.querySelector(".dc-tog");
+    if (more.hidden !== open) return;                 // already in that state
+    more.hidden = !open;
+    tog.setAttribute("aria-expanded", String(open));
+    tog.querySelector("span").textContent = open ? "Show less" : "Show more";
+    card.classList.toggle("open", open);
+    if (open) dcTrendOpen(card);
+  }
+  function dcFlash(el) { el.classList.remove("dc-flash"); void el.offsetWidth; el.classList.add("dc-flash"); }
+  // "Alert" chip clicked: open the details if the problem is there, scroll to it and mark it
+  function dcShowProblem(card) {
+    const probs = dcProblems(card);
+    if (!probs.length) return;
+    const [el] = probs[0];
+    if (el.closest(".dc-more")) {
+      const box = card.parentNode;
+      [...box.children].filter((c) => !c.hidden && c.offsetTop === card.offsetTop).forEach((c) => dcSetOpen(c, true));
+    }
+    el.scrollIntoView({ block: "center", behavior: REDUCED() ? "auto" : "smooth" });
+    probs.forEach(([p]) => dcFlash(p));
+  }
+  // trend in full screen (Esc or the button closes it); the chart is drawn again at the new size, keeping the zoom
+  function dcTrendFull(card) {
+    const tr = card.querySelector(".dc-trend");
+    if (document.fullscreenElement === tr || tr.classList.contains("fs")) {
+      if (document.fullscreenElement) document.exitFullscreen(); else dcTrendFsDone(card, false);
+      return;
+    }
+    if (tr.requestFullscreen) tr.requestFullscreen().catch(() => dcTrendFsDone(card, true));
+    else dcTrendFsDone(card, true);                   // no Fullscreen API: fill the window instead
+  }
+  function dcTrendFsDone(card, on) {
+    const tr = card.querySelector(".dc-trend"), b = card.querySelector(".dc-fs");
+    tr.classList.toggle("fs", on);
+    card._trFs = on;
+    b.setAttribute("aria-pressed", String(on));
+    b.querySelector("span").textContent = on ? "Exit full screen" : "Full screen";
+    if (card._trRange) {
+      const c = DC_BY[card.dataset.card];
+      requestAnimationFrame(() => dcTrendLoad(card, card._trRange[0], card._trRange[1], MDChart.getView(`tank-${c.trend.tag}`)));
+    }
+  }
+  document.addEventListener("fullscreenchange", () => {
+    document.querySelectorAll(".dc").forEach((card) => {
+      const tr = card.querySelector(".dc-trend");
+      if (!tr) return;
+      const on = document.fullscreenElement === tr;
+      if (on !== !!card._trFs) dcTrendFsDone(card, on);
+    });
+  });
+  document.addEventListener("keydown", (e) => {      // Esc also closes the window-filling fallback
+    if (e.key !== "Escape") return;
+    document.querySelectorAll(".dc-trend.fs").forEach((tr) => { if (!document.fullscreenElement) dcTrendFsDone(tr.closest(".dc"), false); });
+  });
   function dcWire(box) {
     let dragEl = null;
     box.addEventListener("dragstart", (e) => {
@@ -585,14 +674,21 @@
     box.addEventListener("click", (e) => {
       const tog = e.target.closest(".dc-tog");
       if (tog) {
-        const card = tog.closest(".dc"), more = card.querySelector(".dc-more"), open = more.hidden;
-        more.hidden = !open;
-        tog.setAttribute("aria-expanded", String(open));
-        tog.querySelector("span").textContent = open ? "Show less" : "Show more";
-        card.classList.toggle("open", open);
-        if (open) dcTrendOpen(card);
+        const card = tog.closest(".dc"), open = card.querySelector(".dc-more").hidden;
+        // cards side by side share a row: open / close the whole row together, so the neighbour does not stand
+        // beside a tall card with an empty white area (each card still has its own button)
+        const row = [...box.children].filter((c) => !c.hidden && c.offsetTop === card.offsetTop);
+        row.forEach((c) => dcSetOpen(c, open));
+        if (!open && card.getBoundingClientRect().top < 0) {   // Show less: the row shrank above the view - bring it back so the user is not left on the next card
+          card.scrollIntoView({ block: "start", behavior: REDUCED() ? "auto" : "smooth" });
+          row.forEach(dcFlash);
+        }
         return;
       }
+      const prob = e.target.closest("[data-prob]");
+      if (prob) { dcShowProblem(prob.closest(".dc")); return; }
+      const fs = e.target.closest(".dc-fs");
+      if (fs) { dcTrendFull(fs.closest(".dc")); return; }
       const pen = e.target.closest("[data-goto]");
       if (pen) { gotoSp(pen.dataset.goto); return; }
       const mv = e.target.closest("[data-mv]");
@@ -624,7 +720,8 @@
       const s = r.series[0];
       if (!s) { box.innerHTML = '<p class="muted">No trend is recorded for this value.</p>'; return; }
       MDChart.render(box, { name: s.name, unit: s.unit, decimals: s.decimals, color: "var(--s3)", points: s.points, from: f, to: t,
-        limits: c.trend.limits(), yMin: tg ? tg.eng_min : undefined, yMax: tg ? tg.eng_max : undefined, height: 240,
+        limits: c.trend.limits(), yMin: tg ? tg.eng_min : undefined, yMax: tg ? tg.eng_max : undefined,
+        height: card._trFs ? Math.max(240, box.closest(".dc-trend").clientHeight - box.offsetTop - 64) : 240,   // 64 = zoom bar + padding
         zoomGroup: `tank-${id}`, resetZoom: !!reset, ...(view ? { view } : {}),
         onView: (a, b, o) => { const [hf, ht] = card._trRange; dcTrendLoad(card, hf, ht, o && o.reset ? null : [a, b]); } });
     } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
@@ -648,13 +745,13 @@
       el.hidden = !r;
       if (!r) return;
       RANK.forEach((s) => el.classList.toggle(`st-${s}`, s === r.st));
-      setH(slotOf(el, "chip"), chipHTML(r.st));
       if (c.tankId) lvFigUpdate(slotOf(el, "tank"), tag(c.tankId), TANK_CFG(c.tankId)); else setH(slotOf(el, "fig"), r.fig || "");
       setH(slotOf(el, "act"), r.act || "");
       setH(slotOf(el, "sp"), esc(r.sp || "--"));
       setH(slotOf(el, "sp2"), esc(r.sp2 || "--"));
       setH(slotOf(el, "eqs"), c.eqs.map(eqItem).join(""));
       setH(slotOf(el, "more"), r.more || "");
+      setH(slotOf(el, "chip"), chipBtnHTML(r.st, r.st === "ok" ? [] : dcProblems(el)));   // after the body: it lists what the body shows
       if (el._rp && el.classList.contains("open") && el._rp.key !== "custom" && now - (el._trAt || 0) > 60000
         && !(MDChart.getView && MDChart.getView(`tank-${c.trend.tag}`))) el._rp.refresh();   // not while zoomed in
     });
@@ -1090,7 +1187,7 @@
     overall: {
       name: "Overall plant - complete process (P&ID R1)",
       note: "Whole plant on one drawing, following the client P&ID: 1 water supply & cooling towers · 2 sludge & volute press · 3 hot water & dryer · 4 de-gasifier & water recovery. Click a machine, value or box for details; the tabs above show each area larger.",
-      vb: [1600, 1450], fs: 1.3,                       // 1600 units ≈ 1000 px at fit: labels × 1.3 to stay ≥ 12 px
+      vb: [1600, 1450], fs: 1.2,                       // 1600 units ≈ 1000-1200 px at fit: labels × 1.2 (11-13 px) - smaller text leaves more open space (16-11-2026); zoom for more
       draw: () => {
         const ug = ["OP_P6A", "OP_P6B"], sup = ["OP_P14", "OP_P15"], vp = ["OP_P1A", "OP_P1B", "PCP"], ct1 = ["OP_P7", "OP_P3", "OP_P11"];
         const why = "Volute press package (Norsen scope) - not wired to this panel. Shown for reference only - not animated (no signal).";
@@ -1521,7 +1618,7 @@
       <span><i class="g-trip"></i>Red, blinking = tripped (fault)</span><span><i class="g-flow"></i>Moving dashes = flow: the pump is running and the valves on the line are confirmed open</span>
       <span>▶ Arrows on the lines = flow direction (source → destination)</span>
       <span><i class="g-lamp"></i>Yellow lamp = float switch ON (water has reached that level)</span><span><i class="g-trip"></i>AIR lamp red = instrument air low (pneumatic valves blocked)</span>
-      <span><i class="g-trip"></i>HH / LL lamp red, <i class="g-hl"></i>H / L lamp orange = tank level reached that set point (dashed line)</span><span>Click any pump, valve or value to see details · drag to move, wheel or + / − to zoom</span></div>
+      <span><i class="g-trip"></i>HH / LL lamp red, <i class="g-hl"></i>H / L lamp orange = tank level reached that set point (dashed line)</span><span>Click any pump, valve or value to see details · Ctrl + scroll or + / − to zoom · drag (or scroll when zoomed in) to move</span></div>
       <div class="mm-legend">${[["water", "Water"], ["hot", "Hot water"], ["sludge", "Sludge"], ["steam", "Steam"], ["air", "Air"],
       ["chem", "Chemical dosing"], ["ctp", "CTP line"]].map(([k, l]) => `<span><i class="lg k-${k}"></i>${l}</span>`).join("")}
       <span class="sep"></span><span><i class="lg-eq run"></i>Running</span><span><i class="lg-eq stop"></i>Stopped</span>
@@ -1593,6 +1690,13 @@
     MMV.s = s2; MMV.x = ux - px / s2; MMV.y = uy - py / s2; MMV.at = false;
     mmApply();
   }
+  function mmHint(host) {                               // "Ctrl + scroll to zoom" shown briefly when the user scrolls over the mimic
+    let h = host.querySelector(".mm-hint");
+    if (!h) { h = document.createElement("div"); h.className = "mm-hint"; h.setAttribute("aria-hidden", "true"); h.textContent = "Hold Ctrl and scroll to zoom · when zoomed in, scroll or drag to move"; host.appendChild(h); }
+    h.classList.add("on");
+    clearTimeout(h._t);
+    h._t = setTimeout(() => h.classList.remove("on"), 1400);
+  }
   function mmZoomCenter(f) { const h = $("mimicHost"); if (h) mmZoomAt(f, h.clientWidth / 2, h.clientHeight / 2); }
   function mmBind() {
     const host = $("mimicHost"), card = $("mimicCard");
@@ -1620,8 +1724,21 @@
     // pan: drag (mouse / touch / pen), pinch to zoom; a drag never counts as a click on a symbol
     const pts = new Map();
     let drag = null, pinch = null;
+    // zoom box: Shift + drag (or the "Zoom to area" button, then drag) draws a rectangle; that area then fills the view
+    let zbox = null;
+    const zArm = (on) => { host.classList.toggle("zbox-armed", on); const b = $("mmBoxBtn"); if (b) b.setAttribute("aria-pressed", String(on)); };
+    on("mmBoxBtn", () => zArm(!host.classList.contains("zbox-armed")));
     host.addEventListener("pointerdown", (ev) => {
       if (!mmSvg() || ev.target.closest(".mm-pop") || (ev.pointerType === "mouse" && ev.button !== 0)) return;
+      if ((ev.shiftKey || host.classList.contains("zbox-armed")) && !pts.size) {
+        const r = host.getBoundingClientRect();
+        zbox = { x0: ev.clientX - r.left, y0: ev.clientY - r.top, el: document.createElement("div") };
+        zbox.el.className = "mm-zbox";
+        host.appendChild(zbox.el);
+        try { host.setPointerCapture(ev.pointerId); } catch (_) {}
+        ev.preventDefault();
+        return;
+      }
       pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
       if (pts.size === 1) drag = { x: ev.clientX, y: ev.clientY, mx: MMV.x, my: MMV.y, moved: false };
       else if (pts.size === 2) {
@@ -1631,6 +1748,12 @@
       }
     });
     host.addEventListener("pointermove", (ev) => {
+      if (zbox) {
+        const r = host.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
+        Object.assign(zbox.el.style, { left: `${Math.min(x, zbox.x0)}px`, top: `${Math.min(y, zbox.y0)}px`, width: `${Math.abs(x - zbox.x0)}px`, height: `${Math.abs(y - zbox.y0)}px` });
+        zbox.x1 = x; zbox.y1 = y;
+        return;
+      }
       if (!pts.has(ev.pointerId)) return;
       pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
       if (pinch && pts.size >= 2) {
@@ -1646,6 +1769,21 @@
       mmApply();
     });
     const end = (ev) => {
+      if (zbox) {
+        const b = zbox; zbox = null; b.el.remove(); zArm(false);
+        host._dragged = Date.now();                       // the box is not a click on a symbol
+        const rw = Math.abs((b.x1 ?? b.x0) - b.x0), rh = Math.abs((b.y1 ?? b.y0) - b.y0);
+        if (ev.type === "pointercancel" || rw < 12 || rh < 12) return;
+        const hr = host.getBoundingClientRect(), cw = host.clientWidth;
+        const top0 = Math.max(0, -hr.top), visH = Math.min(host.clientHeight - top0, window.innerHeight - Math.max(0, hr.top));   // the part of the canvas on screen
+        const f = Math.min(cw / rw, visH / rh), s2 = clampN(MMV.s * f, MMV.fit * 0.25, MMV.fit * 4);
+        const ux = MMV.x + Math.min(b.x0, b.x1) / MMV.s, uy = MMV.y + Math.min(b.y0, b.y1) / MMV.s;
+        // centre the chosen area in the visible part of the canvas
+        MMV.x = ux + rw / MMV.s / 2 - cw / s2 / 2; MMV.y = uy + rh / MMV.s / 2 - visH / s2 / 2 - top0 / s2;
+        MMV.s = s2; MMV.at = false;
+        mmApply();
+        return;
+      }
       pts.delete(ev.pointerId);
       if (pts.size < 2) pinch = null;
       if (!pts.size) { if (drag && drag.moved) host._dragged = Date.now(); drag = null; host.classList.remove("dragging"); }
@@ -1655,8 +1793,18 @@
     host.addEventListener("click", (ev) => {
       if (host._dragged && Date.now() - host._dragged < 350) { ev.stopPropagation(); ev.preventDefault(); host._dragged = 0; }
     }, true);
-    host.addEventListener("wheel", (ev) => {                // zoom towards the cursor
+    host.addEventListener("wheel", (ev) => {                // Ctrl + wheel (or touchpad pinch) zooms towards the cursor; plain wheel / two-finger scroll scrolls the page
       if (!mmSvg()) return;
+      if (!ev.ctrlKey && !ev.metaKey) {
+        // zoomed in: two-finger scroll / wheel moves (pans) the drawing; at the whole-drawing view it scrolls the page
+        if (MMV.s <= MMV.fit * 1.02) { mmHint(host); return; }
+        ev.preventDefault();
+        const k = ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? host.clientHeight : 1;
+        const dx = ev.shiftKey && !ev.deltaX ? ev.deltaY : ev.deltaX, dy = ev.shiftKey && !ev.deltaX ? 0 : ev.deltaY;
+        MMV.x += (dx * k) / MMV.s; MMV.y += (dy * k) / MMV.s; MMV.at = false;
+        mmApply();
+        return;
+      }
       ev.preventDefault();
       const r = host.getBoundingClientRect();
       mmZoomAt(Math.exp(-ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0015)), ev.clientX - r.left, ev.clientY - r.top);
@@ -1874,9 +2022,11 @@
   // Auto / Manual badge on every machine that has an HMI A/M selector (like the HMI mimic): "AUTO" green, "MAN" amber.
   // Placed above the motor (or the symbol) once the drawing is on screen; the text follows the PLC bit every update.
   const SVGNS = "http://www.w3.org/2000/svg";
+  // Exception only (user request 16-11-2026, the drawing was too crowded): Auto is the normal state and gets no badge;
+  // a machine switched to Manual shows the amber "MAN" badge. Auto / Manual stays in each machine's details.
   function amBadge(svg, g, e) {
     let b = svg.querySelector(`g.am-b[data-am="${g.dataset.eq}"]`);
-    if (!e || e.auto == null) { if (b) b.remove(); return; }
+    if (!e || e.auto == null || e.auto) { if (b) b.remove(); return; }
     // level lines move after the first draw: if one now sits under the badge, place the badge again
     if (b) {
       const br = b.querySelector("rect").getBoundingClientRect();
@@ -2075,15 +2225,26 @@
       const f = (x, dd = d) => (x == null ? "--" : Number(x).toFixed(dd));
       const zone = p == null ? "" : p < 10 ? "Very low" : p < 30 ? "Low" : p > 90 ? "Very high" : p > 75 ? "High" : "Normal";
       const overSp = sp != null && num(t) != null && num(t) >= sp;
-      return `<div class="inst ${overSp ? "bad" : ""}" data-open="${esc(t.id)}" tabindex="0" role="button">
+      // alarm set point outside what the instrument can measure (e.g. range 0-20 °C, alarm 170 °C): the alarm can never come
+      const outR = sp != null && t.eng_min != null && t.eng_max != null && (sp > t.eng_max || sp < t.eng_min);
+      const u = esc(t.unit || ""), aux = live.aux || {};
+      const almId = [t.setpoint_tag, `${t.id}_ALM_SP`].find((k) => k && aux[k] && aux[k].writable);
+      const acts = `<div class="in-act">${canWrite() && almId ? `<button type="button" class="btn sm${outR ? " primary" : ""}" data-alm="${esc(almId)}">Change alarm</button>` : ""}
+        <button type="button" class="btn sm${outR ? " primary" : ""}" data-scale="${esc(t.id)}" title="Lowest / highest value of this instrument (IO list › Analog inputs)">Scaling (min / max)</button></div>`;
+      return `<div class="inst ${overSp ? "bad" : ""}${outR ? " out-range" : ""}" data-open="${esc(t.id)}" tabindex="0" role="button">
         <div class="in-h"><span class="in-g">${esc(t.group)}</span><span class="in-p">${esc(TAG_PID[t.id] || "")}</span></div>
         <div class="in-n">${esc(t.name.replace(/^[A-Z]+-\d+\s/, ""))}</div>
         <div class="in-v"><b class="num">${esc(fmt(t))}</b> <small>${esc(t.unit || "")}</small><span class="in-pc">${p == null ? "" : `${Math.round(p)} % · ${zone}`}</span></div>
         <div class="in-bar"><span class="ib-f" style="width:${p ?? 0}%"></span>${spp != null ? `<span class="ib-sp" style="left:${spp}%" title="Alarm at ${f(sp)}"></span>` : ""}</div>
         <div class="in-ends"><span>${f(t.eng_min, 0)}</span><span>${f(t.eng_max, 0)} ${esc(t.unit || "")}</span></div>
-        ${sp != null ? `<div class="in-sc"><div class="sc-row"><span>Alarm at</span><b class="num">${f(sp)} ${esc(t.unit || "")}</b>${overSp ? '<em class="hi">reached</em>' : ""}</div></div>` : ""}
+        ${sp != null ? `<div class="in-sc"><div class="sc-row"><span>Alarm at</span><b class="num">${f(sp)} ${u}</b>${overSp ? '<em class="hi">reached</em>' : ""}</div></div>` : ""}
+        ${outR ? `<div class="in-oor" role="alert"><b>! Alarm ${f(sp)} ${u} is ${sp > t.eng_max ? "above" : "below"} the range ${f(t.eng_min, 0)} … ${f(t.eng_max, 0)} ${u}</b>
+          The alarm can never come. Change the alarm value or the min / max range.</div>` : ""}
+        ${acts}
         </div>`;
     }).join("") || '<div class="empty">No instruments</div>';
+    box.querySelectorAll("[data-alm]").forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); openSpEdit(b.dataset.alm); }));
+    box.querySelectorAll("[data-scale]").forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); openScaling(b.dataset.scale); }));
     box.querySelectorAll("[data-open]").forEach((el) => {
       el.onclick = () => MD.openTag(el.dataset.open);
       el.onkeydown = (ev) => { if (ev.key === "Enter" && ev.target === el) MD.openTag(el.dataset.open); };
@@ -2282,7 +2443,7 @@
   // ======================================================================================
   const HELP = [
     ["Colours", `<ul class="hp-c"><li><i class="run"></i><b>Green</b> - running / open / OK</li><li><i class="stop"></i><b>Grey</b> - stopped / closed</li>
-      <li><i class="trip"></i><b>Red (blinking)</b> - tripped or alarm: needs attention</li><li><i class="warn"></i><b>Orange</b> - warning, value outside its normal band</li>
+      <li><i class="trip"></i><b>Red (blinking)</b> - tripped or alarm (Alert)</li><li><i class="warn"></i><b>Orange</b> - warning, value outside its normal band</li>
       <li><i class="lamp"></i><b>Yellow lamp</b> - float switch ON (water has reached that level)</li></ul>
       <p><b>DEMO DATA</b> at the top means the values are simulated, not from the plant.</p>`],
     ["Dashboard", `<p>The first page. The status bar at the top shows the panel and safety signals.</p>
@@ -2426,15 +2587,32 @@
       : id.endsWith("_ALM_SP") ? `<div class="sp-warn">⚠ Written as Double Word ×10 (e.g. 50.0 → 500), like the tank set points. ${chk}</div>`
       : id.startsWith("SP_") ? `<div class="sp-warn">⚠ The format of this value (REAL) is assumed, not confirmed. ${chk}</div>` : "";
     const demo = live.status && live.status.state === "demo";
+    // an alarm set point must lie inside what its instrument can measure (its min / max range), else the alarm can never come
+    const inst = id.endsWith("_ALM_SP") ? tag(id.slice(0, -7)) : null;
+    const rng = inst && inst.eng_min != null && inst.eng_max != null ? [inst.eng_min, inst.eng_max] : lo != null && hi != null ? [lo, hi] : null;
+    const spRangeErr = (box, v) => {
+      const err = box.querySelector("#spErr"), u = esc(a.unit || "");
+      err.innerHTML = `<p><b>${esc(String(v))} ${u} is ${v > rng[1] ? "above the highest" : "below the lowest"} value${inst ? ` ${esc(inst.name)} can measure` : " allowed"} (${rng[0]} … ${rng[1]} ${u}).</b>
+        ${inst ? "Change the alarm value, or change the instrument's min / max range." : "Enter a value inside the range."}</p>
+        <div class="sp-range-btns"><button type="button" class="btn sm" data-fix="alarm">Change alarm setting</button>
+        ${inst ? `<button type="button" class="btn sm primary" data-fix="range">Change min / max setting</button>` : ""}</div>`;
+      err.hidden = false;
+      err.querySelector('[data-fix="alarm"]').onclick = () => { const i = box.querySelector("#spNew"); i.value = String(v > rng[1] ? rng[1] : rng[0]); i.focus(); i.select(); err.hidden = true; };
+      const r = err.querySelector('[data-fix="range"]');
+      if (r) r.onclick = () => { pop.close(); location.hash = "#io"; setTimeout(() => openScaling(inst.id), 300); };
+    };
     const pop = MD.v3.popup({ title: a.name, saveLabel: "Save",
       body: `<p class="sp-cur">Current value: <b class="num">${esc(lvTag && a.unit === "%" ? spTxt(lvTag, id) : auxTxt(id))}</b></p>${warn}
         <label for="spNew">New value ${a.unit ? `(${esc(a.unit)})` : ""}</label>
         <input id="spNew" type="number" inputmode="decimal" step="${Math.pow(10, -d)}" ${lo != null ? `min="${lo}"` : ""} ${hi != null ? `max="${hi}"` : ""} value="${a.value ?? ""}">
-        <div class="v3-hint" id="spHint">${lo != null && hi != null ? `Allowed ${lo} … ${hi} ${esc(a.unit || "")}` : ""}</div>
+        <div class="v3-hint" id="spHint">${rng ? `Allowed ${rng[0]} … ${rng[1]} ${esc(a.unit || "")}${inst ? " (instrument range)" : ""}` : ""}</div>
+        <div class="sp-range-err" id="spErr" role="alert" hidden></div>
         <p class="v3-hint">${demo ? "Demo data - nothing is sent to the plant. " : ""}The value is written to the plant and read back. Every change is logged with your user name.</p>`,
       onSave: async (box) => {
         const v = parseFloat(box.querySelector("#spNew").value);
         if (isNaN(v)) { MD.toast("Enter a number", true); return false; }
+        if (rng && (v < rng[0] || v > rng[1])) { spRangeErr(box, v); return false; }   // outside the range: say why + the two ways out
+        box.querySelector("#spErr").hidden = true;
         if (!confirm(`Write ${a.name}\n\n${auxTxt(id)}  →  ${v.toFixed(d)} ${a.unit || ""}\n\nto the plant?`)) return false;
         try {
           const r = await MD.api("/api/client/write", { method: "POST", body: { id, value: v } });
@@ -2467,7 +2645,8 @@
     const keep = Object.fromEntries(Object.entries(box._srch || {}).map(([k, s]) => [k, s.value]));
     const almRows = ALM_SP.filter(tag).map((id) => {
       const t = tag(id), no = t.name.split(" ")[0], nm = t.name.split(" ").slice(1).join(" ");
-      return `<tr data-id="${id}"><td><b>${esc(no)}</b><span class="sp-nm">${esc(nm)}</span></td>
+      const pidNo = TAG_PID[id] && /\d/.test(TAG_PID[id]) ? TAG_PID[id] : "";   // P&ID tag number first (16-11-2026); short id kept for the panel
+      return `<tr data-id="${id}" data-search="${esc(`${no} ${pidNo}`)}"><td><b>${esc(pidNo || no)}</b><span class="sp-nm">${pidNo ? `${esc(no)} · ` : ""}${esc(nm)}</span></td>
         <td class="num" data-f="v"></td>
         <td class="num"><span class="sp-val" data-f="sp"></span>${spBtn(`${id}_ALM_SP`, `${no} alarm set point`)}</td>
         <td class="num" data-f="diff"></td><td data-f="st"></td>
@@ -2515,7 +2694,9 @@
       const lvl = MD.v3.level(v, sp, almDir(id)), cls = lvl === "alarm" ? "lv-alarm" : lvl === "warn" ? "lv-warn" : "";
       const diff = v != null && sp != null ? v - sp : null;
       setH(f("v"), v == null ? nd : `<b class="${cls}">${Number(v).toFixed(d)}</b> <span class="muted">${u}</span>`);
-      setH(f("sp"), sp == null ? nd : `<b>${Number(sp).toFixed(d)}</b> <span class="muted">${u}</span>`);       // set point: black
+      const outR = sp != null && t.eng_min != null && t.eng_max != null && (sp > t.eng_max || sp < t.eng_min);   // alarm outside the instrument range
+      setH(f("sp"), sp == null ? nd : `<b>${Number(sp).toFixed(d)}</b> <span class="muted">${u}</span>${outR
+        ? ` <span class="sp-oor" title="Outside the instrument range ${t.eng_min} … ${t.eng_max} ${u} - the alarm can never come. Click the pencil to fix.">! outside range ${t.eng_min}…${t.eng_max}</span>` : ""}`);   // set point: black
       setH(f("diff"), diff == null ? nd : `${diff >= 0 ? "+" : "-"}${Math.abs(diff).toFixed(d)} <span class="muted">${u}</span>`);
       setH(f("st"), bit == null ? chip("unk", "No data") : bit ? chip("alarm", "Alarm") : chip("ok", "Normal"));
       const dly = auxNum(`${id}_ALM_DLY`), act = auxNum(`${id}_ALM_ACT`);

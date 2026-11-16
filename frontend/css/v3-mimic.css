@@ -49,6 +49,14 @@
 #mimicSvg svg.mimic, #mimicSvg svg.mimic.big { display: block; width: 100%; height: 100%; min-width: 0; }
 #mimicCard .mm-pop { z-index: 60; font-size: 14px; }
 #mimicCard .mm-pop .kv dd, #mimicCard .mm-pop .kv dt { font-size: 14px; }
+/* plain scroll over the mimic scrolls the page; this hint says how to zoom */
+#mimicCard .mm-hint { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 70; padding: 12px 20px; border-radius: 10px;
+  background: rgb(24 24 27 / .82); color: #fff; font-size: 16px; font-weight: 600; pointer-events: none; opacity: 0; transition: opacity .2s; }
+#mimicCard .mm-hint.on { opacity: 1; }
+/* zoom box (Shift + drag, or the "Zoom to area" button) */
+#mimicCard #mimicHost.zbox-armed { cursor: crosshair; }
+#mimicCard .mm-zbox { position: absolute; z-index: 65; border: 2px dashed var(--fx-lime-ink, #3e6b00); background: rgb(132 204 22 / .12); border-radius: 4px; pointer-events: none; }
+#mimicCard #mmBoxBtn[aria-pressed="true"] { background: var(--fx-ink, #18181b); color: #fff; }
 
 /* full screen: app chrome hidden, the sheet alert strip stays at the top */
 #mimicCard:fullscreen { display: flex; flex-direction: column; gap: 0; padding: 16px; background: #fff; overflow: auto; }
@@ -78,6 +86,8 @@
 #mimicSvg svg.mimic .dtxt, #mimicSvg svg.mimic .fan-l { font-size: calc(15px * var(--fs, 1)); font-weight: 700; }
 #mimicSvg svg.mimic .sp-h, #mimicSvg svg.mimic .sp-v { font-size: calc(15px * var(--fs, 1)); font-weight: 800; }
 #mimicSvg svg.mimic .sp-l { font-size: calc(15px * var(--fs, 1)); font-weight: 400; }
+/* free-standing labels get a thin white outline, so pipes and lines running behind them never make the text hard to read */
+#mimicSvg svg.mimic text:not(.lamp text, .am-b text, .t-read text, .cl text, .lk-go) { paint-order: stroke; stroke: #fff; stroke-width: calc(4px * var(--fs, 1)); stroke-linejoin: round; }
 #mimicSvg svg.mimic .am-b text { font-size: calc(15px * var(--fs, 1)); font-weight: 800; letter-spacing: .02em; }
 /* zoom-only details: descriptive pump names, gauge tags, pipe sizes, alarm set points, level-line letters, bubble letters */
 #mimicSvg svg.mimic :is(.eq-n, .g-n, .psz, .tx-sp, .lod, .gnd text) { font-size: calc(12px * var(--fs, 1)); }
