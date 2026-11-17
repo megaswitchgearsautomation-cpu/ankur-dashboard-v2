@@ -33,7 +33,8 @@
 
   // ---------- routing ----------
   function route() {
-    const v = (location.hash || "#comm").slice(1);
+    let v = (location.hash || "#comm").slice(1);
+    if (!document.querySelector(`section[data-section="${CSS.escape(v)}"]`)) v = "comm";   // removed page (old link / bookmark)
     document.querySelectorAll("[data-section]").forEach((s) => s.classList.toggle("hidden", s.dataset.section !== v));
     document.querySelectorAll("#nav a[data-view]").forEach((a) => a.classList.toggle("active", a.dataset.view === v));
     if (v === "log") loadLog();

@@ -41,6 +41,17 @@ class TestScalingTags(unittest.TestCase):
             self.assertEqual(self.by_id[aid + "_RMAX"]["device"], f"D{base + 2}")
             self.assertEqual(self.by_id[aid + "_MA"]["device"], f"D{base + 4}")
 
+    def test_spares_have_scaling_block(self):
+        # spare analog inputs can be scaled before they are used: same PLC block rule as the instruments
+        spares = [t for t in self.tags if t.get("group") == "Spare" and t["id"].startswith("AI_SPARE_") and t["id"].count("_") == 3]
+        self.assertTrue(spares)
+        for t in spares:
+            base = int(t["device"][1:]) - 8
+            for suffix, off in (("_RMIN", 0), ("_RMAX", 2), ("_MA", 4)):
+                c = self.by_id.get(t["id"] + suffix)
+                self.assertIsNotNone(c, t["id"] + suffix)
+                self.assertEqual((c["device"], c["scale_of"], c["group"]), (f"D{base + off}", t["id"], "Scaling"))
+
     def test_aux_groups(self):
         self.assertIn("Scaling", CLIENT_AUX_GROUPS)
         self.assertIn("Level switches", CLIENT_AUX_GROUPS)

@@ -247,7 +247,10 @@ def make_handler(app):
                 else:
                     continue
                 out.append({"id": tid, "kind": kind, "addr": addr, "name": t["name"], "desc": desc, "value": t.get("value"),
-                            "unit": t.get("unit", ""), "decimals": t.get("decimals", 1), "quality": client_tag(t)["quality"]})
+                            "unit": t.get("unit", ""), "decimals": t.get("decimals", 1), "quality": client_tag(t)["quality"],
+                            # analog: range + scaling mode, so hidden channels (spares) can be scaled from the IO list too
+                            **({"eng_min": t.get("eng_min"), "eng_max": t.get("eng_max"),
+                                "scaling_mode": ((tmap.get(tid) or {}).get("scaling") or {}).get("mode", "none")} if kind == "ai" else {})})
             self._json({"server_time": time.time(), "io": out})
 
         # -- AI assistant (read-only: answers from the same data the client dashboard shows) ---------
@@ -913,7 +916,7 @@ def check_levels(lv, lo, hi):
 CLIENT_AUX_GROUPS = ("Level switches", "Valve feedback", "Interlocks", "Panel controls", "Scaling", "Set values", "Level set points", "Alarm delays",
                      "Motor feedback", "Outputs", "Safety", "Panel indication", "PLC alarms", "Selectors")
 # analog inputs whose scaling the client may change on the dashboard (dashboard-side only, never written to the PLC)
-SCALABLE_GROUPS = ("Temperature", "Pressure", "Level", "Analysis")
+SCALABLE_GROUPS = ("Temperature", "Pressure", "Level", "Analysis", "Spare")   # spares: scaled before they are put to use
 
 _TAG_FIELDS = ("id", "name", "group", "unit", "decimals", "data_type", "value", "ts", "simulated", "verified",
                "states", "eng_min", "eng_max", "setpoint_value", "trend", "kpi", "trend_min", "trend_max", "scaling_mode", "levels")
