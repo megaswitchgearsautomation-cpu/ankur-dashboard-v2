@@ -10,10 +10,13 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/OrbitControls.js";
 
 const W2 = (x, y, z = 0) => new THREE.Vector3(x, z, -y);          // plan coords (x east, y north, z up) -> three.js
+// look of an industrial plant animation (user reference 17-11-2026): brushed stainless vessels reflecting a blue sky,
+// blue structural steel, yellow handrails and caged ladders, concrete ground
 const C = {
   run: 0x46a414, stop: 0x9a9c94, trip: 0xd93a3f, warn: 0xe09a12, unk: 0xd9d9d2,
-  steel: 0xb9c0c6, steelDk: 0x7d848a, concrete: 0xcfd1c8, pad: 0xdfe2d6, ground: 0xe7ebdf,
+  steel: 0xd9dee3, steelDk: 0x6f777e, concrete: 0xc4c6c0, pad: 0xd9dbd5, ground: 0xb9bdb6,
   water: 0x3f8fd8, sludge: 0x8f6420, chem: 0x8e44c9, hot: 0xe8731a, pkg: 0xcfc8b8, tower: 0xa9b8b2,
+  frame: 0x1f4f9e, rail: 0xf2b400, grate: 0x50565c, skyTop: 0x2f63b0, skyHz: 0xdbe7f2,
 };
 const FLUID = { water: C.water, sludge: C.sludge, chem: C.chem, hot: C.hot };
 
@@ -118,7 +121,7 @@ const PIPES = [        // [fluid, IO pumps that make it flow ([] = never animate
 let renderer, scene, camera, controls, wrap, labelBox, raf = 0, clock, live = null, helpers = null, onPick = null;
 let pickables = [], machines = {}, tanks = [], switches = [], flows = [], labels = [], animated = [];
 const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
-const HOME = { pos: W2(5, -50, 40), target: W2(6, 1, 0) };
+const HOME = { pos: W2(-2, -52, 21), target: W2(6, 0, 1.5) };   // lower, like the reference: plant against the sky
 
 // ------------------------------------------------------------------ materials
 const matCache = {};
@@ -132,9 +135,12 @@ function mat(color, o = {}) {
   }
   return matCache[k];
 }
-const STEEL = () => mat(C.steel, { metal: 0.55, rough: 0.38 });
-const STEEL_DK = () => mat(C.steelDk, { metal: 0.5, rough: 0.45 });
+const STEEL = () => mat(C.steel, { metal: 0.9, rough: 0.28 });          // brushed stainless (reflects the sky)
+const STEEL_DK = () => mat(C.steelDk, { metal: 0.6, rough: 0.4 });
 const CONCRETE = () => mat(C.concrete, { rough: 0.95 });
+const FRAME = () => mat(C.frame, { metal: 0.45, rough: 0.42 });          // structural steel, painted blue
+const RAIL = () => mat(C.rail, { metal: 0.3, rough: 0.45 });             // handrails / ladders, safety yellow
+const GRATE = () => mat(C.grate, { metal: 0.6, rough: 0.55 });           // walkway grating
 function add(mesh, parent = scene, shadow = true) { mesh.castShadow = shadow; mesh.receiveShadow = true; parent.add(mesh); return mesh; }
 function boxM(w, h, d, m) { return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); }
 function cylM(rt, rb, h, m, seg = 28, open = false) { return new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg, 1, open), m); }
@@ -160,7 +166,7 @@ function label(pos, html, cls = "", eq = null) {
 function buildGround() {
   const g = add(new THREE.Mesh(new THREE.PlaneGeometry(220, 220), mat(C.ground, { rough: 1 })), scene, false);
   g.rotation.x = -Math.PI / 2;
-  const grid = new THREE.GridHelper(120, 60, 0xc9cfbf, 0xd8ddcf);
+  const grid = new THREE.GridHelper(120, 60, 0xa9ada6, 0xb3b7b0);   // concrete slab joints
   grid.position.y = 0.002;
   scene.add(grid);
   for (const a of AREAS) {
@@ -188,9 +194,9 @@ function buildOpenTank(t) {
 }
 function buildVessel(v) {
   const g = new THREE.Group();
-  const shell = add(cylM(v.r, v.r, v.h, mat(v.pk ? C.pkg : C.steel, { metal: 0.45, rough: 0.35, opacity: v.small ? 0.85 : 0.32 }), 36, !v.closed && !v.small), g, false);
+  // shiny stainless shell, still see-through enough to show the level inside
+  const shell = add(cylM(v.r, v.r, v.h, mat(v.pk ? C.pkg : C.steel, { metal: v.pk ? 0.3 : 0.85, rough: v.pk ? 0.6 : 0.24, opacity: v.small ? 0.9 : 0.5 }), 48, !v.closed && !v.small), g, false);
   shell.position.copy(W2(v.x, v.y, v.h / 2));
-  edges(shell, 0x6b7268, 0.35);
   for (const z of [0.05, v.h]) {                      // stiffener rings
     const ring = add(new THREE.Mesh(new THREE.TorusGeometry(v.r + 0.02, 0.05, 8, 36), STEEL_DK()), g);
     ring.rotation.x = Math.PI / 2; ring.position.copy(W2(v.x, v.y, z));
@@ -241,7 +247,6 @@ function buildTower(c) {
 function buildPackage(p) {
   const g = new THREE.Group(), cx = p.x + p.w / 2, cy = p.y + p.d / 2, m = mat(C.pkg, { rough: 0.8, opacity: 0.8 });
   const b = add(boxM(p.w, p.h, p.d, m), g); b.position.copy(W2(cx, cy, p.h / 2));
-  edges(b, 0x8f8a7d, 0.5);
   if (p.kind === "press") {
     for (const dy of [-0.55, 0.55]) {
       const s = add(cylM(0.35, 0.35, p.w * 0.9, STEEL(), 20), g); s.rotation.z = Math.PI / 2; s.position.copy(W2(cx, cy + dy, p.h + 0.35));
@@ -343,6 +348,124 @@ function buildPipe(fluid, by, pts) {
   const dm = new THREE.MeshBasicMaterial({ color: 0xffffff });
   for (let i = 0; i < n; i++) { const d = new THREE.Mesh(new THREE.SphereGeometry(r * 0.75, 10, 8), dm); d.visible = false; scene.add(d); dots.push(d); }
   flows.push({ by, v, length, dots });
+}
+
+// ------------------------------------------------------------------ structures (blue steel, yellow rails, caged ladders)
+// member between two plan points [x, y, z]: square steel section (s) or round bar (r)
+function member(a, b, size, m, round = false) {
+  const A = W2(...a), B = W2(...b), len = A.distanceTo(B);
+  if (len < 0.01) return null;
+  const mesh = add(round ? cylM(size, size, len, m, 8) : boxM(size, len, size, m), scene, !round);
+  mesh.position.copy(A).add(B).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize());
+  return mesh;
+}
+// handrail along plan points at deck height z: posts about every 1.2 m, top rail 1.05 m, knee rail 0.55 m
+function railing(pts, z, closed = true) {
+  const P = closed ? [...pts, pts[0]] : pts, m = RAIL();
+  for (let i = 0; i < P.length - 1; i++) {
+    const [x0, y0] = P[i], [x1, y1] = P[i + 1], n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 1.2));
+    for (let k = 0; k <= n; k++) {
+      if (k === n && (closed || i < P.length - 2)) continue;           // corner post drawn once
+      const x = x0 + ((x1 - x0) * k) / n, y = y0 + ((y1 - y0) * k) / n;
+      member([x, y, z], [x, y, z + 1.05], 0.028, m, true);
+    }
+    member([x0, y0, z + 1.05], [x1, y1, z + 1.05], 0.032, m, true);
+    member([x0, y0, z + 0.55], [x1, y1, z + 0.55], 0.022, m, true);
+  }
+}
+// vertical caged ladder against a wall at (x, y), climbing z0 -> z1; (dx, dy) = unit direction away from the wall
+function ladder(x, y, z0, z1, dx, dy) {
+  const m = RAIL(), px = -dy * 0.22, py = dx * 0.22, ox = x + dx * 0.18, oy = y + dy * 0.18;
+  for (const s of [1, -1]) member([ox + px * s, oy + py * s, z0], [ox + px * s, oy + py * s, z1 + 1.0], 0.03, m, true);
+  for (let z = z0 + 0.3; z < z1; z += 0.3) member([ox + px, oy + py, z], [ox - px, oy - py, z], 0.018, m, true);
+  if (z1 - z0 < 2.6) return;
+  const cx = ox + dx * 0.38, cy = oy + dy * 0.38;
+  for (let z = z0 + 2.2; z <= z1 + 1.0; z += 0.9) {               // cage hoops
+    const hoop = add(new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.018, 6, 24), m), scene, false);
+    hoop.rotation.x = Math.PI / 2; hoop.position.copy(W2(cx, cy, z));
+  }
+  for (const a of [0, 1.57, -1.57, 3.14]) {                        // cage straps
+    const sx = cx + Math.cos(Math.atan2(dy, dx) + a) * 0.4, sy = cy + Math.sin(Math.atan2(dy, dx) + a) * 0.4;
+    if (a === 3.14) continue;                                        // open towards the wall
+    member([sx, sy, z0 + 2.2], [sx, sy, z1 + 1.0], 0.015, m, true);
+  }
+}
+// steel structure around a vessel: corner columns, beams + a ring walkway (grating) at each level, handrails,
+// cross bracing on two sides and a caged ladder per level
+function structure(x0, y0, x1, y1, levels, wk = 0.9) {
+  const fm = FRAME(), top = levels[levels.length - 1] + 1.1;
+  const cols = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  cols.forEach(([x, y]) => member([x, y, 0], [x, y, top], 0.2, fm));
+  const ring = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  levels.forEach((z, li) => {
+    for (let i = 0; i < 4; i++) member([...ring[i], z - 0.1], [...ring[(i + 1) % 4], z - 0.1], 0.18, fm);
+    // walkway: grating strips round the opening
+    const g = GRATE(), t = 0.06;
+    const strip = (ax, ay, bx, by) => { const s = add(boxM(Math.abs(bx - ax), t, Math.abs(by - ay), g), scene, false); s.position.copy(W2((ax + bx) / 2, (ay + by) / 2, z)); };
+    strip(x0, y0, x1, y0 + wk); strip(x0, y1 - wk, x1, y1); strip(x0, y0 + wk, x0 + wk, y1 - wk); strip(x1 - wk, y0 + wk, x1, y1 - wk);
+    railing(ring, z);
+    const z0 = li ? levels[li - 1] : 0;
+    ladder(x1, li % 2 ? y1 - 0.8 : y0 + 0.8, z0, z, 1, 0);            // ladders alternate along the east side
+  });
+  for (const [a, b] of [[[x0, y0], [x1, y0]], [[x0, y1], [x1, y1]]]) {     // X bracing, first bay
+    const z = levels[0] - 0.1;
+    member([...a, 0.2], [...b, z], 0.09, fm); member([...b, 0.2], [...a, z], 0.09, fm);
+  }
+}
+// pipe rack: portal frames (two columns + cross beam) under an overhead line, about every 5 m
+function pipeRack(path, z, half = 0.5) {
+  const fm = FRAME();
+  for (let i = 0; i < path.length - 1; i++) {
+    const [x0, y0] = path[i], [x1, y1] = path[i + 1], L = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.round(L / 5));
+    const nx = -(y1 - y0) / L, ny = (x1 - x0) / L;
+    for (let k = i ? 1 : 0; k <= n; k++) {
+      const x = x0 + ((x1 - x0) * k) / n, y = y0 + ((y1 - y0) * k) / n, za = z - 0.2;
+      const a = [x + nx * half, y + ny * half], b = [x - nx * half, y - ny * half];
+      member([...a, 0], [...a, za], 0.16, fm); member([...b, 0], [...b, za], 0.16, fm); member([...a, za], [...b, za], 0.16, fm);
+    }
+  }
+}
+function circlePts(x, y, r, n = 16) { return Array.from({ length: n }, (_, i) => [x + Math.cos((i / n) * 6.2832) * r, y + Math.sin((i / n) * 6.2832) * r]); }
+function buildStructures() {
+  // de-gasifier: blue steel structure with two walkway levels round the column (like the reference plant)
+  structure(2.5, -15.5, 7.5, -10.5, [3.5, 7.2]);
+  // open tanks: handrail on top of the walls, caged ladder on the south wall
+  for (const t of OPEN_TANKS.filter((t) => !t.pk && t.h >= 2.5)) {
+    railing([[t.x, t.y], [t.x + t.w, t.y], [t.x + t.w, t.y + t.d], [t.x, t.y + t.d]], t.h);
+    ladder(t.x + t.w - 1, t.y, 0, t.h, 0, -1);
+  }
+  // cooling towers: handrail round the fan deck, ladder on the east face
+  for (const c of TOWERS) { railing([[c.x, c.y], [c.x + c.w, c.y], [c.x + c.w, c.y + c.d], [c.x, c.y + c.d]], c.h); ladder(c.x + c.w + 0.2, c.y + c.d / 2, 0, c.h, 1, 0); }
+  // hot water tank: ring handrail on the roof + ladder
+  const hw = VESSELS.find((v) => v.id === "hotT");
+  railing(circlePts(hw.x, hw.y, hw.r - 0.05), hw.h); ladder(hw.x + hw.r, hw.y, 0, hw.h, 1, 0);
+  // pipe racks under the overhead lines
+  pipeRack([[-10, -0.9], [-10, 10.5], [-18, 10.5]], 4.6);
+  pipeRack([[14, 7], [22.5, 7]], 4.8, 0.42);
+  pipeRack([[14, 7], [14, -6], [5, -6]], 4.8, 0.42);
+}
+
+// sky: blue gradient behind the plant + the same sky as the reflection environment of the metal surfaces
+function buildSky() {
+  const cv = document.createElement("canvas"); cv.width = 4; cv.height = 256;
+  const ctx = cv.getContext("2d"), gr = ctx.createLinearGradient(0, 0, 0, 256);
+  const hex = (c) => `#${c.toString(16).padStart(6, "0")}`;
+  gr.addColorStop(0, hex(C.skyTop)); gr.addColorStop(0.62, "#8fb2db"); gr.addColorStop(1, hex(C.skyHz));
+  ctx.fillStyle = gr; ctx.fillRect(0, 0, 4, 256);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  scene.background = tex;
+  // environment: sky dome (vertex colours) + bright sun patch + grey ground, baked with the PMREM generator
+  const env = new THREE.Scene(), geo = new THREE.SphereGeometry(50, 32, 16), col = [], top = new THREE.Color(C.skyTop), hz = new THREE.Color(C.skyHz), gd = new THREE.Color(0x6c6f6a);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) { const y = p.getY(i) / 50, c = y > 0 ? hz.clone().lerp(top, Math.pow(y, 0.6)) : gd; col.push(c.r, c.g, c.b); }
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  env.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+  const sunPatch = new THREE.Mesh(new THREE.SphereGeometry(6, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  sunPatch.position.set(-25, 35, 20); env.add(sunPatch);
+  const pm = new THREE.PMREMGenerator(renderer);
+  scene.environment = pm.fromScene(env, 0.02).texture;
+  pm.dispose();
 }
 
 // ------------------------------------------------------------------ live state
@@ -500,12 +623,12 @@ function build(container) {
   renderer.domElement.className = "p3-cv";
   wrap.prepend(renderer.domElement);
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xeef2e8);
-  scene.fog = new THREE.Fog(0xeef2e8, 90, 170);
+  buildSky();                                         // blue sky + reflections for the stainless vessels
+  scene.fog = new THREE.Fog(C.skyHz, 110, 220);
   camera = new THREE.PerspectiveCamera(38, 1, 0.5, 400);
   camera.position.copy(HOME.pos);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xb9c2a8, 1.25));
-  const sun = new THREE.DirectionalLight(0xfff4e0, 2.1);
+  scene.add(new THREE.HemisphereLight(0xcfe0f5, 0x8a8d84, 0.9));
+  const sun = new THREE.DirectionalLight(0xfff1dc, 2.6);
   sun.position.set(-30, 55, 25); sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   Object.assign(sun.shadow.camera, { left: -50, right: 50, top: 45, bottom: -45, near: 1, far: 160 });
@@ -528,6 +651,7 @@ function build(container) {
   TRANSMITTERS.forEach((t) => buildTransmitter(...t));
   SWITCHES.forEach((s) => buildSwitch(...s));
   PIPES.forEach((p) => buildPipe(...p));
+  buildStructures();
   clock = new THREE.Clock();
   // input
   let down = null;

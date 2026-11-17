@@ -1725,9 +1725,9 @@
     mmLayout();
     const cw = host.clientWidth, ch = host.clientHeight;
     if (!cw || !ch) return;
-    // whole drawing in view; in full screen never smaller than the scale that keeps labels at 12 px (then it scrolls)
-    const sw = cw / MMV.vw, read = 12 / (15 * MMV.fs);
-    MMV.fit = MMV.s = Math.max(Math.min(sw, ch / MMV.vh), Math.min(sw, read));
+    // whole drawing in view - in full screen too, like a SCADA runtime screen (user request 17-11-2026); zoom for detail
+    const sw = cw / MMV.vw;
+    MMV.fit = MMV.s = Math.min(sw, ch / MMV.vh);
     MMV.x = (MMV.vw - cw / MMV.s) / 2;
     MMV.y = Math.min(0, (MMV.vh - ch / MMV.s) / 2);
     MMV.at = true;
@@ -1751,7 +1751,9 @@
     if (zo) zo.disabled = z <= 0.251;
     // labels never drawn below 12 px: zoom-only details hide until large enough; zoomed out past fit all text hides
     svg.classList.toggle("lod-hide", MMV.s * 12 * MMV.fs < 11.5);
-    svg.classList.toggle("lbl-hide", z < 0.999 && MMV.s * 15 * MMV.fs < 11.5);
+    // all text hides only when it would be too small to read at all (< 5 px) - zooming out (e.g. 94 %) keeps every label
+    // (user report 17-11-2026: at 94 % the whole drawing went blank)
+    svg.classList.toggle("lbl-hide", z < 0.999 && MMV.s * 15 * MMV.fs < 5);
   }
   function mmZoomAt(f, px, py) {
     if (!mmSvg()) return;
@@ -2557,6 +2559,17 @@
     $("hpX").focus();
   }
   if ($("helpBtn")) $("helpBtn").onclick = openHelp;
+  // Mimic opens like a SCADA runtime (user request 17-11-2026): clicking "Mimic" in the menu puts the mimic card in full
+  // screen, the whole drawing fitted to the screen (Esc / the button leaves). Only on that click - a browser allows full
+  // screen only from a user action, so opening the page by link or reload shows it normally.
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest && e.target.closest('a[data-view="mimic"]');
+    const card = $("mimicCard"), sec = document.querySelector('[data-section="mimic"]');
+    if (!a || !card || !sec || !card.requestFullscreen || document.fullscreenElement) return;
+    if (location.hash !== "#mimic") location.hash = "#mimic";   // the page switch itself runs on hashchange
+    sec.classList.remove("hidden");                              // visible now, so the card can go full screen at once
+    card.requestFullscreen().catch(() => {});
+  }, true);                                                      // capture: before the menu's own click handler
 
   // ======================================================================================
   // IO LIST - every PLC input / output with its address and live state (HMI screens IO DI 0-6, IO DO 0-3, IO AI)
