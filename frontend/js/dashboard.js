@@ -716,10 +716,13 @@
     // alarm set point line(s) - one per distinct set point of the shown values
     const sps = [...new Set(info.filter((x) => !x.hidden && x.sp != null).map((x) => x.sp))];
     const limits = sps.length === 1 ? [{ v: sps[0], label: `Alarm SP ${fmt(sps[0])} ${unit}` }] : [];
-    // fixed height (the card is alone on its row); the zoom toolbar sits above the plot inside the box
-    const box = $("ovChart");
+    // fixed height (the card is alone on its row); in full screen the chart takes the screen height left under the
+    // header and chips; the zoom toolbar sits above the plot inside the box
+    const box = $("ovChart"), card = $("ovTrendCard");
     box.style.height = "";
-    MDChart.renderMulti(box, { unit, decimals: d0, from: r.from, to: r.to, height: 280, animate, area: true, limits, ...sharedAxis(tags),
+    const full = document.fullscreenElement === card;
+    const height = full ? Math.max(280, card.clientHeight - box.offsetTop - $("ovFoot").offsetHeight - 110) : 280;
+    MDChart.renderMulti(box, { unit, decimals: d0, from: r.from, to: r.to, height, animate, area: true, limits, ...sharedAxis(tags),
       zoomGroup: "ov",
       onView: (a, b, { reset }) => { ovZoom = reset ? null : [a, b]; ovBadge(); loadOvTrend(false); },
       series: info.map((x) => ({ name: x.s.name, color: x.color, points: x.s.points, hidden: x.hidden })) });
@@ -752,6 +755,19 @@
     b.classList.toggle("hist", !live);
     b.innerHTML = live ? '<span class="dot"></span>Live' : ovHist ? "History" : "Zoomed · paused";
     b.title = live ? "Updates automatically" : ovHist ? "Custom date range - not updated automatically" : "Zoomed in - press Full range to return to the live trend";
+  }
+  // process trend in full screen (Esc or the button closes it); the chart is drawn again at the new size, keeping the zoom
+  if ($("ovFsBtn")) {
+    $("ovFsBtn").onclick = () => {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      else $("ovTrendCard").requestFullscreen().catch(() => toast("Full screen is not allowed here", true));
+    };
+    document.addEventListener("fullscreenchange", () => {
+      const on = document.fullscreenElement === $("ovTrendCard"), b = $("ovFsBtn");
+      b.setAttribute("aria-pressed", String(on));
+      b.querySelector("span").textContent = on ? "Exit full screen" : "Full screen";
+      requestAnimationFrame(() => drawOvTrend(false));
+    });
   }
   const OV_PRESETS = [["1 hour", "1h"], ["8 hours", "8h"], ["24 hours", "24h"], ["2 days", "2d"], ["7 days", "7d"], ["Custom", "custom"]];
   makePicker($("ovRange"), OV_PRESETS, "1h", (w) => {

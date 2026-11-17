@@ -264,6 +264,9 @@ body[data-role="viewer"] .v3-pen { display: none !important; }      /* viewers: 
 .dc-fs:hover { background: #f4f4f5; }
 .dc-fs:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 2px; }
 .dc-fs svg { width: 18px; height: 18px; }
+/* dashboard process trend card on the whole screen */
+#ovTrendCard:fullscreen { position: relative; background: #fff; padding: 24px 32px; overflow: auto; border-radius: 0; }
+#ovTrendCard .dc-fs { flex: none; }
 /* trend on the whole screen (real full screen, or filling the window where full screen is not allowed) */
 .dc-trend:fullscreen, .dc-trend.fs { background: #fff; padding: 24px; overflow: auto; }
 .dc-trend.fs { position: fixed; inset: 0; z-index: 2000; }
