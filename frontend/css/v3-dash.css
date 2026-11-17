@@ -93,7 +93,7 @@ body[data-role="viewer"] .v3-pen { display: none !important; }      /* viewers: 
 
 /* body: picture | actual values + set point | equipment - light vertical separators between the columns */
 /* the values column always keeps a readable width (never squeezed to one word per line by a wide picture) */
-.dc-body { display: grid; grid-template-columns: minmax(0, auto) minmax(220px, 1fr) minmax(0, 1fr); gap: 16px 24px; align-items: start; }
+.dc-body { display: grid; grid-template-columns: minmax(0, auto) minmax(220px, 1fr) minmax(230px, 1fr); gap: 16px 24px; align-items: start; }   /* equipment column never squeezed (status pills were cut on 1024-1280 px screens) */
 /* tanks | equipment: two equal halves, so the equipment list can never be squeezed to a sliver */
 .dc-body.no-main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .dc-main, .dc-eqs { border-left: 1px solid var(--v3-sep, #e4e4e7); padding-left: 24px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }

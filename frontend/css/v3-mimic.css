@@ -74,6 +74,16 @@
 #mimicCard:fullscreen #mimicLegend { display: none; }
 #mimicCard:fullscreen .mm-head { margin-top: 8px; }
 #mimicCard:fullscreen .p3-wrap { height: 100%; min-height: 0; }
+/* same look when the card fills the browser window instead (iPhone has no Fullscreen API for pages) */
+#mimicCard.mm-fs-win { position: fixed; inset: 0; z-index: 1000; width: auto; height: 100vh; height: 100dvh; margin: 0; border-radius: 0;
+  display: flex; flex-direction: column; gap: 0; padding: 12px; background: #fff; overflow: auto; }
+#mimicCard.mm-fs-win #mimicHost { flex: 1 1 auto; min-height: 0; height: auto !important; }
+#mimicCard.mm-fs-win #mimicLegend { display: none; }
+#mimicCard.mm-fs-win .p3-wrap { height: 100%; min-height: 0; }
+html.mm-fs-lock, html.mm-fs-lock body { overflow: hidden; }
+/* Full screen button carries its name (the menu click no longer goes full screen by itself) */
+#mimicCard #mmFsBtn { width: auto; min-width: 44px; padding: 0 12px; gap: 6px; display: inline-flex; align-items: center; font-weight: 700; font-size: 14px; white-space: nowrap; }
+#mimicCard #mmFsBtn svg { flex: none; }
 
 /* ---------- label sizes (≥ 12 px on screen at fit) ---------- */
 #mimicSvg svg.mimic text { font-size: calc(15px * var(--fs, 1)); }

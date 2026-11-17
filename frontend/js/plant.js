@@ -1712,7 +1712,8 @@
   // ---------- v3 (SC04): zoom / pan / fit / full screen (viewBox of the sheet's svg) ----------
   const MMV = { s: 1, x: 0, y: 0, fit: 1, vw: W, vh: H, fs: 1, at: true };
   const mmSvg = () => { const b = $("mimicSvg"); return b ? b.querySelector("svg.mimic") : null; };
-  const mmFull = () => !!document.fullscreenElement && document.fullscreenElement === $("mimicCard");
+  // full screen = the browser's Fullscreen API, or (iPhone, which has no Fullscreen API for pages) the card filling the window
+  const mmFull = () => (!!document.fullscreenElement && document.fullscreenElement === $("mimicCard")) || !!($("mimicCard") && $("mimicCard").classList.contains("mm-fs-win"));
   const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
   function mmLayout() {                                   // normal view: canvas as tall as the whole drawing at fit width
     const host = $("mimicHost");
@@ -1725,9 +1726,11 @@
     mmLayout();
     const cw = host.clientWidth, ch = host.clientHeight;
     if (!cw || !ch) return;
-    // whole drawing in view - in full screen too, like a SCADA runtime screen (user request 17-11-2026); zoom for detail
+    // normal view: the canvas is as tall as the drawing at full width. Full screen: the drawing fills the screen WIDTH
+    // (user request 17-11-2026 - like the 168 % view, no empty sides), starting at the top; scroll / drag moves it up
+    // and down where it is taller than the screen
     const sw = cw / MMV.vw;
-    MMV.fit = MMV.s = Math.min(sw, ch / MMV.vh);
+    MMV.fit = MMV.s = mmFull() ? sw : Math.min(sw, ch / MMV.vh);
     MMV.x = (MMV.vw - cw / MMV.s) / 2;
     MMV.y = Math.min(0, (MMV.vh - ch / MMV.s) / 2);
     MMV.at = true;
@@ -1778,16 +1781,32 @@
     on("mmZoomIn", () => mmZoomCenter(1.25));
     on("mmZoomOut", () => mmZoomCenter(0.8));
     on("mmFitBtn", () => mmFit());
-    on("mmFsBtn", () => {
-      if (document.fullscreenElement) { if (document.exitFullscreen) document.exitFullscreen().catch(() => {}); }
-      else if (card && card.requestFullscreen) card.requestFullscreen().catch(() => {});
-    });
-    document.addEventListener("fullscreenchange", () => {
+    const mmFsSync = () => {
       const fs = mmFull(), b = $("mmFsBtn");
       if (card) card.classList.toggle("mm-fs", fs);
-      if (b) { b.setAttribute("aria-pressed", String(fs)); b.title = fs ? "Exit full screen (Esc)" : "Full screen"; b.setAttribute("aria-label", b.title); }
+      if (b) {
+        b.setAttribute("aria-pressed", String(fs)); b.title = fs ? "Exit full screen (Esc)" : "Full screen"; b.setAttribute("aria-label", b.title);
+        const t = b.querySelector(".mm-fs-txt"); if (t) t.textContent = fs ? "Exit full screen" : "Full screen";
+      }
       requestAnimationFrame(() => mmFit());
+    };
+    const mmWinFs = (onOff) => {                          // fallback: fill the browser window (phones without the Fullscreen API)
+      if (!card) return;
+      card.classList.toggle("mm-fs-win", onOff);
+      document.documentElement.classList.toggle("mm-fs-lock", onOff);
+      mmFsSync();
+    };
+    on("mmFsBtn", () => {
+      if (document.fullscreenElement) { if (document.exitFullscreen) document.exitFullscreen().catch(() => {}); }
+      else if (card && card.classList.contains("mm-fs-win")) mmWinFs(false);
+      else if (card && card.requestFullscreen) {
+        card.requestFullscreen().catch(() => {});
+        setTimeout(() => { if (!document.fullscreenElement) mmWinFs(true); }, 400);   // refused / not possible here: fill the window
+      } else mmWinFs(true);
     });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && card && card.classList.contains("mm-fs-win")) mmWinFs(false); });
+    window.addEventListener("hashchange", () => { if (card && card.classList.contains("mm-fs-win") && location.hash !== "#mimic") mmWinFs(false); });
+    document.addEventListener("fullscreenchange", mmFsSync);
     $("mimicDim") && $("mimicDim").querySelectorAll("button").forEach((b) => (b.onclick = () => {
       if (b.dataset.d === "3d") setSheet("d3");             // 3D = the whole plant
       else if (sheet === "d3") setSheet("overall");
@@ -1868,8 +1887,10 @@
     host.addEventListener("wheel", (ev) => {                // Ctrl + wheel (or touchpad pinch) zooms towards the cursor; plain wheel / two-finger scroll scrolls the page
       if (!mmSvg()) return;
       if (!ev.ctrlKey && !ev.metaKey) {
-        // zoomed in: two-finger scroll / wheel moves (pans) the drawing; at the whole-drawing view it scrolls the page
-        if (MMV.s <= MMV.fit * 1.02) { mmHint(host); return; }
+        // drawing bigger than the view (zoomed in, or full screen fitted to the width): two-finger scroll / wheel moves
+        // (pans) the drawing; when all of it is in view the wheel scrolls the page
+        const over = MMV.vw * MMV.s > host.clientWidth + 2 || MMV.vh * MMV.s > host.clientHeight + 2;
+        if (!over) { mmHint(host); return; }
         ev.preventDefault();
         const k = ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? host.clientHeight : 1;
         const dx = ev.shiftKey && !ev.deltaX ? ev.deltaY : ev.deltaX, dy = ev.shiftKey && !ev.deltaX ? 0 : ev.deltaY;
@@ -2559,17 +2580,8 @@
     $("hpX").focus();
   }
   if ($("helpBtn")) $("helpBtn").onclick = openHelp;
-  // Mimic opens like a SCADA runtime (user request 17-11-2026): clicking "Mimic" in the menu puts the mimic card in full
-  // screen, the whole drawing fitted to the screen (Esc / the button leaves). Only on that click - a browser allows full
-  // screen only from a user action, so opening the page by link or reload shows it normally.
-  document.addEventListener("click", (e) => {
-    const a = e.target.closest && e.target.closest('a[data-view="mimic"]');
-    const card = $("mimicCard"), sec = document.querySelector('[data-section="mimic"]');
-    if (!a || !card || !sec || !card.requestFullscreen || document.fullscreenElement) return;
-    if (location.hash !== "#mimic") location.hash = "#mimic";   // the page switch itself runs on hashchange
-    sec.classList.remove("hidden");                              // visible now, so the card can go full screen at once
-    card.requestFullscreen().catch(() => {});
-  }, true);                                                      // capture: before the menu's own click handler
+  // Clicking "Mimic" in the menu opens the normal Mimic page; full screen only from the Full screen button
+  // on the mimic toolbar (user request 17-11-2026 - the earlier automatic full screen on the menu click is removed).
 
   // ======================================================================================
   // IO LIST - every PLC input / output with its address and live state (HMI screens IO DI 0-6, IO DO 0-3, IO AI)

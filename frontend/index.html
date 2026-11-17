@@ -13,11 +13,13 @@
   <link rel="stylesheet" href="css/fresh.css?v=20261114u">
   <!-- v3 (client review brief 14-11-2026): shared rules first, then one file per area -->
   <link rel="stylesheet" href="css/v3-base.css?v=20261115c">
-  <link rel="stylesheet" href="css/v3-dash.css?v=20261115o">
+  <link rel="stylesheet" href="css/v3-dash.css?v=20261117a">
   <link rel="stylesheet" href="css/v3-setpoints.css?v=20261115c">
-  <link rel="stylesheet" href="css/v3-mimic.css?v=20261115f">
+  <link rel="stylesheet" href="css/v3-mimic.css?v=20261117b">
   <link rel="stylesheet" href="css/v3-trends.css?v=20261116a">
   <link rel="stylesheet" href="css/v3-reports.css?v=20261115d">
+  <!-- every screen size: phone / tablet / laptop / monitor (17-11-2026) - loaded last -->
+  <link rel="stylesheet" href="css/v3-responsive.css?v=20261117h">
 </head>
 <body class="client ankur">
 <div class="shell">
@@ -167,7 +169,7 @@
             <button type="button" class="mm-tb mm-z" id="mmZoomIn" title="Zoom in  (Ctrl + scroll up, or + key) · when zoomed in: scroll, drag or arrow keys to move" aria-label="Zoom in" aria-keyshortcuts="Control+Plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5v14"/></svg></button>
             <button type="button" class="mm-tb mm-z" id="mmBoxBtn" aria-pressed="false" title="Zoom to an area: click, then drag a box over the part you want  (or Shift + drag)" aria-label="Zoom to an area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="13" height="11" rx="1" stroke-dasharray="3 2"/><circle cx="16" cy="16" r="4"/><path d="M19 19l3 3"/></svg></button>
             <button type="button" class="mm-tb mm-z" id="mmFitBtn" title="Fit to screen / reset view  (0 key)" aria-label="Fit to screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-            <button type="button" class="mm-tb" id="mmFsBtn" title="Full screen" aria-label="Full screen" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/><path d="M4 4l6 6M20 4l-6 6M4 20l6-6M20 20l-6-6"/></svg></button>
+            <button type="button" class="mm-tb" id="mmFsBtn" title="Full screen" aria-label="Full screen" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/><path d="M4 4l6 6M20 4l-6 6M4 20l6-6M20 20l-6-6"/></svg><span class="mm-fs-txt">Full screen</span></button>
           </div>
         </div>
         <div class="mm-wrap" id="mimicHost" tabindex="0" aria-label="Process mimic: drag to move, Ctrl + scroll or plus / minus to zoom, arrow keys to move, 0 to fit"><div id="mimicSvg"></div><div class="mm-pop hidden" id="mimicPop"></div></div>
@@ -301,9 +303,10 @@
 <script src="js/chart.js?v=20261116a"></script>
 <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/" } }</script>
 <script type="module" src="js/plant3d.mjs?v=20261115c"></script>
-<script src="js/plant.js?v=20261115o"></script>
+<script src="js/plant.js?v=20261117d"></script>
 <script src="js/shiftreports.js?v=20261115d"></script>
-<script src="js/dashboard.js?v=20261116a"></script>
+<script src="js/dashboard.js?v=20261117a"></script>
+<script src="js/v3-responsive.js?v=20261117c"></script>
 <!-- v3: Plant Assistant owl button + chat pop-up removed (brief SC01). js/ai.js and the backend are kept, unused. -->
 </body>
 </html>
