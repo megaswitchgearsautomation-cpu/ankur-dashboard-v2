@@ -279,6 +279,7 @@
       else if (row.matches(".dc-r")) txt = `${row.querySelector(".dc-r-l").textContent}: ${st.textContent.replace(/^\W\s*/, "")}`;
       else if (row.matches("tr")) txt = `${row.cells[0].textContent} level: ${st.textContent.replace(/^\W\s*/, "")}`;
       else if (row.matches(".dc-sw")) txt = `${row.querySelector(".dc-sw-i > b").textContent}: ${st.textContent.replace(/^\W\s*/, "")}`;
+      else if (row.matches(".dc-swst")) txt = `${row.querySelector(".dc-lbl").textContent.split(" · ")[0]}: ${st.textContent.replace(/^\W\s*/, "")}`;
       else txt = row.textContent.replace(/^\W\s*/, "");
       out.push([row, txt.replace(/\s+/g, " ").trim()]);
     });
@@ -391,7 +392,14 @@
         : `Below the ${raw[raw.length - 1][0]} switch` };
   }
   const swState = (tk) => (tk ? swInfo(tk).s : "ok");
-  function swTile(tk) {
+  // the switch status line on its own, for the card's right-hand column (client 18-11-2026: the box under the tank
+  // moved into the empty space under "Set point"); the tank name keeps it readable there
+  function swStatus(tk) {
+    if (!tk) return "";
+    const { s, txt } = swInfo(tk);
+    return `<div class="dc-stl dc-swst"><span class="dc-lbl">${esc(tk.name)} · ${esc(tk.pid)}</span> <span class="dc-st st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(txt)}</span></div>`;
+  }
+  function swTile(tk, withStatus = true) {
     if (!tk) return "";
     const { st, s, txt } = swInfo(tk), n = st.length;
     const marks = st.map(([l, v, imp], i) => {
@@ -403,7 +411,7 @@
       <svg class="dc-swg" viewBox="0 0 92 100" role="img" aria-label="${esc(`${tk.name} ${tk.pid}: ${txt}`)}"><rect class="sw-tank" x="6" y="4" width="46" height="92" rx="6"/>${marks}</svg>
       <div class="dc-sw-i"><b>${esc(tk.name)}</b><span class="dc-subt">${esc(tk.pid)} · level switches</span>
         <div class="lsw-lamps">${st.map(([l, v, imp]) => `<span class="lsw-l ${v == null ? "nd" : v ? "on" : ""}${imp ? " imp" : ""}" title="${esc(lampTip(l, v, imp))}">${l}</span>`).join("")}</div>
-        <span class="dc-st st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(txt)}</span></div></div>`;
+        ${withStatus ? `<span class="dc-st st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(txt)}</span>` : ""}</div></div>`;
   }
 
   // ---- analog values: half-dial gauge with the warning band (90 % of the alarm set point) and alarm band ----
@@ -487,7 +495,7 @@
         const ugNote = ugRun ? "Ground water pump filling the raw water tank - stops at HL" : rawHL ? "Raw water tank full (HL) - ground water pumps off" : "";
         const loc = sw("DI_Submersible_Pump_Panel_Local_remote_Switch_in_Local"), rem = sw("DI_Submersible_Pump_Panel_Local_remote_Switch_in_Remote");
         return { st: worst([anSt(t, "PT_01_ALM_SP"), bitSt("PT_01_ALM"), low ? "warn" : "ok", swState(tk), lowTank ? "alarm" : "ok", ...eqStates(c.eqs)]),
-          fig: dialSVG(t, { sp: auxNum("PT_01_ALM_SP"), marks: [3] }) + swTile(tk),
+          fig: dialSVG(t, { sp: auxNum("PT_01_ALM_SP"), marks: [3] }) + swTile(tk, false), swst: swStatus(tk),
           act: anAct(t, "Supply pressure", "PT_01_ALM_SP") + stLine(v == null ? "unk" : low ? "warn" : "ok", v == null ? "No data" : low ? "Below 3.0 bar - header pressure low" : "Above 3.0 bar"),
           sp: `Alarm ${auxTxt("PT_01_ALM_SP")}`,
           more: notes([[rawNote, lowTank ? "alarm" : "info"], [ugNote, "info"]]) + dl([dRow("Supply pump selection (VFD)", pairSel("OP_P14")),
@@ -525,7 +533,7 @@
           : dg[2] ? ["L", "ok"] : dg[3] ? ["Between LL and L", "warn"] : ["Below LL - recirculation pump stops", "alarm"];
         const heat = v == null ? "No data" : so != null && v < so ? "Below steam open set point - heating" : scl != null && v > scl ? "Above steam close set point" : "Within the steam control band";
         return { st: worst([anSt(t, "T_04_ALM_SP"), bitSt("T_04_ALM"), sw(SW.AIR) === false ? "alarm" : "ok", dgTxt[1] === "unk" ? "ok" : dgTxt[1], ...eqStates(c.eqs)]),
-          fig: dialSVG(t, { sp: auxNum("T_04_ALM_SP"), band: so != null && scl != null ? [Math.min(so, scl), Math.max(so, scl)] : null }) + swTile(tk),
+          fig: dialSVG(t, { sp: auxNum("T_04_ALM_SP"), band: so != null && scl != null ? [Math.min(so, scl), Math.max(so, scl)] : null }) + swTile(tk, false), swst: swStatus(tk),
           act: anAct(t, "Water temperature", "T_04_ALM_SP") + stLine(v == null ? "unk" : "info", heat),
           sp: `Steam valve opens ${spNum("SP_LP_STEAM_OPEN")} · closes ${spNum("SP_LP_STEAM_CLOSE")} °C`,
           sp2: `Temperature alarm ${auxTxt("T_04_ALM_SP")}`,
@@ -540,7 +548,7 @@
         if (!t) return null;
         const tk = swT("06-LS-603"), ps = p ? anSt(p, "PT_03_ALM_SP") : "ok";
         return { st: worst([anSt(t, "T_02_ALM_SP"), ps === "unk" ? "ok" : ps, bitSt("T_02_ALM"), bitSt("PT_03_ALM"), swState(tk), ...eqStates(c.eqs)]),
-          fig: dialSVG(t, { sp: auxNum("T_02_ALM_SP") }) + swTile(tk),
+          fig: dialSVG(t, { sp: auxNum("T_02_ALM_SP") }) + swTile(tk, false), swst: swStatus(tk),
           act: anAct(t, "Temperature", "T_02_ALM_SP") + anAct(p, "Pressure", "PT_03_ALM_SP", true),
           sp: `Alarm ${auxTxt("T_02_ALM_SP")} · ${auxTxt("PT_03_ALM_SP")}`,
           more: dl([dRow("Hot water pump (VFD)", "runs above LL · stops at LL (and at HH)"), alRow("Temperature alarm", "T_02_ALM"), alRow("Pressure alarm", "PT_03_ALM")]) };
@@ -575,7 +583,8 @@
       <div class="dc-body${c.noMain ? " no-main" : ""}">
         <div class="dc-fig" data-slot="${lt ? "tank" : "fig"}">${lt ? lvFigHTML(TANK_CFG(c.tankId), lt) : ""}</div>
         ${c.noMain ? "" : `<div class="dc-main"><div class="dc-acts" data-slot="act"></div>
-          ${c.sp ? `<div class="dc-sp"><span class="dc-lbl">Set point</span><span class="dc-sp-v" data-slot="sp"></span>${pen(c.sp.goto, c.sp.what)}</div>` : ""}</div>`}
+          ${c.sp ? `<div class="dc-sp"><span class="dc-lbl">Set point</span><span class="dc-sp-v" data-slot="sp"></span>${pen(c.sp.goto, c.sp.what)}</div>` : ""}
+          <div data-slot="swst"></div></div>`}
         <div class="dc-eqs"><span class="dc-lbl">Equipment</span><div class="dc-eql" data-slot="eqs"></div></div>
       </div>
       <div class="dc-more" id="dcm-${c.k}" hidden>
@@ -748,6 +757,7 @@
       RANK.forEach((s) => el.classList.toggle(`st-${s}`, s === r.st));
       if (c.tankId) lvFigUpdate(slotOf(el, "tank"), tag(c.tankId), TANK_CFG(c.tankId)); else setH(slotOf(el, "fig"), r.fig || "");
       setH(slotOf(el, "act"), r.act || "");
+      setH(slotOf(el, "swst"), r.swst || "");
       setH(slotOf(el, "sp"), esc(r.sp || "--"));
       setH(slotOf(el, "sp2"), esc(r.sp2 || "--"));
       setH(slotOf(el, "eqs"), c.eqs.map(eqItem).join(""));
@@ -756,6 +766,34 @@
       if (el._rp && el.classList.contains("open") && el._rp.key !== "custom" && now - (el._trAt || 0) > 60000
         && !(MDChart.getView && MDChart.getView(`tank-${c.trend.tag}`))) el._rp.refresh();   // not while zoomed in
     });
+    dcAlignRows(box);
+    if (!box._ro && window.ResizeObserver) { box._ro = new ResizeObserver(() => dcAlignRows(box)); box._ro.observe(box); }
+  }
+  // cards side by side: the "Equipment" line of every card in a row at the same height (client 18-11-2026: "both lines
+  // not aligned"). Only where the equipment list sits UNDER the picture / values; recomputed on every update and resize.
+  function dcAlignRows(box) {
+    if (box._alignRaf) return;
+    box._alignRaf = setTimeout(() => {               // (a timer, not an animation frame: also runs in a background tab)
+      box._alignRaf = 0;
+      const cards = [...box.querySelectorAll(".dc")].filter((d) => !d.hidden && d.offsetParent);
+      const eqsOf = (d) => d.querySelector(":scope > .dc-body > .dc-eqs");
+      // the first body row (picture | values) is made taller, so the values column divider still meets the line
+      cards.forEach((d) => { const b = d.querySelector(".dc-body"); if (b && b.style.gridTemplateRows) b.style.gridTemplateRows = ""; });
+      const rows = new Map();
+      cards.forEach((d) => { const k = Math.round(d.offsetTop); if (!rows.has(k)) rows.set(k, []); rows.get(k).push(d); });
+      rows.forEach((row) => {
+        if (row.length < 2) return;
+        const below = row.map((d) => {                  // equipment under the picture / values (not beside them)?
+          const e = eqsOf(d), b = d.querySelector(".dc-body");
+          if (!e || !b) return null;
+          const bt = b.getBoundingClientRect().top, et = e.getBoundingClientRect().top;
+          return et > bt + 8 ? { b, row1: et - bt - parseFloat(getComputedStyle(b).rowGap || 0), y: et - d.getBoundingClientRect().top } : null;
+        }).filter(Boolean);
+        if (below.length < 2) return;
+        const max = Math.max(...below.map((x) => x.y));
+        below.forEach((x) => { if (max - x.y > 0.5) x.b.style.gridTemplateRows = `${(x.row1 + max - x.y).toFixed(1)}px auto`; });
+      });
+    }, 0);
   }
   // pencil beside a set point summary: open Set points at the matching section (editing stays there)
   let spTarget = null;
@@ -1184,7 +1222,7 @@
     // 3D view of the whole plant (js/plant3d.js, canvas): same live states, positions indicative (not to scale)
     d3: {
       name: "3D plant - whole plant (indicative layout)",
-      note: "Drag to rotate · wheel to zoom · right-drag to move · click a machine for details · green = running, grey = stopped, red = tripped · package equipment is shown faded and not animated",
+      note: "Drag to rotate · wheel to zoom · right-drag to move · click a machine for details · pulsing green ring = running (shaft / fan turning), red ring = tripped, no ring = stopped · moving lights in a pipe = flowing · package equipment is shown faded and not animated",
       d3: true,
       draw: () => [],
     },
@@ -1723,6 +1761,7 @@
   function mmFit() {
     const host = $("mimicHost");
     if (!host || !mmSvg()) return;
+    if (mmAnim) { cancelAnimationFrame(mmAnim.raf); mmAnim = null; }
     mmLayout();
     const cw = host.clientWidth, ch = host.clientHeight;
     if (!cw || !ch) return;
@@ -1758,12 +1797,35 @@
     // (user report 17-11-2026: at 94 % the whole drawing went blank)
     svg.classList.toggle("lbl-hide", z < 0.999 && MMV.s * 15 * MMV.fs < 5);
   }
-  function mmZoomAt(f, px, py) {
+  let mmAnim = null;                                     // smooth zoom in progress: { s (target scale), px, py, ux, uy, raf }
+  function mmZoomAt(f, px, py) {                         // instant zoom (pinch on touch screens, touchpad pinch)
     if (!mmSvg()) return;
+    if (mmAnim) { cancelAnimationFrame(mmAnim.raf); mmAnim = null; }
     const s2 = clampN(MMV.s * f, MMV.fit * 0.25, MMV.fit * 4);
     const ux = MMV.x + px / MMV.s, uy = MMV.y + py / MMV.s;
     MMV.s = s2; MMV.x = ux - px / s2; MMV.y = uy - py / s2; MMV.at = false;
     mmApply();
+  }
+  // smooth zoom (client review 17-11-2026: zoom in / out must feel smooth with a mouse): mouse wheel notches and the
+  // + / − buttons glide to the new zoom over a few frames, always keeping the point under the cursor in place;
+  // quick notches add up to one movement
+  function mmZoomSmooth(f, px, py) {
+    if (!mmSvg()) return;
+    const target = clampN((mmAnim ? mmAnim.s : MMV.s) * f, MMV.fit * 0.25, MMV.fit * 4);
+    if (mmAnim) cancelAnimationFrame(mmAnim.raf);
+    mmAnim = { s: target, px, py, ux: MMV.x + px / MMV.s, uy: MMV.y + py / MMV.s, raf: 0 };
+    MMV.at = false;
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const step = () => {
+      const a = mmAnim;
+      if (!a) return;
+      const done = reduce || Math.abs(Math.log(a.s / MMV.s)) < 0.004;
+      MMV.s = done ? a.s : MMV.s * Math.pow(a.s / MMV.s, 0.28);   // ease in log space: even speed in and out
+      MMV.x = a.ux - a.px / MMV.s; MMV.y = a.uy - a.py / MMV.s;
+      mmApply();
+      if (done) mmAnim = null; else a.raf = requestAnimationFrame(step);
+    };
+    mmAnim.raf = requestAnimationFrame(step);
   }
   function mmHint(host) {                               // "Ctrl + scroll to zoom" shown briefly when the user scrolls over the mimic
     let h = host.querySelector(".mm-hint");
@@ -1772,7 +1834,7 @@
     clearTimeout(h._t);
     h._t = setTimeout(() => h.classList.remove("on"), 1400);
   }
-  function mmZoomCenter(f) { const h = $("mimicHost"); if (h) mmZoomAt(f, h.clientWidth / 2, h.clientHeight / 2); }
+  function mmZoomCenter(f) { const h = $("mimicHost"); if (h) mmZoomSmooth(f, h.clientWidth / 2, h.clientHeight / 2); }
   function mmBind() {
     const host = $("mimicHost"), card = $("mimicCard");
     if (!host || host._mm) return;
@@ -1830,6 +1892,7 @@
         ev.preventDefault();
         return;
       }
+      if (mmAnim) { cancelAnimationFrame(mmAnim.raf); mmAnim = null; }   // grabbing the drawing stops a zoom glide
       pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
       if (pts.size === 1) drag = { x: ev.clientX, y: ev.clientY, mx: MMV.x, my: MMV.y, moved: false };
       else if (pts.size === 2) {
@@ -1899,8 +1962,12 @@
         return;
       }
       ev.preventDefault();
-      const r = host.getBoundingClientRect();
-      mmZoomAt(Math.exp(-ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0015)), ev.clientX - r.left, ev.clientY - r.top);
+      const r = host.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top;
+      // mouse wheel: big steps (a notch = 100 px or 1-3 lines) -> smooth glide; touchpad pinch: many tiny steps -> follow
+      // the fingers directly (both stay smooth; the factor is the same per pixel)
+      const notch = ev.deltaMode !== 0 || Math.abs(ev.deltaY) >= 40;
+      const f = Math.exp(-ev.deltaY * (ev.deltaMode === 1 ? 0.05 : notch ? 0.0022 : 0.01));
+      if (notch) mmZoomSmooth(f, px, py); else mmZoomAt(f, px, py);
     }, { passive: false });
     host.addEventListener("keydown", (ev) => {              // arrow keys pan, + / − zoom, 0 = fit (when the mimic has focus)
       if (!mmSvg() || ev.altKey || ev.ctrlKey || ev.metaKey) return;
@@ -1970,6 +2037,45 @@
     el.classList.toggle("has", mine.length > 0);
   }
 
+  // ---------- open one machine on the mimic (client review 17-11-2026: click the tag on the Equipment page) ----------
+  // the area sheet that draws it (else the overall plant), zoomed in on it, flashing, with its details pop-over
+  let mmFocusId = null;
+  const mmSheetOf = {};
+  function sheetFor(id) {
+    if (mmSheetOf[id] !== undefined) return mmSheetOf[id];
+    const a = AREAS.find((x) => !x.overall && (x.eq || []).includes(id) && SHEETS[x.id]);
+    const has = (k) => { try { return SHEETS[k] && !SHEETS[k].d3 && sheetSVG(SHEETS[k]).includes(`data-eq="${id}"`); } catch (_) { return false; } };
+    const k = a && has(a.id) ? a.id : AREAS.filter((x) => !x.overall).map((x) => x.id).find(has) || (has("overall") ? "overall" : null);
+    return (mmSheetOf[id] = k);
+  }
+  function showOnMimic(id) {
+    const k = sheetFor(id);
+    if (!k) return false;
+    setSheet(k);
+    const go = () => { mmFocusId = id; const b = $("mimicSvg"); if (b && b._sheet !== k) b._sheet = null; if (live) renderMimic(); };
+    if (location.hash !== "#mimic") {
+      location.hash = "#mimic";                         // the page switch draws the sheet first; zoom in once it has settled
+      setTimeout(go, 450);
+    } else go();
+    return true;
+  }
+  function mmFocusEq() {
+    const id = mmFocusId, svg = mmSvg(), host = $("mimicHost"), card = $("mimicCard");
+    if (!id || !svg || !host || !host.clientWidth) return;
+    mmFocusId = null;
+    const g = svg.querySelector(`g.eq[data-eq="${CSS.escape(id)}"]`);
+    if (!g) return;
+    if (card) card.scrollIntoView({ block: "start" });
+    const b = g.getBBox(), cw = host.clientWidth, hr = host.getBoundingClientRect();
+    const top0 = Math.max(0, -hr.top), visH = Math.max(120, Math.min(host.clientHeight - top0, window.innerHeight - Math.max(0, hr.top)));
+    const s2 = clampN(Math.min(cw / (b.width + 320), visH / (b.height + 220)), MMV.fit, MMV.fit * 3);
+    MMV.s = s2; MMV.x = b.x + b.width / 2 - cw / s2 / 2; MMV.y = b.y + b.height / 2 - (top0 + visH / 2) / s2; MMV.at = false;
+    mmApply();
+    g.classList.remove("eq-find"); void g.getBBox(); g.classList.add("eq-find");
+    setTimeout(() => g.classList.remove("eq-find"), 4200);
+    eqPop(id, g, "mimicPop", $("mimicSvg"));
+  }
+
   function renderMimic() {
     const tabs = $("mimicTabs"), box = $("mimicSvg");
     if (!tabs || !box) return;
@@ -2033,6 +2139,7 @@
     if (SHEETS[sheet].d3) { if (window.Plant3D) Plant3D.update(live); return; }
     if (MMV.at && mmSvg() && !mmSvg().getAttribute("preserveAspectRatio")) mmFit();   // section was hidden at build time
     patchMimic(box);
+    if (mmFocusId) mmFocusEq();
   }
   // shared fills used by the stylesheet (url(#gRun) etc.): one always-rendered copy for every drawing on the page -
   // gradients inside a hidden page section would not paint
@@ -2855,6 +2962,7 @@
   }
 
   window.Plant = {
+    showOnMimic,
     render(l, view) {
       live = l;
       if (view === "setpoints") renderSetpoints();

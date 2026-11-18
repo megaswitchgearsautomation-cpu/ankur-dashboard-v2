@@ -81,6 +81,10 @@
 #mimicCard.mm-fs-win #mimicLegend { display: none; }
 #mimicCard.mm-fs-win .p3-wrap { height: 100%; min-height: 0; }
 html.mm-fs-lock, html.mm-fs-lock body { overflow: hidden; }
+/* machine opened from the Equipment page: flashes a few times so the eye finds it */
+#mimicSvg svg.mimic g.eq.eq-find { animation: eq-find .7s ease-in-out 6; }
+@keyframes eq-find { 50% { filter: drop-shadow(0 0 4px #f59e0b) drop-shadow(0 0 10px #f59e0b); } }
+@media (prefers-reduced-motion: reduce) { #mimicSvg svg.mimic g.eq.eq-find { animation: none; filter: drop-shadow(0 0 4px #f59e0b) drop-shadow(0 0 10px #f59e0b); } }
 /* Full screen button carries its name (the menu click no longer goes full screen by itself) */
 #mimicCard #mmFsBtn { width: auto; min-width: 44px; padding: 0 12px; gap: 6px; display: inline-flex; align-items: center; font-weight: 700; font-size: 14px; white-space: nowrap; }
 #mimicCard #mmFsBtn svg { flex: none; }

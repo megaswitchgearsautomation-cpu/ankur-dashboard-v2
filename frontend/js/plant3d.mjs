@@ -239,10 +239,11 @@ function buildTower(c) {
     b.rotation.y = -(i / 6) * Math.PI * 2; b.rotation.x = 0.35;
   }
   g.add(fan);
+  const halo = haloRing(g, rr * 1.5, W2(cx, cy, c.h + 0.08));
   scene.add(g);
   [body, stack, hub].forEach((m) => { m.userData.eq = c.fan; pickables.push(m); });
   const lb = label(W2(cx, cy, c.h + 1.7), `<b>${c.name}</b><span class="sub"></span>`, "strong", c.fan);
-  machines[c.fan] = { mats: [fanMat], lamp: null, rot: { obj: fan, axis: "y", speed: 4.5 }, lb, kind: "fan" };
+  machines[c.fan] = { mats: [fanMat], lamp: null, rot: { obj: fan, axis: "y", speed: 4.5 }, halo, lb, kind: "fan" };
 }
 function buildPackage(p) {
   const g = new THREE.Group(), cx = p.x + p.w / 2, cy = p.y + p.d / 2, m = mat(C.pkg, { rough: 0.8, opacity: 0.8 });
@@ -272,10 +273,16 @@ function buildPump(id, x, y, heading) {
   const disch = add(cylM(0.09, 0.09, 0.35, STEEL(), 12), g); disch.position.set(0.38, 0.86, 0);
   const lamp = add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), new THREE.MeshStandardMaterial({ color: C.unk, emissive: 0x000000 })), g);
   lamp.position.set(-0.35, 0.86, 0);
+  // yellow coupling guard spokes: turn while the pump runs (the shaft is visibly moving)
+  const spin = new THREE.Group(); spin.position.set(0.08, 0.42, 0);
+  const guard = mat(0xf2b400, { metal: 0.2, rough: 0.5 });
+  for (let i = 0; i < 3; i++) { const s = add(boxM(0.05, 0.34, 0.06, guard), spin, false); s.rotation.x = (i * Math.PI) / 3; }
+  g.add(spin);
+  const halo = haloRing(g, 1.05, new THREE.Vector3(0, 0.015, 0));   // just above the area pad (pump base sits on it)
   scene.add(g);
   [base, motor, volute, tb, lamp].forEach((m) => { m.userData.eq = id; pickables.push(m); });
   const lb = label(W2(x, y, 1.6), "", "eq", id);
-  machines[id] = { mats: [motorMat], lamp, lb, kind: "pump" };
+  machines[id] = { mats: [motorMat], lamp, lb, rot: { obj: spin, axis: "x", speed: 14 }, halo, kind: "pump" };
 }
 function buildAgitator(id, x, y, z) {
   const g = new THREE.Group(), motorMat = mat(C.unk, { unique: true, metal: 0.25, rough: 0.45 });
@@ -298,10 +305,11 @@ function buildBlower(id, x, y) {
   const outlet = add(boxM(0.45, 0.9, 0.4, STEEL()), g); outlet.position.copy(W2(x + 0.65, y, 1.5));
   const motor = add(cylM(0.28, 0.28, 0.65, motorMat, 24), g); motor.rotation.z = Math.PI / 2; motor.position.copy(W2(x - 0.45, y, 0.62));
   const lamp = add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), new THREE.MeshStandardMaterial({ color: C.unk })), g); lamp.position.copy(W2(x - 0.45, y, 1.02));
+  const halo = haloRing(g, 1.3, W2(x, y, 0.2));
   scene.add(g);
   [base, scroll, motor, lamp].forEach((m) => { m.userData.eq = id; pickables.push(m); });
   const lb = label(W2(x, y, 2.4), "", "eq", id);
-  machines[id] = { mats: [motorMat], lamp, lb, kind: "blower" };
+  machines[id] = { mats: [motorMat], lamp, lb, halo, kind: "blower" };
 }
 function buildValve(id, x, y, z) {
   const g = new THREE.Group(), actMat = mat(C.unk, { unique: true, metal: 0.2, rough: 0.5 });
@@ -328,8 +336,16 @@ function buildSwitch(key, x, y, z, txt) {
   const s = add(new THREE.Mesh(new THREE.SphereGeometry(0.13, 14, 10), m), scene, false); s.position.copy(W2(x, y, z));
   switches.push({ key, m, txt });
 }
+// running / tripped ring on the floor under a machine: pulses green while it runs, red while tripped, hidden when stopped
+function haloRing(parent, r, pos) {
+  const m = new THREE.MeshBasicMaterial({ color: 0x46c21b, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(r * 0.78, r, 48), m);
+  ring.rotation.x = -Math.PI / 2; ring.position.copy(pos); ring.visible = false; ring.renderOrder = 2;
+  parent.add(ring);
+  return ring;
+}
 function buildPipe(fluid, by, pts) {
-  const color = FLUID[fluid] || C.water, m = mat(color, { metal: 0.35, rough: 0.4 });
+  const color = FLUID[fluid] || C.water, m = mat(color, { metal: 0.35, rough: 0.4, unique: by.length > 0 });
   const v = pts.map(([x, y, z]) => W2(x, y, z));
   const r = fluid === "chem" ? 0.06 : 0.1;
   let length = 0;
@@ -343,11 +359,19 @@ function buildPipe(fluid, by, pts) {
   }
   for (let i = 1; i < v.length - 1; i++) { const e = add(new THREE.Mesh(new THREE.SphereGeometry(r * 1.25, 12, 10), m), scene, false); e.position.copy(v[i]); }
   if (!by.length) return;
-  // flow dots: small bright spheres travelling along the line while one of its IO pumps runs
-  const n = Math.max(2, Math.round(length / 1.4)), dots = [];
-  const dm = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  for (let i = 0; i < n; i++) { const d = new THREE.Mesh(new THREE.SphereGeometry(r * 0.75, 10, 8), dm); d.visible = false; scene.add(d); dots.push(d); }
-  flows.push({ by, v, length, dots });
+  // flow (client review 17-11-2026: "in 3D you cannot see what is flowing"): bright glowing pulses, bigger than the pipe
+  // so they show from far away, travel along the line while one of its IO pumps runs; the pipe itself lights up too
+  m.emissive = new THREE.Color(color);
+  m.emissiveIntensity = 0;
+  const n = Math.max(3, Math.round(length / 0.9)), dots = [];
+  const dm = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 });
+  const halo = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.45, depthWrite: false });
+  for (let i = 0; i < n; i++) {
+    const d = new THREE.Mesh(new THREE.SphereGeometry(r * 1.45, 12, 10), dm);
+    d.add(new THREE.Mesh(new THREE.SphereGeometry(r * 2.4, 12, 10), halo));   // soft glow around each pulse
+    d.visible = false; scene.add(d); dots.push(d);
+  }
+  flows.push({ by, v, length, dots, mat: m });
 }
 
 // ------------------------------------------------------------------ structures (blue steel, yellow rails, caged ladders)
@@ -552,12 +576,23 @@ function frame() {
   for (const m of Object.values(machines)) {
     if (m.rot && m.running) m.rot.obj.rotation[m.rot.axis] += m.rot.speed * dt;
     if (m.trip && m.lamp) m.lamp.visible = Math.floor(t * 2.5) % 2 === 0; else if (m.lamp) m.lamp.visible = true;
+    if (m.halo) {                                       // floor ring: pulsing green = running, red = tripped, none = stopped
+      const on = m.running || m.trip;
+      m.halo.visible = on;
+      if (on) {
+        const p = 0.5 + 0.5 * Math.sin(t * (m.trip ? 7 : 3.2));
+        m.halo.material.color.setHex(m.trip ? 0xe5484d : 0x46c21b);
+        m.halo.material.opacity = 0.35 + 0.45 * p;
+        m.halo.scale.setScalar(1 + 0.18 * p);
+      }
+    }
   }
   for (const f of flows) {
+    if (f.mat) f.mat.emissiveIntensity = f.on ? 0.35 + 0.15 * Math.sin(t * 3) : 0;   // a flowing line glows softly
     f.dots.forEach((d, i) => {
       d.visible = !!f.on;
       if (!f.on) return;
-      let s = ((t * 1.6 + (i / f.dots.length) * f.length) % f.length);
+      let s = ((t * 2.2 + (i / f.dots.length) * f.length) % f.length);
       for (let k = 0; k < f.v.length - 1; k++) {
         const len = f.v[k].distanceTo(f.v[k + 1]);
         if (s <= len || k === f.v.length - 2) { d.position.lerpVectors(f.v[k], f.v[k + 1], len ? Math.min(1, s / len) : 0); break; }

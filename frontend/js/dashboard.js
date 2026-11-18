@@ -484,6 +484,20 @@
         <g class="rot">${blades(5, "M28 34 C 31 29, 31 23, 27 19", 28, 34)}<circle cx="28" cy="34" r="3.5" class="hub"/></g></svg>`;
     }
   }
+  // tag = link to the machine on the Mimic (client review 17-11-2026: "a small icon, so people know a click on the tag
+  // opens it on the mimic"); machines without a P&ID tag show the dash box with the same icon
+  const MM_IC = '<svg class="eq-mm-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="9" width="6" height="11" rx="1.5"/><rect x="16" y="4" width="6" height="16" rx="1.5"/><path d="M8 14h3v-4h5"/></svg>';
+  function eqTagHTML(e) {
+    const t = e.tag_no || "–";
+    return `<button type="button" class="eqc-tag eq-mm${e.tag_no ? "" : " none"}" data-mm="${esc(e.id)}" title="Show ${esc(e.tag_no || e.name)} on the Mimic"
+      aria-label="Show ${esc(e.tag_no || e.name)} on the Mimic">${esc(t)}${MM_IC}</button>`;
+  }
+  document.addEventListener("click", (ev) => {
+    const b = ev.target.closest && ev.target.closest(".eq-mm[data-mm]");
+    if (!b || !window.Plant || !Plant.showOnMimic) return;
+    ev.preventDefault(); ev.stopPropagation();
+    if (!Plant.showOnMimic(b.dataset.mm)) toast("This item is not drawn on the mimic");
+  });
   function eqCardHTML(e) {
     const kind = eqKind(e);
     const spec = [e.kw != null ? `${e.kw} kW` : "", KIND_LABEL[kind]].filter(Boolean).join(" · ");
@@ -491,7 +505,7 @@
     return `<div class="eqc" data-id="${esc(e.id)}" data-kind="${kind}" tabindex="0">
       <div class="eqc-ic">${eqIcon(kind)}</div>
       <div class="eqc-main">
-        <div class="eqc-top">${e.tag_no ? `<span class="eqc-tag">${esc(e.tag_no)}</span>` : `<span class="eqc-tag none" title="No tag number on the P&amp;ID">–</span>`}<span class="eqc-pill"><span class="dot"></span><b class="st"></b></span></div>
+        <div class="eqc-top">${eqTagHTML(e)}<span class="eqc-pill"><span class="dot"></span><b class="st"></b></span></div>
         <div class="eqc-name" title="${esc(e.name)}">${esc(e.name)}</div>
         <div class="eqc-meta">${esc(e.area || "")}${spec ? " · " + esc(spec) : ""}${e.simulated ? ' · <span class="q SIMULATED">DEMO</span>' : ""}</div>
       </div>
@@ -507,7 +521,7 @@
   function eqRowHTML(e) {
     const kind = eqKind(e);
     return `<div class="eql" data-id="${esc(e.id)}" data-kind="${kind}"><span class="eqc-ic sm">${eqIcon(kind)}</span>
-      <span class="eqc-tag${e.tag_no ? "" : " none"}"${e.tag_no ? "" : ' title="No tag number on the P&amp;ID"'}>${esc(e.tag_no || "–")}</span><span class="eql-name" title="${esc(e.name)}">${esc(e.name)}</span>
+      ${eqTagHTML(e)}<span class="eql-name" title="${esc(e.name)}">${esc(e.name)}</span>
       <span class="muted eql-area">${esc(e.area || "")}</span><span class="eqc-pill"><span class="dot"></span><b class="st"></b></span>
       <b class="mode">-</b><b class="num rh">${e.type === "motor" ? "-" : ""}</b><b class="num starts">${e.type === "motor" ? "-" : ""}</b></div>`;
   }

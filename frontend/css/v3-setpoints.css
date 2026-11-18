@@ -39,7 +39,9 @@
 .sp-lock { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; vertical-align: middle; color: #71717a; cursor: help; }
 .sp-lock svg { width: 16px; height: 16px; }
 .sp-th { display: inline-flex; align-items: center; gap: 4px; }
-.sp-th .v3-info { margin-left: 0; width: 32px; height: 32px; min-width: 32px; }
+/* the (i) beside a column heading takes no extra height, so every heading sits on the same line (client 18-11-2026) */
+.sp-th .v3-info { margin: -8px 0; width: 28px; height: 28px; min-width: 28px; }
+.sp-t thead th { vertical-align: middle; }
 .sp-alm .lv-warn, .sp-alm .lv-alarm { font-weight: 800; }
 
 .sp-lvs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 24px; }
