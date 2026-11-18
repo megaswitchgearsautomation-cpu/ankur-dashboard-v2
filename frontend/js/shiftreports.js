@@ -60,8 +60,19 @@
     $("rpHist").innerHTML = `${MD.v3.CAL}<span>History available <b>${dayText(MD.v3.historyStart())} – ${dayText(Date.now() / 1000)}</b>
       · kept for ${esc(h.retention_days || 30)} days${h.log_interval_s ? ` · recorded every ${esc(h.log_interval_s)} s` : ""}</span>`;
 
+    // start / end days: calendar pop-up (client review 17-11-2026) - the date box and "Custom" open it
+    const openCal = () => MD.v3.calendar({
+      anchor: $("rpDates"), from: $("rpFrom").value, to: $("rpTo").value, min: minIso(), max: today(), title: "Report period",
+      onApply: (f, t) => { setDates(f, t); showKind(detectKind()); },
+    });
+    const dates = $("rpDates");
+    dates.setAttribute("role", "button"); dates.tabIndex = 0; dates.title = "Pick start and end dates";
+    dates.setAttribute("aria-label", "Report period: pick start and end dates");
+    ["rpFrom", "rpTo"].forEach((id) => { $(id).tabIndex = -1; $(id).readOnly = true; });
+    dates.onclick = openCal;
+    dates.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCal(); } };
     $("rpKind").querySelectorAll("button").forEach((b) => (b.onclick = () => {
-      if (b.dataset.k === "custom") { showKind("custom"); $("rpFrom").focus(); return; }
+      if (b.dataset.k === "custom") { openCal(); return; }
       fillKind(b.dataset.k);
       showKind(b.dataset.k);
     }));

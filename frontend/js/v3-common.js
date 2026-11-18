@@ -38,7 +38,7 @@
       <div class="dr-pick" hidden>${CAL}<label class="sr">From</label><input type="date" class="dr-from" aria-label="From date (IST)">
         <span class="dr-dash">–</span><input type="date" class="dr-to" aria-label="To date (IST)">
         <button type="button" class="btn sm primary dr-apply">Show</button></div>
-      <span class="dr-applied">${CAL}<span class="dr-txt"></span></span>`;
+      <span class="dr-applied dr-open" role="button" tabindex="0" title="Pick start and end dates" aria-label="Pick start and end dates">${CAL}<span class="dr-txt"></span></span>`;
     const q = (s) => host.querySelector(s);
     const from = q(".dr-from"), to = q(".dr-to");
     const now = () => Date.now() / 1000;
@@ -70,7 +70,16 @@
       q(".dr-txt").textContent = label(f, t);
       if (fire && opts.onApply) opts.onApply(f, t, k);
     }
-    host.querySelectorAll(".dr-presets button").forEach((b) => (b.onclick = () => apply(b.dataset.k, b.dataset.k === "custom" ? "open" : true)));
+    // Custom / the date text: calendar pop-up (start + end day), the range is applied on Apply only
+    function openCal() {
+      const n = now(), [f0, t0] = windowOf(key);
+      calendar({ anchor: q(".dr-applied"), from: MD.istDate(Math.max(f0, retentionStart())), to: MD.istDate(Math.min(n, t0 - 1)),
+        min: MD.istDate(retentionStart()), max: MD.istDate(n),
+        onApply: (f, t) => { from.value = f; to.value = t; apply("custom"); } });
+    }
+    host.querySelectorAll(".dr-presets button").forEach((b) => (b.onclick = () => (b.dataset.k === "custom" ? openCal() : apply(b.dataset.k))));
+    q(".dr-applied").onclick = openCal;
+    q(".dr-applied").onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCal(); } };
     q(".dr-apply").onclick = () => {
       if (!from.value || !to.value) return MD.toast("Pick both a start and an end date", true);
       if (to.value < from.value) return MD.toast("The end date must be after the start date", true);
@@ -88,6 +97,125 @@
       },
       refresh: () => apply(key),
     };
+  }
+
+  // ---------- calendar pop-up: pick a start and an end day (client review 17-11-2026, like the "Date Range
+  // Component" reference): quick choices on the left, two months side by side (one on phones), Cancel / Apply ----------
+  // calendar({anchor, from, to, min, max, presets: [[label, () => [fromIso, toIso]]], onApply(fromIso, toIso), title})
+  // all dates are "YYYY-MM-DD" IST days; min / max limit what can be picked (history kept .. today)
+  const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const isoOf = (y, m, d) => { const t = new Date(Date.UTC(y, m - 1, d)); return t.toISOString().slice(0, 10); };
+  const isoParts = (iso) => iso.split("-").map(Number);
+  const isoAdd = (iso, n) => { const [y, m, d] = isoParts(iso); return isoOf(y, m, d + n); };
+  const isoDow = (iso) => { const [y, m, d] = isoParts(iso); return (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7; };   // Mon = 0
+  const isoNice = (iso) => { if (!iso) return "–"; const [y, m, d] = isoParts(iso); return `${d} ${MONTHS[m - 1].slice(0, 3)} ${y}`; };
+  function calPresets() {                       // the common choices, as start / end days
+    const t = MD.istDate(Date.now() / 1000), lo = MD.istDate(retentionStart());
+    const mon = isoAdd(t, -isoDow(t)), first = t.slice(0, 8) + "01", [y, m] = isoParts(t);
+    const pFirst = isoOf(y, m - 1, 1), pLast = isoOf(y, m, 0);
+    return [["Today", () => [t, t]], ["Yesterday", () => [isoAdd(t, -1), isoAdd(t, -1)]], ["This week", () => [mon, t]],
+      ["Last week", () => [isoAdd(mon, -7), isoAdd(mon, -1)]], ["Last 7 days", () => [isoAdd(t, -6), t]], ["Last 30 days", () => [isoAdd(t, -29), t]],
+      ["This month", () => [first, t]], ["Last month", () => [pFirst, pLast]], ["All kept history", () => [lo, t]]];
+  }
+  let calOpen = null;
+  function calendar(o) {
+    if (calOpen) calOpen.close();
+    const min = o.min || "0000-01-01", max = o.max || "9999-12-31";
+    const clamp = (iso) => (iso < min ? min : iso > max ? max : iso);
+    let a = o.from ? clamp(o.from) : null, b = o.to ? clamp(o.to) : null, hover = null;
+    const startView = b || a || max; let [vy, vm] = isoParts(startView);
+    const twoUp = () => window.matchMedia("(min-width: 900px)").matches;
+    if (twoUp()) { vm -= 1; if (vm < 1) { vm = 12; vy -= 1; } }          // show the end month on the right
+    const presets = o.presets || [];                   // quick-choice list removed (user 18-11-2026): calendar only; calPresets() kept if wanted again
+    const bg = document.createElement("div");
+    bg.className = "cal-bg";
+    bg.innerHTML = `<div class="cal${presets.length ? "" : " no-side"}" role="dialog" aria-modal="true" aria-label="${esc(o.title || "Pick a date range")}">
+      ${presets.length ? `<div class="cal-side" role="group" aria-label="Quick choices">${presets.map(([l], i) => `<button type="button" data-p="${i}">${esc(l)}</button>`).join("")}</div>` : ""}
+      <div class="cal-main"><div class="cal-months"></div>
+        <div class="cal-foot"><div class="cal-sel"><span class="cal-box" data-w="a"></span><span class="cal-dash">–</span><span class="cal-box" data-w="b"></span></div>
+          <div class="cal-btns"><button type="button" class="btn cal-cancel">Cancel</button><button type="button" class="btn primary cal-ok">Apply</button></div></div>
+        <p class="cal-hint">Click the first day, then the last day. History kept: ${esc(isoNice(min))} – ${esc(isoNice(max))} (IST).</p></div></div>`;
+    document.body.appendChild(bg);
+    const box = bg.querySelector(".cal");
+    function month(y, m) {
+      const first = isoOf(y, m, 1), lead = isoDow(first), days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      const lo = a && (b || hover) ? (a < (b || hover) ? a : (b || hover)) : a, hi = a && (b || hover) ? (a < (b || hover) ? (b || hover) : a) : a;
+      let cells = "";
+      for (let i = 0; i < lead; i++) cells += `<span class="cal-d out"></span>`;
+      for (let d = 1; d <= days; d++) {
+        const iso = isoOf(y, m, d), off = iso < min || iso > max;
+        const cls = ["cal-d"];
+        if (off) cls.push("off");
+        if (lo && hi && iso >= lo && iso <= hi) cls.push("in");
+        if (iso === lo) cls.push("s");
+        if (iso === hi) cls.push("e");
+        if (iso === max) cls.push("today");
+        cells += `<button type="button" class="${cls.join(" ")}" data-d="${iso}" ${off ? "disabled" : ""} aria-label="${esc(isoNice(iso))}" aria-pressed="${iso === lo || iso === hi}">${d}</button>`;
+      }
+      return `<div class="cal-m"><div class="cal-mh"><b>${MONTHS[m - 1]} ${y}</b></div>
+        <div class="cal-w">${["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((w) => `<span>${w}</span>`).join("")}</div><div class="cal-g">${cells}</div></div>`;
+    }
+    function draw() {
+      const n = twoUp() ? 2 : 1, list = [];
+      for (let i = 0; i < n; i++) { const t = new Date(Date.UTC(vy, vm - 1 + i, 1)); list.push([t.getUTCFullYear(), t.getUTCMonth() + 1]); }
+      const firstIso = isoOf(list[0][0], list[0][1], 1), lastIso = isoOf(list[n - 1][0], list[n - 1][1] + 1, 0);
+      box.querySelector(".cal-months").innerHTML =
+        `<button type="button" class="cal-nav prev" aria-label="Previous month" ${firstIso <= min ? "disabled" : ""}>‹</button>` +
+        list.map(([y, m]) => month(y, m)).join("") +
+        `<button type="button" class="cal-nav next" aria-label="Next month" ${lastIso >= max ? "disabled" : ""}>›</button>`;
+      box.querySelector('.cal-box[data-w="a"]').textContent = a ? isoNice(a) : "Start day";
+      box.querySelector('.cal-box[data-w="b"]').textContent = b ? isoNice(b) : a ? "End day" : "End day";
+      box.querySelector('.cal-box[data-w="a"]').classList.toggle("act", !a || (a && b));
+      box.querySelector('.cal-box[data-w="b"]').classList.toggle("act", !!a && !b);
+      box.querySelector(".cal-ok").disabled = !a;
+      box.querySelectorAll(".cal-side button").forEach((btn) => {
+        const [f, t] = presets[+btn.dataset.p][1]();
+        btn.classList.toggle("active", !!a && clamp(f) === a && clamp(t) === (b || a));
+      });
+    }
+    const move = (k) => { const t = new Date(Date.UTC(vy, vm - 1 + k, 1)); vy = t.getUTCFullYear(); vm = t.getUTCMonth() + 1; draw(); };
+    box.addEventListener("click", (e) => {
+      const d = e.target.closest(".cal-d[data-d]");
+      if (d && !d.disabled) {
+        const iso = d.dataset.d;
+        if (!a || b) { a = iso; b = null; } else if (iso < a) { b = a; a = iso; } else b = iso;
+        hover = null; draw(); return;
+      }
+      if (e.target.closest(".cal-nav.prev")) return move(-1);
+      if (e.target.closest(".cal-nav.next")) return move(1);
+      const p = e.target.closest(".cal-side button");
+      if (p) {
+        const [f, t] = presets[+p.dataset.p][1]();
+        a = clamp(f); b = clamp(t); if (b < a) b = a;
+        [vy, vm] = isoParts(b); if (twoUp() && isoParts(a)[1] !== vm) { vm -= 1; if (vm < 1) { vm = 12; vy -= 1; } }
+        draw();
+      }
+    });
+    box.addEventListener("mouseover", (e) => {
+      const d = e.target.closest(".cal-d[data-d]");
+      if (a && !b && d && !d.disabled && hover !== d.dataset.d) { hover = d.dataset.d; draw(); }
+    });
+    const close = () => { bg.remove(); document.removeEventListener("keydown", onKey); window.removeEventListener("resize", draw); calOpen = null; if (o.anchor && o.anchor.focus) o.anchor.focus(); };
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", draw);
+    bg.addEventListener("mousedown", (e) => { if (e.target === bg) close(); });
+    box.querySelector(".cal-cancel").onclick = close;
+    box.querySelector(".cal-ok").onclick = () => { if (!a) return; const f = a, t = b || a; close(); if (o.onApply) o.onApply(f, t); };
+    draw();                                             // fill first, so the size below is the real one
+    // place under the anchor on wide screens (above it when there is no room below); narrow screens get a sheet (CSS)
+    if (o.anchor && twoUp()) {
+      const r = o.anchor.getBoundingClientRect(), w = box.offsetWidth, h = box.offsetHeight;
+      const left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left));
+      let top = r.bottom + 8;
+      if (top + h > window.innerHeight - 8) top = r.top - h - 8 >= 8 ? r.top - h - 8 : Math.max(8, window.innerHeight - h - 8);
+      box.style.position = "fixed"; box.style.left = `${left}px`; box.style.top = `${top}px`;
+      bg.classList.add("anch");
+    }
+    const first = box.querySelector(".cal-d.s") || box.querySelector(".cal-side button");
+    if (first) first.focus();
+    calOpen = { close };
+    return calOpen;
   }
 
   // ---------- info icon + tooltip / pop-up ----------
@@ -232,5 +360,5 @@
     try { await MD.api("/api/client/prefs", { method: "PUT", body: { prefs: p } }); } catch (e) { MD.toast("Could not save your layout: " + e.message, true); }
   }
 
-  MD.v3 = { CAL, INFO, PEN, SEARCH, historyStart, retentionStart, rangePicker, info, popup, closeTip, tableSearch, level, exportCsv, tableRows, printPdf, prefs, savePrefs };
+  MD.v3 = { CAL, INFO, PEN, SEARCH, historyStart, retentionStart, rangePicker, calendar, info, popup, closeTip, tableSearch, level, exportCsv, tableRows, printPdf, prefs, savePrefs };
 })();

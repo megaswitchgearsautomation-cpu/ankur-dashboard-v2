@@ -2605,7 +2605,7 @@
     const rows = ioData.filter((x) => x.kind === ioTab && (!q || `${x.name} ${x.addr} ${x.desc}`.toLowerCase().includes(q)))
       .sort((a, b) => order(a.addr) - order(b.addr));
     const dig = ioTab !== "ai", on = rows.filter((x) => dig && isOn(x.value)).length;
-    $("ioSum").textContent = dig ? `${rows.length} signals · ${on} ON · ${rows.length - on} OFF` : `${rows.length} analog channels`;
+    $("ioSum").textContent = dig ? `${rows.length} signals · ${on} TRUE · ${rows.length - on} FALSE` : `${rows.length} analog channels`;
     // one table per card, like the HMI pages: X0, X1 ... / Y0 ... / AI 0, AI 1 ...
     const groups = {};
     rows.forEach((x) => { const m = x.addr.match(/^(AI \d+|[XY]\d+)/); (groups[m ? m[1] : "?"] ||= []).push(x); });
@@ -2628,7 +2628,7 @@
       ${groups[g].map((x) => {
         const nd = x.value == null || x.quality === "NODATA";   // spare channels look the same as the others (user request 17-11-2026)
         return `<tr><td class="num">${esc(x.addr)}</td><td>${esc(x.name)}</td>` + (dig
-          ? `<td class="muted">${esc(part(x.desc, 1))}</td><td class="io-stc"><span class="io-st ${nd ? "nd" : isOn(x.value) ? "on" : "off"}"><i></i>${nd ? "No data" : isOn(x.value) ? "ON" : "OFF"}</span></td>`
+          ? `<td class="muted">${esc(part(x.desc, 1))}</td><td class="io-stc"><span class="io-st ${nd ? "nd" : isOn(x.value) ? "on" : "off"}"><i></i>${nd ? "No data" : isOn(x.value) ? "TRUE" : "FALSE"}</span></td>`
           : `<td class="num"><b>${nd ? "--" : Number(x.value).toFixed(x.decimals ?? 1)}</b> ${esc(x.unit || "")}</td><td>${scTxt(x)}</td>
             <td class="muted">${esc(x.desc.split("·").slice(2).join("·").trim())}</td>
             <td class="no-export">${aiTag(x.id) ? `<button class="btn sm io-sc" type="button" data-sc="${esc(x.id)}">✎ Scaling</button>` : ""}</td>`) + "</tr>";
