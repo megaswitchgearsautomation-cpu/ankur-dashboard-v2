@@ -67,10 +67,58 @@
 .p3n .p3-legend [data-s]:hover { background: #eef2f7; }
 .p3n .p3-legend [data-s].on { background: #1f4f9e; color: #fff; font-weight: 700; }
 .p3n .p3-legend [data-s].dim { opacity: .45; }
+/* ---- SolidWorks-style view tools (heads-up toolbar, view cube, triad, zoom-to-area box) ---- */
+.p3n:focus { outline: none; }
+.p3n { user-select: none; -webkit-user-select: none; }
+.p3n .p3-panel { user-select: text; -webkit-user-select: text; }
+.p3n:focus-visible { box-shadow: inset 0 0 0 2px #2f7ff5; }
+.p3n .p3-tools { top: 10px; left: 50%; right: auto; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 3px 5px;
+  background: rgba(255,255,255,.94); border-radius: 9px; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
+.p3n .p3-ib { width: 32px; height: 32px; display: inline-grid; place-items: center; border: 0; background: none; border-radius: 6px; color: #2b3440; cursor: pointer; padding: 0; }
+.p3n .p3-ib svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.p3n .p3-ib:hover { background: #e9eef5; color: #1f4f9e; }
+.p3n .p3-ib.on { background: #1f4f9e; color: #fff; }
+.p3n .p3-ib.q { font-weight: 800; font-size: 15px; }
+.p3n .p3-tools .sep { width: 1px; height: 20px; background: #d5dae1; margin: 0 3px; }
+.p3n .p3-dd { position: relative; }
+.p3n .p3-menu { position: absolute; top: 38px; left: 50%; transform: translateX(-50%); z-index: 6; min-width: 170px; padding: 4px; background: #fff; border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+.p3n .p3-menu[hidden] { display: none; }
+.p3n .p3-menu button { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 12px; border: 0; background: none; padding: 6px 10px;
+  border-radius: 5px; font-size: 13px; color: #1e2329; cursor: pointer; text-align: left; }
+.p3n .p3-menu button:hover { background: #eef2f7; }
+.p3n .p3-menu button.on { background: #e3ecfa; color: #1f4f9e; font-weight: 700; }
+.p3n .p3-menu kbd, .p3n .p3-help kbd { font: 600 10.5px/1 ui-monospace, Consolas, monospace; background: #eef0f3; border: 1px solid #d3d8de; border-radius: 3px; padding: 2px 4px; color: #3a4350; }
+.p3n .p3-menu.keys { left: auto; right: 0; transform: none; width: 300px; padding: 10px 12px; font-size: 12.5px; color: #2b3440; }
+.p3n .p3-menu.keys b { display: block; margin: 4px 0 4px; font-size: 12px; color: #1f4f9e; }
+.p3n .p3-menu.keys p { margin: 0 0 5px; line-height: 1.7; }
+/* view cube (top-left) */
+.p3n .p3-cube { position: absolute; top: 14px; left: 18px; width: 64px; height: 64px; z-index: 4; }
+.p3n .p3-cube-in { position: absolute; inset: 0; transform-style: preserve-3d; }
+.p3n .p3-cube .f { position: absolute; inset: 0; display: grid; place-items: center; font: 800 9.5px/1 system-ui, sans-serif; letter-spacing: .04em; color: #1f3550;
+  background: rgba(233, 239, 247, .96); border: 1px solid #8ea3bd; backface-visibility: hidden; cursor: pointer; user-select: none; }
+.p3n .p3-cube .f:hover { background: #2f7ff5; color: #fff; }
+.p3n .p3-cube .f[data-v="front"] { transform: translateZ(32px); }
+.p3n .p3-cube .f[data-v="back"] { transform: rotateY(180deg) translateZ(32px); }
+.p3n .p3-cube .f[data-v="right"] { transform: rotateY(90deg) translateZ(32px); }
+.p3n .p3-cube .f[data-v="left"] { transform: rotateY(-90deg) translateZ(32px); }
+.p3n .p3-cube .f[data-v="top"] { transform: rotateX(90deg) translateZ(32px); background: rgba(214, 228, 246, .97); }
+.p3n .p3-cube .f.bot { transform: rotateX(-90deg) translateZ(32px); cursor: default; }
+/* axis triad (bottom-right), X east / Y north / Z up as on the P&ID plan */
+.p3n .p3-triad { position: absolute; right: 10px; bottom: 8px; width: 70px; height: 70px; z-index: 3; pointer-events: none; }
+.p3n .p3-triad text { font: 800 10px/1 system-ui, sans-serif; text-anchor: middle; }
+/* zoom-to-area box */
+.p3n .p3-rect { position: absolute; z-index: 5; border: 1.5px dashed #1f4f9e; background: rgba(47,127,245,.12); pointer-events: none; }
+.p3n .p3-rect[hidden] { display: none; }
+.p3n .p3-help { right: 90px; }
 @media (max-width: 760px) {
   .p3n .p3-legend { max-width: calc(100% - 20px); top: auto; bottom: 8px; font-size: 10px; flex-wrap: nowrap; overflow-x: auto; }
   .p3n .p3-help { display: none; }
-  .p3n .p3-tools { left: 10px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
-  .p3n .p3-tools .btn { padding: 4px 8px; font-size: 12px; white-space: nowrap; }
+  .p3n .p3-tools { width: max-content; max-width: calc(100% - 20px); flex-wrap: wrap; justify-content: center; }
+  .p3n .p3-ib { width: 30px; height: 30px; }
+  .p3n .p3-tools .sep { display: none; }
+  .p3n .p3-cube { top: 96px; left: 14px; transform: scale(.75); transform-origin: 0 0; }
+  .p3n .p3-triad { bottom: 44px; width: 56px; height: 56px; }
+  .p3n .p3-menu.keys { position: fixed; left: 10px; right: 10px; top: 120px; width: auto; }
   .p3n .p3-panel { width: auto; left: 10px; top: auto; bottom: 10px; max-height: 55%; }
 }

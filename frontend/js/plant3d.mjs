@@ -266,7 +266,7 @@ function blob(x, y, w, d, op = 0.4, z = null) {
     c.fillStyle = g; c.fillRect(0, 0, 128, 128); blobTex = new THREE.CanvasTexture(cv);
   }
   const s = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, opacity: op, depthWrite: false, color: 0 }));
-  s.rotation.x = -Math.PI / 2; s.renderOrder = 1; s.position.copy(W2(x, y, (z ?? FLOOR_Z) + 0.004)); scene.add(s);
+  s.rotation.x = -Math.PI / 2; s.renderOrder = 1; s.userData.blob = true; s.position.copy(W2(x, y, (z ?? FLOOR_Z) + 0.004)); scene.add(s);
 }
 
 // ------------------------------------------------------------------ labels (HTML overlay)
@@ -883,7 +883,98 @@ function fitBox(box3, dir = new THREE.Vector3(-0.28, 0.66, 0.70), pad = 1.06, an
   }
   const pos = c.clone().add(d.multiplyScalar(dist * pad));
   if (!animate) { camera.position.copy(pos); controls.target.copy(c); controls.update(); return; }
-  fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: c, s: 0 };
+  flyTo(pos, c);
+}
+// camera move: target slides, view direction turns on a sphere (like SolidWorks view changes), distance eases
+function flyTo(pos, tgt, remember = true) {
+  if (remember) pushView();
+  const t0 = controls.target.clone(), o0 = camera.position.clone().sub(t0), o1 = pos.clone().sub(tgt);
+  const d0 = o0.clone().normalize(), d1 = o1.clone().normalize();
+  fly = { t0, t1: tgt.clone(), d0, r0: o0.length(), r1: o1.length(), q: new THREE.Quaternion().setFromUnitVectors(d0, d1), s: 0 };
+}
+// previous view (SolidWorks "Previous View"): remember camera states before each change
+const history = [];
+function pushView() {
+  if (!camera || !controls) return;
+  const v = { p: camera.position.clone(), t: controls.target.clone() }, last = history[history.length - 1];
+  if (last && last.p.distanceTo(v.p) < 0.05 && last.t.distanceTo(v.t) < 0.05) return;
+  history.push(v); if (history.length > 30) history.shift();
+}
+function prevView() { const v = history.pop(); if (v) flyTo(v.p, v.t, false); }
+// standard orientation about the current centre, same distance (Front / Back / Left / Right / Top / Isometric)
+const VIEWS = {
+  front: new THREE.Vector3(0, 0, 1), back: new THREE.Vector3(0, 0, -1), left: new THREE.Vector3(-1, 0, 0), right: new THREE.Vector3(1, 0, 0),
+  top: new THREE.Vector3(0.0001, 1, 0.012), iso: new THREE.Vector3(1, 1, 1), plant: new THREE.Vector3(-0.28, 0.66, 0.70),
+};
+// standard views turn to the orientation and fit the whole plant (SolidWorks "zoom to fit on view change")
+function setView(name) {
+  const d = VIEWS[name]; if (!d) return;
+  controls.autoRotate = false; syncTools();
+  fitBox(plantBox(), d.clone(), name === "top" ? 1.0 : 1.02);
+}
+// where the camera is heading (end of a running move), so quick key presses add up correctly
+function dest() {
+  if (!fly) return { t: controls.target.clone(), p: camera.position.clone() };
+  return { t: fly.t1.clone(), p: fly.t1.clone().add(fly.d0.clone().applyQuaternion(fly.q).multiplyScalar(fly.r1)) };
+}
+function zoomBy(f) {                                  // f < 1 = zoom in
+  const { t, p } = dest(), o = p.sub(t);
+  const r = THREE.MathUtils.clamp(o.length() * f, controls.minDistance, controls.maxDistance);
+  flyTo(t.clone().add(o.normalize().multiplyScalar(r)), t);
+}
+function orbitBy(dTheta, dPhi) {                      // arrow keys: rotate about the centre
+  const { t, p } = dest(), s = new THREE.Spherical().setFromVector3(p.sub(t));
+  s.theta += dTheta; s.phi = THREE.MathUtils.clamp(s.phi - dPhi, 0.001, controls.maxPolarAngle); s.makeSafe();
+  flyTo(t.clone().add(new THREE.Vector3().setFromSpherical(s)), t);
+}
+function panBy(dx, dy) {                              // Ctrl + arrow keys: move the view
+  const { t, p } = dest(), r = p.distanceTo(t), right = new THREE.Vector3(), up = new THREE.Vector3();
+  camera.matrixWorld.extractBasis(right, up, new THREE.Vector3());
+  const m = right.multiplyScalar(dx * r * 0.12).add(up.multiplyScalar(dy * r * 0.12));
+  flyTo(p.add(m), t.add(m));
+}
+// point of the plant under a screen position (null = sky)
+function hitPoint(cx, cy, floorOk = true) {
+  const r = renderer.domElement.getBoundingClientRect();
+  mouse.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  const hit = ray.intersectObjects(scene.children, true).find((h) => h.object.visible && h.object.isMesh && !h.object.userData.blob);
+  if (hit) return hit.point;
+  const p = new THREE.Vector3();
+  return floorOk && ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), p) ? p : null;
+}
+// double tap / double click: zoom in on the tapped point; on empty sky (or Shift) zoom out
+function zoomAt(cx, cy, zoomIn) {
+  const p = zoomIn ? hitPoint(cx, cy, false) : null;
+  if (!p) { zoomBy(2); return; }
+  const { t, p: cp } = dest(), dir = cp.clone().sub(t).normalize();
+  const dist = THREE.MathUtils.clamp(cp.distanceTo(p) * 0.5, controls.minDistance, controls.maxDistance);
+  flyTo(p.clone().add(dir.multiplyScalar(dist)), p);
+}
+// zoom to area: the dragged rectangle fills the view
+function zoomToRect(x0, y0, x1, y1) {
+  const r = renderer.domElement.getBoundingClientRect(), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const p = hitPoint(cx, cy);
+  if (!p) return;
+  const k = Math.max(Math.abs(x1 - x0) / r.width, Math.abs(y1 - y0) / r.height, 0.04);
+  const o = camera.position.clone().sub(p), dist = THREE.MathUtils.clamp(camera.position.distanceTo(p) * k, controls.minDistance, controls.maxDistance);
+  flyTo(p.clone().add(o.normalize().multiplyScalar(dist)), p);
+}
+// display style: shaded / shaded with edges / wireframe
+let dispStyle = "shaded", edgeMat = null, allMats = null;
+function setStyle(st) {
+  dispStyle = st;
+  if (!allMats) { allMats = new Set(); scene.traverse((o) => { if (o.isMesh && !o.userData.blob && !o.userData.edgeLine) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => allMats.add(m)); }); if (faintMat) allMats.add(faintMat); }
+  allMats.forEach((m) => { if (m.wireframe !== (st === "wire")) { m.wireframe = st === "wire"; m.needsUpdate = true; } });
+  scene.traverse((o) => { if (o.userData.blob) o.visible = st !== "wire"; });
+  if (st === "edges" && !edgeMat) {                     // built once, on first use
+    edgeMat = new THREE.LineBasicMaterial({ color: 0x1b2430, transparent: true, opacity: 0.45 });
+    const list = []; scene.traverse((o) => { if (o.isMesh && !o.userData.blob && o.geometry && !(o.geometry.parameters && o.geometry.parameters.width > 30)) list.push(o); });
+    for (const o of list) { const e = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 35), edgeMat); e.userData.edgeLine = true; e.raycast = () => {}; o.add(e); }
+  }
+  if (edgeMat) edgeMat.visible = st === "edges";
+  renderer.shadowMap.enabled = st !== "wire"; scene.traverse((o) => { if (o.material && o.isMesh) o.material.needsUpdate = true; });
+  syncTools();
 }
 const boxOf = (x0, y0, x1, y1, z0, z1) => new THREE.Box3().setFromPoints([W2(x0, y0, z0), W2(x1, y1, z1), W2(x0, y1, z0), W2(x1, y0, z1)]);
 function plantBox() { const b = PLANT.bounds; return boxOf(b.x, b.y, b.x + b.w, b.y + b.d, 0, PLANT.fitH || 5); }
@@ -904,7 +995,9 @@ function frame() {
   resize();
   if (fly) {
     fly.s = Math.min(1, fly.s + dt / 0.7); const k = 1 - Math.pow(1 - fly.s, 3);
-    camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.t0, fly.t1, k);
+    controls.target.lerpVectors(fly.t0, fly.t1, k);
+    const dir = fly.d0.clone().applyQuaternion(new THREE.Quaternion().slerp(fly.q, k));
+    camera.position.copy(controls.target).add(dir.multiplyScalar(fly.r0 + (fly.r1 - fly.r0) * k));
     if (fly.s >= 1) fly = null;
   }
   controls.update();
@@ -923,6 +1016,7 @@ function frame() {
     if (f.on) f.tex.offset.x -= (dt * 2 / f.length) * f.tex.repeat.x;
   }
   renderer.render(scene, camera);
+  updateCube();
   placeLabels();
 }
 function placeLabels() {
@@ -932,7 +1026,7 @@ function placeLabels() {
   const order = labels.slice().sort((a, b) => rank(a) - rank(b));
   // overlays (toolbar, side panel, legend, help line) are no-go zones for tags
   const wr = wrap.getBoundingClientRect();
-  for (const o of wrap.querySelectorAll(".p3-tools, .p3-panel, .p3-legend, .p3-help")) {
+  for (const o of wrap.querySelectorAll(".p3-tools, .p3-panel, .p3-legend, .p3-help, .p3-cube, .p3-triad, .p3-menu")) {
     if (o.hidden || !o.offsetWidth) continue;
     const r = o.getBoundingClientRect();
     placed.push({ x0: r.left - wr.left, x1: r.right - wr.left, y0: r.top - wr.top, y1: r.bottom - wr.top });
@@ -994,13 +1088,15 @@ function isolate(k) {
 }
 function build(container) {
   container.innerHTML = `<div class="p3-wrap p3n"><div class="p3-labels"></div>
-    <div class="p3-tools"><button class="btn sm" data-p3="reset" type="button" title="Show the whole plant">Reset view</button>
-      <button class="btn sm" data-p3="top" type="button">Top view</button>
-      <button class="btn sm" data-p3="auto" type="button">Auto-rotate</button>
-      <button class="btn sm" data-p3="lbl" type="button" aria-pressed="false">Labels</button></div>
+    ${toolsHTML()}
+    <div class="p3-cube" title="View cube - click a face"><div class="p3-cube-in">
+      <div class="f" data-v="front">FRONT</div><div class="f" data-v="back">BACK</div><div class="f" data-v="right">RIGHT</div>
+      <div class="f" data-v="left">LEFT</div><div class="f" data-v="top">TOP</div><div class="f bot">BOTTOM</div></div></div>
+    <svg class="p3-triad" viewBox="0 0 70 70" aria-hidden="true"><g class="ax"></g></svg>
+    <div class="p3-rect" hidden></div>
     <aside class="p3-panel" hidden aria-live="polite"></aside>
     <div class="p3-legend">${legendHTML()}</div>
-    <div class="p3-help">Drag = rotate · wheel = zoom · right-drag = move · click an area name to zoom · click a machine for details · click a legend line to trace it</div></div>`;
+    <div class="p3-help">Drag or middle-drag = rotate · right-drag or Ctrl+middle-drag = move · wheel = zoom at cursor · double-tap = zoom in (sky / Shift = out) · F = fit · Space = views</div></div>`;
   wrap = container.querySelector(".p3-wrap"); labelBox = wrap.querySelector(".p3-labels"); panel = wrap.querySelector(".p3-panel");
   pickables = []; machines = {}; levels = []; switches = []; flows = []; labels = []; selected = null; fly = null;
   pipeMeshes = []; isoSvc = null; framed = null;
@@ -1021,8 +1117,11 @@ function build(container) {
   Object.assign(sun.shadow.camera, { left: -R, right: R, top: R, bottom: -R, near: 1, far: 220 });
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; scene.add(sun);
   controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.minDistance = 6; controls.maxDistance = 260; controls.maxPolarAngle = Math.PI * 0.46; controls.autoRotateSpeed = 0.5;
-  controls.addEventListener("start", () => { fly = null; });
+  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.minDistance = 4; controls.maxDistance = 260; controls.maxPolarAngle = Math.PI / 2; controls.autoRotateSpeed = 0.5;
+  controls.zoomToCursor = true;                          // wheel zooms about the point under the mouse (as in SolidWorks)
+  controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: THREE.MOUSE.PAN };
+  controls.addEventListener("start", () => { fly = null; pushView(); });
+  history.length = 0; dispStyle = "shaded"; edgeMat = null; allMats = null; leftMode = "rotate"; areaMode = false;
   buildFloor();
   buildPlant();
   PLANT.pipes.forEach(buildPipe);
@@ -1030,24 +1129,192 @@ function build(container) {
   clock = new THREE.Clock();
   let down = null;
   const cv = renderer.domElement;
-  cv.addEventListener("pointerdown", (e) => { down = { x: e.clientX, y: e.clientY }; });
+  // taps: single = pick, double = zoom in at the point (Shift / sky = zoom out), two-finger tap = zoom out
+  const act = new Map(); let multi = null, lastTap = null;
+  cv.addEventListener("pointerdown", (e) => {
+    act.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (act.size === 1) down = { x: e.clientX, y: e.clientY, t: performance.now() };
+    if (act.size === 2) multi = { t: performance.now(), moved: false, start: new Map(act) };
+    if (act.size > 2) multi = null;
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (multi && multi.start.has(e.pointerId)) { const s = multi.start.get(e.pointerId); if (Math.hypot(e.clientX - s.x, e.clientY - s.y) > 12) multi.moved = true; }
+  });
+  const lift = (e) => { act.delete(e.pointerId); };
+  cv.addEventListener("pointercancel", (e) => { lift(e); multi = null; down = null; });
   cv.addEventListener("pointerup", (e) => {
-    if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) {
+    lift(e);
+    if (multi) {                                       // two-finger gesture: wait for both fingers
+      if (act.size === 0) { if (!multi.moved && performance.now() - multi.t < 400) zoomBy(2); multi = null; }
+      down = null; lastTap = null; return;
+    }
+    if (areaMode || e.button !== 0) { down = null; return; }
+    const tol = e.pointerType === "touch" ? 12 : 5;
+    if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < tol) {
+      const now = performance.now();
+      if (lastTap && now - lastTap.t < 350 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 40) {
+        lastTap = null; down = null;
+        zoomAt(e.clientX, e.clientY, !e.shiftKey);
+        return;
+      }
+      lastTap = { t: now, x: e.clientX, y: e.clientY };
       const u = pickAt(e.clientX, e.clientY);
       if (u && u.eq) select(u.eq);
       else if (u && u.tag && window.MD && MD.openTag) MD.openTag(u.tag);
       else select(null);
-    }
+    } else lastTap = null;
     down = null;
   });
-  cv.addEventListener("pointermove", (e) => { if (!down) { const u = pickAt(e.clientX, e.clientY); cv.style.cursor = u ? "pointer" : "grab"; } });
-  wrap.querySelectorAll("[data-p3]").forEach((btn) => (btn.onclick = () => {
+  cv.addEventListener("pointermove", (e) => { if (!down && !areaMode) { const u = pickAt(e.clientX, e.clientY); cv.style.cursor = u ? "pointer" : "grab"; } });
+  wireControls(cv);
+}
+
+// ------------------------------------------------------------------ SolidWorks-style view tools
+let leftMode = "rotate", areaMode = false, winH = null;
+const ICON = {
+  fit: '<rect x="8" y="8" width="8" height="8"/><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/>',
+  area: '<circle cx="10" cy="10" r="6.5"/><path d="M15 15l6 6"/><rect x="7" y="7" width="6" height="6" stroke-dasharray="2 1.6"/>',
+  zin: '<circle cx="10" cy="10" r="6.5"/><path d="M15 15l6 6M7 10h6M10 7v6"/>',
+  zout: '<circle cx="10" cy="10" r="6.5"/><path d="M15 15l6 6M7 10h6"/>',
+  prev: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/>',
+  views: '<path d="M12 2L3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/>',
+  style: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 010 17z" fill="currentColor"/>',
+  rot: '<path d="M20 12a8 8 0 11-2.3-5.6"/><path d="M20 3.5v5h-5"/>',
+  pan: '<path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/>',
+  auto: '<circle cx="12" cy="12" r="9"/><path d="M10 8l6 4-6 4z" fill="currentColor"/>',
+  lbl: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="7.5" r="1.6"/>',
+};
+const ib = (a, title, extra = "") => `<button type="button" class="p3-ib" data-p3="${a}" title="${title}" aria-label="${title}" ${extra}><svg viewBox="0 0 24 24">${ICON[a]}</svg></button>`;
+function toolsHTML() {
+  const views = [["front", "Front", "1"], ["back", "Back", "2"], ["left", "Left", "3"], ["right", "Right", "4"], ["top", "Top", "5"], ["iso", "Isometric", "7"], ["plant", "Plant view (3/4)", "0"]];
+  return `<div class="p3-tools" role="toolbar" aria-label="View tools">
+    ${ib("fit", "Zoom to fit (F)")}${ib("area", "Zoom to area - drag a box")}${ib("zin", "Zoom in (Shift+Z)")}${ib("zout", "Zoom out (Z)")}${ib("prev", "Previous view (Ctrl+Shift+Z)")}
+    <span class="sep"></span>
+    <div class="p3-dd">${ib("views", "View orientation (Space)", 'aria-haspopup="true"')}<div class="p3-menu" data-menu="views" hidden>
+      ${views.map(([k, n, s]) => `<button type="button" data-view="${k}"><span>${n}</span><kbd>${s}</kbd></button>`).join("")}</div></div>
+    <div class="p3-dd">${ib("style", "Display style", 'aria-haspopup="true"')}<div class="p3-menu" data-menu="style" hidden>
+      <button type="button" data-style="shaded"><span>Shaded</span></button><button type="button" data-style="edges"><span>Shaded with edges</span></button>
+      <button type="button" data-style="wire"><span>Wireframe</span></button></div></div>
+    <span class="sep"></span>
+    ${ib("rot", "Rotate - left-drag turns the view")}${ib("pan", "Pan - left-drag moves the view")}
+    <span class="sep"></span>
+    ${ib("auto", "Auto-rotate")}${ib("lbl", "Hide / show tags")}
+    <div class="p3-dd"><button type="button" class="p3-ib q" data-p3="keys" title="Mouse and keyboard" aria-haspopup="true">?</button><div class="p3-menu keys" data-menu="keys" hidden>
+      <b>Mouse (SolidWorks style)</b>
+      <p><kbd>Left / middle drag</kbd> rotate</p><p><kbd>Right drag</kbd> or <kbd>Ctrl + middle drag</kbd> pan</p>
+      <p><kbd>Shift + middle drag</kbd> zoom</p><p><kbd>Wheel</kbd> zoom at the cursor</p><p><kbd>Middle double-click</kbd> zoom to fit</p>
+      <p><kbd>Double-click / double-tap</kbd> zoom in on that spot</p><p><kbd>Shift + double-click</kbd>, double-tap the sky or <kbd>two-finger tap</kbd> zoom out</p>
+      <b>Keyboard (click the 3D view first)</b>
+      <p><kbd>F</kbd> zoom to fit · <kbd>Z</kbd> / <kbd>Shift+Z</kbd> zoom out / in</p><p><kbd>Arrows</kbd> rotate 15° · <kbd>Shift+Arrows</kbd> 90°</p>
+      <p><kbd>Ctrl+Arrows</kbd> pan · <kbd>Space</kbd> view menu</p><p><kbd>1</kbd> Front <kbd>2</kbd> Back <kbd>3</kbd> Left <kbd>4</kbd> Right <kbd>5</kbd> Top <kbd>7</kbd> Iso <kbd>0</kbd> Plant</p>
+      <p><kbd>Ctrl+Shift+Z</kbd> previous view · <kbd>Esc</kbd> close / clear</p></div></div>
+  </div>`;
+}
+function syncTools() {
+  if (!wrap) return;
+  const on = (a, v) => { const b = wrap.querySelector(`[data-p3="${a}"]`); if (b) { b.classList.toggle("on", !!v); b.setAttribute("aria-pressed", String(!!v)); } };
+  on("auto", controls && controls.autoRotate); on("lbl", labelBox && !labelBox.classList.contains("off"));
+  on("rot", leftMode === "rotate" && !areaMode); on("pan", leftMode === "pan" && !areaMode); on("area", areaMode);
+  wrap.querySelectorAll("[data-style]").forEach((b) => b.classList.toggle("on", b.dataset.style === dispStyle));
+}
+function closeMenus(except) { wrap.querySelectorAll(".p3-menu").forEach((m) => { if (m !== except) m.hidden = true; }); }
+function toggleMenu(name) { const m = wrap.querySelector(`[data-menu="${name}"]`); if (!m) return; closeMenus(m); m.hidden = !m.hidden; }
+function setLeft(mode) {
+  leftMode = mode;
+  controls.mouseButtons.LEFT = mode === "pan" ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+  controls.touches.ONE = mode === "pan" ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+  syncTools();
+}
+function setArea(on) { areaMode = on; controls.enabled = !on; renderer.domElement.style.cursor = on ? "crosshair" : ""; syncTools(); }
+function fitAll() {                                    // zoom to fit: whole plant, keep the current direction
+  const { t, p } = dest(), d = p.sub(t).normalize();
+  fitBox(plantBox(), d.y > 0.999 ? VIEWS.top.clone() : d, 1.02);
+}
+function wireControls(cv) {
+  wrap.tabIndex = 0;
+  wrap.querySelectorAll("[data-p3]").forEach((btn) => (btn.onclick = (e) => {
+    e.stopPropagation();
     const a = btn.dataset.p3;
-    if (a === "reset") { controls.autoRotate = false; wrap.querySelector('[data-p3="auto"]').classList.remove("primary"); fitBox(plantBox(), undefined, 1.02); }
-    if (a === "top") { const bb = plantBox(); fitBox(bb, new THREE.Vector3(0.0001, 1, 0.012), 1.0); }
-    if (a === "auto") { controls.autoRotate = !controls.autoRotate; btn.classList.toggle("primary", controls.autoRotate); }
-    if (a === "lbl") { const off = labelBox.classList.toggle("off"); btn.classList.toggle("primary", off); btn.setAttribute("aria-pressed", String(off)); }
+    if (a === "fit") fitAll();
+    if (a === "area") setArea(!areaMode);
+    if (a === "zin") zoomBy(0.75);
+    if (a === "zout") zoomBy(1.33);
+    if (a === "prev") prevView();
+    if (a === "views" || a === "style" || a === "keys") { toggleMenu(a); return; }
+    if (a === "rot") { setArea(false); setLeft("rotate"); }
+    if (a === "pan") { setArea(false); setLeft("pan"); }
+    if (a === "auto") { controls.autoRotate = !controls.autoRotate; }
+    if (a === "lbl") labelBox.classList.toggle("off");
+    closeMenus(); syncTools();
   }));
+  wrap.querySelectorAll("[data-view]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); setView(b.dataset.view); closeMenus(); }));
+  wrap.querySelectorAll("[data-style]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); setStyle(b.dataset.style); closeMenus(); }));
+  wrap.querySelectorAll(".p3-cube [data-v]").forEach((f) => (f.onclick = () => setView(f.dataset.v)));
+  wrap.querySelectorAll(".p3-menu").forEach((m) => m.addEventListener("click", (e) => e.stopPropagation()));
+  wrap.addEventListener("click", () => closeMenus());
+  // middle button like SolidWorks: drag = rotate, Ctrl = pan, Shift = zoom; double-click = zoom to fit
+  wrap.addEventListener("pointerdown", (e) => {
+    if (e.target === cv) wrap.focus({ preventScroll: true });
+    if (e.button === 1) { e.preventDefault(); controls.mouseButtons.MIDDLE = e.ctrlKey ? THREE.MOUSE.PAN : e.shiftKey ? THREE.MOUSE.DOLLY : THREE.MOUSE.ROTATE; }
+  }, true);
+  cv.addEventListener("mousedown", (e) => { if (e.button === 1) e.preventDefault(); });     // no browser auto-scroll
+  let midClick = 0;
+  cv.addEventListener("auxclick", (e) => { if (e.button !== 1) return; const n = performance.now(); if (n - midClick < 400) fitAll(); midClick = n; });
+  // zoom to area: drag a box
+  const box = wrap.querySelector(".p3-rect"); let a0 = null;
+  wrap.addEventListener("pointerdown", (e) => {
+    if (!areaMode || e.button !== 0 || e.target.closest(".p3-tools, .p3-menu, .p3-panel, .p3-cube, .p3-legend")) return;
+    e.preventDefault(); e.stopPropagation();                 // no text selection / no orbit while drawing the box
+    a0 = { x: e.clientX, y: e.clientY };
+  }, true);
+  const aMove = (e) => {
+    if (!a0) return;
+    e.preventDefault();
+    const r = wrap.getBoundingClientRect();
+    Object.assign(box.style, { left: `${Math.min(a0.x, e.clientX) - r.left}px`, top: `${Math.min(a0.y, e.clientY) - r.top}px`, width: `${Math.abs(e.clientX - a0.x)}px`, height: `${Math.abs(e.clientY - a0.y)}px` });
+    box.hidden = false;
+  };
+  const aUp = (e) => {
+    if (!a0) return;
+    const s = a0; a0 = null; box.hidden = true;
+    if (e.type === "pointerup" && Math.abs(e.clientX - s.x) > 8 && Math.abs(e.clientY - s.y) > 8) zoomToRect(s.x, s.y, e.clientX, e.clientY);
+    setArea(false);
+  };
+  if (winH) { window.removeEventListener("pointermove", winH.m); window.removeEventListener("pointerup", winH.u); window.removeEventListener("pointercancel", winH.u); }
+  winH = { m: aMove, u: aUp };
+  window.addEventListener("pointermove", aMove); window.addEventListener("pointerup", aUp); window.addEventListener("pointercancel", aUp);
+  wrap.addEventListener("selectstart", (e) => { if (areaMode) e.preventDefault(); });
+  // keyboard (SolidWorks shortcuts) while the 3D view has focus
+  wrap.addEventListener("keydown", (e) => {
+    const k = e.key, step = e.shiftKey ? Math.PI / 2 : Math.PI / 12;
+    let done = true;
+    if (k === "Escape") { closeMenus(); if (areaMode) setArea(false); else if (isoSvc) isolate(null); else select(null); }
+    else if (k === "f" || k === "F") fitAll();
+    else if (k === "z" || k === "Z") { if (e.ctrlKey && e.shiftKey) prevView(); else zoomBy(e.shiftKey ? 0.75 : 1.33); }
+    else if (k === " ") toggleMenu("views");
+    else if (k.startsWith("Arrow")) {
+      const dx = k === "ArrowLeft" ? -1 : k === "ArrowRight" ? 1 : 0, dy = k === "ArrowUp" ? 1 : k === "ArrowDown" ? -1 : 0;
+      if (e.ctrlKey) panBy(-dx, -dy); else orbitBy(-dx * step, dy * step);
+    }
+    else if ({ 1: "front", 2: "back", 3: "left", 4: "right", 5: "top", 7: "iso", 0: "plant" }[k]) setView({ 1: "front", 2: "back", 3: "left", 4: "right", 5: "top", 7: "iso", 0: "plant" }[k]);
+    else done = false;
+    if (done) { e.preventDefault(); e.stopPropagation(); }
+  });
+  syncTools();
+}
+// view cube + axis triad follow the camera
+const SGN = [1, -1, 1, 0, -1, 1, -1, 0, 1, -1, 1, 0];
+function updateCube() {
+  const cube = wrap.querySelector(".p3-cube-in"), ax = wrap.querySelector(".p3-triad .ax");
+  if (!cube) return;
+  const e = camera.matrixWorldInverse.elements, m = [];
+  for (let i = 0; i < 12; i++) m.push(i % 4 === 3 ? 0 : (e[i] * SGN[i]).toFixed(5));
+  cube.style.transform = `matrix3d(${m.join(",")},0,0,0,1)`;
+  const axes = [["X", new THREE.Vector3(1, 0, 0), "#d93a3f"], ["Y", new THREE.Vector3(0, 0, -1), "#2f9e44"], ["Z", new THREE.Vector3(0, 1, 0), "#2f6fd8"]];
+  ax.innerHTML = axes.map(([n, v, c]) => {
+    const p = v.transformDirection(camera.matrixWorldInverse), x = 35 + p.x * 24, y = 35 - p.y * 24;
+    return `<line x1="35" y1="35" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/><text x="${(35 + p.x * 31).toFixed(1)}" y="${(35 - p.y * 31 + 4).toFixed(1)}" fill="${c}">${n}</text>`;
+  }).join("");
 }
 
 window.Plant3D = {
@@ -1075,7 +1342,7 @@ window.Plant3D = {
     }
     return Object.values(out);
   },
-  select, zoomArea, isolate, reset: () => fitBox(plantBox(), undefined, 1.02),
+  select, zoomArea, isolate, setView, setStyle, zoomBy, prevView, fitAll, reset: () => fitBox(plantBox(), undefined, 1.02),
   ready: true,
 };
 window.dispatchEvent(new Event("plant3d-ready"));
