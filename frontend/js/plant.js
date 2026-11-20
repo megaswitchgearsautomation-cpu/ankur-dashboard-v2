@@ -20,7 +20,7 @@
   const PUMP_NAME = {
     OP_P1A: "Sludge main", OP_P1B: "Sludge standby", OP_P5A: "Filtrate main", OP_P5B: "Filtrate standby",
     // raw water inlet pumps 03-P-301 / 302: P&ID "Ground water pump" + "Standby pump" (not "borewell")
-    OP_P6A: "Ground water pump", OP_P6B: "Standby pump", OP_P14: "Supply main", OP_P15: "Supply standby",
+    OP_P6A: "Ground water\npump (main)", OP_P6B: "Ground water\npump (standby)", OP_P14: "Raw water supply pump\n(main)", OP_P15: "Raw water supply pump\n(standby)",
     OP_P7: "De-gasifier PHE", OP_P3: "Dryer condenser", OP_P11: "Boiler cooling", OP_P10: "Turbine oil cooling",
     OP_P2: "Hot water to dryer", OP_P4: "Condensate", OP_P9: "Recirculation", OP_P12: "Acid dosing",
     OP_P13: "Alkali dosing", OP_P8: "Gravity tank → WTP", PCP: "Progressive cavity",
@@ -942,7 +942,11 @@
         <g class="spin" style="transform-origin:${x + 10}px ${y}px"><path class="pm-imp" d="M${x + 10} ${y} l5 -3 M${x + 10} ${y} l-2.5 5.5 M${x + 10} ${y} l-3 -4.5"/></g>
         <circle class="pm-led" cx="${x - 12}" cy="${y - 13}" r="3.5"/></g>
         <text class="eq-t pm-t" x="${x}" y="${ty}" text-anchor="middle">${esc(lbl)}</text>
-        ${o.name !== false && PUMP_NAME[id] ? `<text class="eq-n pm-n" x="${x}" y="${up ? ty - T(16) - 2 : ty + T(16)}" text-anchor="middle">${esc(PUMP_NAME[id])}</text>` : ""}</g>`
+        ${o.name !== false && PUMP_NAME[id] ? (() => {
+          // name under the tag; "\n" splits it into lines; o.keepName = stays visible when zoomed out
+          const ln = PUMP_NAME[id].split("\n"), y0 = up ? ty - T(16) * ln.length - 2 : ty + T(16);
+          return `<text class="eq-n pm-n${o.keepName ? " keep" : ""}" x="${x}" y="${y0}" text-anchor="middle">${ln.map((s, i) => `<tspan x="${x}" dy="${i ? T(14) : 0}">${esc(s)}</tspan>`).join("")}</text>`;
+        })() : ""}</g>`
         + ob(x - 32, y - 20, x + 28, y + 17);
     },
     // submersible pump (P&ID: sludge / filtrate tank pumps, ground water pumps): vertical body standing on the floor at (x, y),
@@ -1477,7 +1481,7 @@
     raw: {
       name: "Raw water storage & distribution (P&ID sheet 3)",
       note: "03-P-301 / 302 fill the tank: start at LL, stop at HL · 03-P-303 / 304 (VFD) run above LL, stop at LL; the VFD holds the header at ≥ 3 kg/cm² from PT-301",
-      vb: [1520, 660],                                  // wider: the volute press line goes on to dosing make-up + screw spray (P&ID sheet 3)
+      vb: [1520, 690],                                  // taller: two-line pump names under 03-P-301 / 302; wider: the volute press line goes on to dosing make-up + screw spray (P&ID sheet 3)
       draw: () => {
         const both = ["OP_P14", "OP_P15"], ug = ["OP_P6A", "OP_P6B"];
         const dests = [["Boiler DM plant make-up tank\n(PAR scope)", "CW-25NB"], ["Boiler wet scraper conveyor\n(PAR scope)", "CW-25NB"],
@@ -1494,13 +1498,13 @@
           P.pipe("M220 250 L220 200 L298 200", "ctp"), P.hv(220, 226, true), P.link(160, 250, 120, 44, "From CTP\nplant", "wtp"),
           P.hv(114, 600), P.hv(250, 580, true), P.nrv(130, 520, "u"),
           P.lamp(138, 380, SW.FLOW, "FS"), P.text(184, 385, "03-FS-301"),
-          P.pump(70, 600, "OP_P6A"), P.pump(200, 600, "OP_P6B"),
+          P.pump(70, 600, "OP_P6A", { keepName: true }), P.pump(200, 600, "OP_P6B", { keepName: true }),
           P.tank(300, 140, 260, 260, { fluid: "water", label: "Raw water storage tank (03-LS-301)", sw: [LS("LS301_HL", 0.12, "HL"), LS("LS301_LL", 0.85, "LL")] }),
           // transfer pumps (VFD): valve - strainer - valve - pump - NRV - valve
           P.pipe("M560 380 L620 380 L620 300 L692 300", "water", ["OP_P14"]), P.pipe("M620 380 L620 460 L692 460", "water", ["OP_P15"]),
           P.pipe("M748 300 L830 300 L830 380", "water", ["OP_P14"]), P.pipe("M748 460 L830 460 L830 380", "water", ["OP_P15"]),
           ...[300, 460].map((y) => P.hv(638, y) + P.strn(664, y) + P.nrv(770, y) + P.hv(800, y)),
-          P.pump(720, 300, "OP_P14"), P.pump(720, 460, "OP_P15"),
+          P.pump(720, 300, "OP_P14", { keepName: true }), P.pump(720, 460, "OP_P15", { keepName: true }),
           P.pipe("M830 380 L900 380", "water", both), P.pipe("M900 380 L900 60 M900 380 L900 550", "water", both),
           P.gauge(865, 356, "03-PG-301"),
           `<path class="tx-leg" d="M853 200 L900 200"/>`, P.tx(840, 200, "PT_01", "PT-301"),

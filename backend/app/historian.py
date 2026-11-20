@@ -188,10 +188,16 @@ class Historian:
                 (tag, t_from, t_to)).fetchone()[0]
 
     def first_sample_ts(self):
-        """Oldest stored sample (epoch s) or None - the date pickers never offer history that is not there."""
+        """Oldest stored sample (epoch s) or None - the date pickers never offer history that is not there.
+        MIN(ts) scans the whole samples table (~0.5 s, holding the lock the live view needs), so the
+        answer is cached; new samples are always newer, it only moves when purge() deletes old rows."""
+        cached = getattr(self, "_first_ts", None)
+        if cached is not None:
+            return cached
         with self._lock:
             r = self._db.execute("SELECT MIN(ts) FROM samples").fetchone()
-        return r[0] if r and r[0] is not None else None
+        self._first_ts = r[0] if r and r[0] is not None else None
+        return self._first_ts
 
     def purge(self, retention_days: int):
         cutoff = time.time() - retention_days * 86400
@@ -199,6 +205,7 @@ class Historian:
             self._db.execute("DELETE FROM samples WHERE ts < ?", (cutoff,))
             self._db.execute("DELETE FROM alarms WHERE raised_at < ? AND cleared_at IS NOT NULL", (cutoff,))
             self._db.execute("DELETE FROM events WHERE ts < ?", (cutoff,))
+            self._first_ts = None  # oldest sample may have moved: look it up again next time
 
     # -- alarms ---------------------------------------------------------------
     def alarm_raise(self, tag, kind, priority, message, value, limit_value, simulated, ts):

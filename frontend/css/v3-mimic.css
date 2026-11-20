@@ -128,6 +128,9 @@ html.mm-fs-lock, html.mm-fs-lock body { overflow: hidden; }
 #mimicSvg svg.mimic .tx-i { font-size: 11px; }
 #mimicSvg svg.mimic .gauge .g-k { font-size: 8px; }
 #mimicSvg svg.mimic.lod-hide :is(.eq-n, .g-n, .g-k, .psz, .tx-sp, .lod, .gnd text, .tx-i, .lv-ln text) { display: none; }
+/* pump full names that must always show (raw water pumps): same size as the tag line below it, never hidden by the zoom rule */
+#mimicSvg svg.mimic .eq-n.keep { font-size: calc(13px * var(--fs, 1)); font-weight: 700; fill: #2f5f8f; }
+#mimicSvg svg.mimic.lod-hide .eq-n.keep { display: inline; }
 #mimicSvg svg.mimic.lbl-hide text { display: none; }   /* zoomed out past fit: symbols and colours only */
 
 /* ---------- flow-direction chevrons ---------- */

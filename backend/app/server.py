@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import base64
 import binascii
+import gzip
 import json
 import math
 import mimetypes
 import os
 import re
+import socket
 import time
 import traceback
 from http import cookies
@@ -34,11 +36,20 @@ def make_handler(app):
                 super().log_message(fmt, *args)
 
         # -- helpers ------------------------------------------------------------
+        def _maybe_gzip(self, body):
+            """Compress text bodies when the browser accepts it (live data / scripts shrink ~8x over Wi-Fi)."""
+            if len(body) < 1024 or "gzip" not in (self.headers.get("Accept-Encoding") or ""):
+                return body
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Vary", "Accept-Encoding")
+            return gzip.compress(body, compresslevel=5)
+
         def _json(self, obj, status=200, extra_headers=None):
             body = json.dumps(obj, default=str).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
+            body = self._maybe_gzip(body)
             self.send_header("Content-Length", str(len(body)))
             for k, v in (extra_headers or {}).items():
                 self.send_header(k, v)
@@ -110,13 +121,25 @@ def make_handler(app):
             ctype = mimetypes.guess_type(full)[0] or "application/octet-stream"
             if ctype.startswith("text/") or ctype in ("application/javascript",):
                 ctype += "; charset=utf-8"
+            st = os.stat(full)
+            etag = f'"{st.st_mtime_ns:x}-{st.st_size:x}"'
+            if etag in (self.headers.get("If-None-Match") or ""):
+                # unchanged since the browser's copy: no need to send the file again
+                self.send_response(304)
+                self.send_header("ETag", etag)
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                return
             with open(full, "rb") as f:
                 data = f.read()
             self.send_response(200)
             self.send_header("Content-Type", ctype)
-            self.send_header("Content-Length", str(len(data)))
+            self.send_header("ETag", etag)
             self.send_header("Cache-Control", "no-cache")
             self.send_header("X-Content-Type-Options", "nosniff")
+            if not ctype.startswith("image/png"):
+                data = self._maybe_gzip(data)
+            self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
 
@@ -952,7 +975,27 @@ def client_alarm(a):
 no_hmi_plc = reports.no_hmi_plc
 
 
+class DualStackServer(ThreadingHTTPServer):
+    """Listen on IPv6 and IPv4 together. Browsers try http://localhost on IPv6 (::1) first; with an
+    IPv4-only socket Windows waits ~2 s before falling back, on every new connection."""
+    address_family = socket.AF_INET6
+
+    def server_bind(self):
+        try:
+            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        except (AttributeError, OSError):
+            pass
+        super().server_bind()
+
+
 def serve(app, host, port):
+    if host in ("0.0.0.0", "", "::") and socket.has_ipv6:
+        try:
+            httpd = DualStackServer(("::", port), make_handler(app))
+            httpd.daemon_threads = True
+            return httpd
+        except OSError:
+            pass  # no IPv6 on this PC: plain IPv4 below
     httpd = ThreadingHTTPServer((host, port), make_handler(app))
     httpd.daemon_threads = True
     return httpd

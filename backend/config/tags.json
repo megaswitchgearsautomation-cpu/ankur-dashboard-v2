@@ -83,7 +83,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -120,7 +120,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -265,7 +265,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -302,7 +302,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -447,7 +447,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -484,7 +484,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -629,7 +629,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -666,7 +666,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -781,7 +781,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -818,7 +818,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -859,7 +859,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -938,7 +938,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -975,7 +975,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -1016,7 +1016,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -1273,7 +1273,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -1310,7 +1310,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -1455,7 +1455,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -1492,7 +1492,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -1637,7 +1637,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -1674,7 +1674,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -1819,7 +1819,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -1856,7 +1856,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2001,7 +2001,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2038,7 +2038,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2115,7 +2115,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2152,7 +2152,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2193,7 +2193,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2234,7 +2234,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2271,7 +2271,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2312,7 +2312,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2353,7 +2353,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2390,7 +2390,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2431,7 +2431,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2472,7 +2472,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2509,7 +2509,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2550,7 +2550,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2591,7 +2591,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2628,7 +2628,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2669,7 +2669,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2710,7 +2710,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2747,7 +2747,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2788,7 +2788,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2829,7 +2829,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2866,7 +2866,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2907,7 +2907,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2948,7 +2948,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -2985,7 +2985,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3026,7 +3026,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3067,7 +3067,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3104,7 +3104,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3145,7 +3145,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3186,7 +3186,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3223,7 +3223,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3264,7 +3264,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3305,7 +3305,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3342,7 +3342,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3383,7 +3383,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3462,7 +3462,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3499,7 +3499,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3540,7 +3540,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3619,7 +3619,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3656,7 +3656,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3697,7 +3697,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3776,7 +3776,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3813,7 +3813,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3854,7 +3854,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3933,7 +3933,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -3970,7 +3970,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4011,7 +4011,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4090,7 +4090,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4127,7 +4127,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4168,7 +4168,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4247,7 +4247,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4284,7 +4284,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4325,7 +4325,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4404,7 +4404,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4441,7 +4441,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4482,7 +4482,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4561,7 +4561,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4598,7 +4598,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4639,7 +4639,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4718,7 +4718,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4755,7 +4755,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4796,7 +4796,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4875,7 +4875,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4912,7 +4912,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -4953,7 +4953,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -5032,7 +5032,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -5069,7 +5069,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -5110,7 +5110,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -10897,7 +10897,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -10936,7 +10936,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -10975,7 +10975,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11014,7 +11014,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11053,7 +11053,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11092,7 +11092,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11131,7 +11131,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11170,7 +11170,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11209,7 +11209,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11248,7 +11248,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11287,7 +11287,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11326,7 +11326,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11365,7 +11365,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11404,7 +11404,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11443,7 +11443,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11482,7 +11482,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11521,7 +11521,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11560,7 +11560,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11599,7 +11599,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11638,7 +11638,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11677,7 +11677,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11716,7 +11716,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11755,7 +11755,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11794,7 +11794,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 2000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11833,7 +11833,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11872,7 +11872,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11911,7 +11911,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11949,7 +11949,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -11987,7 +11987,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12025,7 +12025,7 @@
     "scaling": {
       "mode": "none"
     },
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12061,20 +12061,20 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
     "kpi": false,
     "alarm": {
       "enabled": false,
+      "priority": "yellow",
+      "delay_s": 5,
+      "hihi": null,
       "hi": null,
       "lo": null,
-      "hihi": null,
       "lolo": null,
-      "deadband": 0,
-      "priority": "yellow",
-      "delay_s": 5
+      "deadband": 0
     },
     "mapping_verified": false,
     "source_ref": "HMI screen 3 'LT Set Point' (DIAScreen element addresses)",
@@ -12095,14 +12095,31 @@
     "level_of": "LT_01",
     "level_key": "hh",
     "notes": "HMI LT Set Point HH: D13024 Double Word unsigned, 1 decimal (raw x10). Unit % of the 0-3600 mm range (client philosophy R1: levels are '% settable'); dashboard converts to mm for comparisons. Unit assumed from the philosophy - verify on the PLC.",
-    "writable": true
+    "writable": true,
+    "address_override": {
+      "enabled": false,
+      "function_code": 3,
+      "address": 0,
+      "base": "zero",
+      "bit": null
+    },
+    "states": {
+      "false": "OFF",
+      "true": "ON"
+    },
+    "plc_tag": "",
+    "source_id": "",
+    "description": "",
+    "trend_min": null,
+    "trend_max": null,
+    "setpoint_tag": null
   },
   {
     "group": "Level set points",
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12139,7 +12156,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12175,7 +12192,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12216,7 +12233,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12253,7 +12270,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12289,7 +12306,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12330,7 +12347,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12367,7 +12384,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12403,7 +12420,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12444,7 +12461,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12481,7 +12498,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12517,7 +12534,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12558,7 +12575,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12595,7 +12612,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12631,7 +12648,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12672,7 +12689,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12709,7 +12726,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12745,7 +12762,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12786,7 +12803,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12823,7 +12840,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12859,7 +12876,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12900,7 +12917,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
@@ -12937,7 +12954,7 @@
     "area": "Process",
     "word_order": "default",
     "invert": false,
-    "poll_ms": 5000,
+    "poll_ms": 1000,
     "show_on_dashboard": false,
     "trend": false,
     "log": false,
