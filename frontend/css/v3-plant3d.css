@@ -1,0 +1,76 @@
+/* v3-plant3d (20-11-2026): rebuilt 3D plant - compact tags, clickable area names, machine side panel, service legend.
+   Scoped to .p3n (the new 3D view) so nothing else changes. */
+.p3n { background: #e6ebf0; }
+.p3n .p3-labels { z-index: 2; }
+/* compact equipment tag: status dot + tag (+ TRIP / MAN text) */
+.p3n .p3-lb { position: absolute; left: 0; top: 0; display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px;
+  background: rgba(21, 25, 31, .88); color: #fff; font-size: 11px; line-height: 1.3; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  border: 1px solid rgba(255,255,255,.08); pointer-events: auto; cursor: pointer; will-change: transform; }
+.p3n .p3-lb b { font-weight: 700; letter-spacing: .01em; }
+.p3n .p3-lb .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px rgba(255,255,255,.35); }
+.p3n .p3-lb .trip { background: #d93a3f; color: #fff; font-size: 9.5px; font-weight: 800; padding: 0 4px; border-radius: 3px; letter-spacing: .04em; }
+.p3n .p3-lb .man { background: #f2b400; color: #1d1d1d; font-size: 9.5px; font-weight: 800; padding: 0 4px; border-radius: 3px; }
+.p3n .p3-lb.st-trip { background: rgba(120, 18, 22, .92); }
+.p3n .p3-lb.vendor { background: rgba(80, 86, 94, .82); border-style: dashed; border-color: rgba(255,255,255,.45); }
+.p3n .p3-lb.sel { outline: 2px solid #2f7ff5; outline-offset: 1px; }
+.p3n .p3-lb:hover { border-color: #8fd14f; }
+/* instrument tag: tag + live value */
+.p3n .p3-lb.tx { background: rgba(255,255,255,.95); color: #17324f; border-color: rgba(47,111,181,.5); cursor: pointer; }
+.p3n .p3-lb.tx .tn { font-size: 10px; color: #2f6fb5; font-weight: 700; }
+.p3n .p3-lb.tx b { font-size: 11.5px; color: #10243a; }
+.p3n .p3-lb.tx.over { background: #fde2e2; border-color: #d93a3f; }
+.p3n .p3-lb.tx.over b { color: #b42318; }
+/* vessel / basin name (no state) */
+.p3n .p3-lb.nm { background: rgba(255,255,255,.9); color: #26301b; border-color: rgba(90,110,40,.35); cursor: default; pointer-events: none; font-size: 10.5px; }
+.p3n .p3-lb.nm .sub { color: #5e6458; font-weight: 600; margin-left: 3px; }
+/* area name: on the floor, clickable */
+.p3n .p3-lb.area { background: rgba(31, 79, 158, .9); color: #fff; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+  border: 0; padding: 3px 8px; border-radius: 3px; }
+.p3n .p3-lb.area:hover { background: #2f7ff5; }
+.p3n .p3-labels.off .p3-lb:not(.area):not(.sel) { display: none !important; }
+/* tools */
+.p3n .p3-tools { top: 10px; right: 10px; z-index: 4; }
+.p3n .p3-tools .btn.primary { background: #1f4f9e; color: #fff; }
+/* service legend */
+.p3n .p3-legend { position: absolute; left: 10px; bottom: 38px; z-index: 3; display: flex; flex-wrap: wrap; gap: 3px 10px; max-width: min(620px, calc(100% - 20px));
+  padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,.9); font-size: 11px; color: #33382f; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.p3n .p3-legend span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.p3n .p3-legend i { width: 18px; height: 5px; border-radius: 3px; display: inline-block; }
+.p3n .p3-legend .vd i { height: 10px; width: 14px; border: 1.5px dashed #50565e; border-radius: 2px; background: none; }
+/* machine side panel */
+.p3n .p3-panel { position: absolute; top: 52px; right: 10px; bottom: 44px; z-index: 5; width: min(300px, 46%); overflow: auto; padding: 12px 14px;
+  background: #fff; border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.18); font-size: 13px; color: #1e2329; }
+.p3n .p3-panel[hidden] { display: none; }
+.p3n .p3-ph { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.p3n .p3-ph b { font-size: 17px; }
+.p3n .p3-ph .demo { margin-left: 8px; background: #fde8a8; color: #6b4e00; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 4px; vertical-align: middle; }
+.p3n .p3-x { border: 0; background: #f1f2f0; width: 28px; height: 28px; border-radius: 6px; font-size: 18px; line-height: 1; cursor: pointer; }
+.p3n .p3-pn { color: #4b5361; margin: 2px 0 10px; }
+.p3n .p3-ps { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; font-weight: 800; margin-bottom: 10px; background: #f1f2f0; }
+.p3n .p3-ps i { width: 10px; height: 10px; border-radius: 50%; background: #9a9c94; }
+.p3n .p3-ps.st-run { background: #e6f5df; color: #2e6b0f; } .p3n .p3-ps.st-run i { background: #46a414; }
+.p3n .p3-ps.st-open { background: #e6f5df; color: #2e6b0f; } .p3n .p3-ps.st-open i { background: #46a414; }
+.p3n .p3-ps.st-trip { background: #fde2e2; color: #b42318; } .p3n .p3-ps.st-trip i { background: #d93a3f; }
+.p3n .p3-ps.st-unk { color: #6b6f68; }
+.p3n .p3-pd { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 10px; }
+.p3n .p3-pd dt { color: #6b7280; } .p3n .p3-pd dd { margin: 0; font-weight: 600; }
+.p3n .p3-io { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.p3n .p3-io .sig { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: #eceee9; color: #6b6f68; }
+.p3n .p3-io .sig.on { background: #e3f4da; color: #2e6b0f; }
+.p3n .p3-rd { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.p3n .p3-rd caption { text-align: left; font-weight: 700; color: #4b5361; padding-bottom: 4px; }
+.p3n .p3-rd td { padding: 4px 0; border-top: 1px solid #eef0ec; } .p3n .p3-rd td:last-child { text-align: right; }
+.p3n .p3-vn { color: #6b6f68; font-size: 12px; border-left: 3px dashed #9aa0a8; padding-left: 8px; }
+.p3n .p3-help { z-index: 3; }
+.p3n .p3-legend { font-size: 10.5px; padding: 4px 8px; }
+.p3n .p3-legend [data-s] { cursor: pointer; border-radius: 4px; padding: 0 3px; }
+.p3n .p3-legend [data-s]:hover { background: #eef2f7; }
+.p3n .p3-legend [data-s].on { background: #1f4f9e; color: #fff; font-weight: 700; }
+.p3n .p3-legend [data-s].dim { opacity: .45; }
+@media (max-width: 760px) {
+  .p3n .p3-legend { max-width: calc(100% - 20px); top: auto; bottom: 8px; font-size: 10px; flex-wrap: nowrap; overflow-x: auto; }
+  .p3n .p3-help { display: none; }
+  .p3n .p3-tools { left: 10px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+  .p3n .p3-tools .btn { padding: 4px 8px; font-size: 12px; white-space: nowrap; }
+  .p3n .p3-panel { width: auto; left: 10px; top: auto; bottom: 10px; max-height: 55%; }
+}

@@ -55,9 +55,46 @@
   }
   function labelAll() { document.querySelectorAll(CARD_TABLES).forEach(labelTable); }
 
+  /* ---------- cards side by side: the parts with a variable number of lines (a name on 1, 2 or 3 lines) get the
+     height of the tallest one in the same visual row, so values, bars and buttons below them line up at every
+     window width (client 20-11-2026: "when I squeeze the screen the alignment must not be disturbed") ---------- */
+  const ROW_PARTS = [
+    [".inst-grid", ".inst", [".in-n"]],                       // Instruments
+    [".eqg", ".eqc", [".eqc-top", ".eqc-name", ".eqc-meta", ".eqc-stats"]],   // Equipment cards
+    [".charts", ".tr-card", [".tr-head"]],                    // Trends charts
+  ];
+  function alignParts() {
+    for (const [gridSel, cardSel, parts] of ROW_PARTS) {
+      document.querySelectorAll(gridSel).forEach((grid) => {
+        if (!grid.offsetParent) return;
+        const cards = [...grid.querySelectorAll(`:scope > ${cardSel}`)].filter((c) => c.offsetParent);
+        parts.forEach((p) => cards.forEach((c) => { const el = c.querySelector(p); if (el && el.style.minHeight) el.style.minHeight = ""; }));
+        const rows = new Map();
+        cards.forEach((c) => { const k = Math.round(c.offsetTop); if (!rows.has(k)) rows.set(k, []); rows.get(k).push(c); });
+        rows.forEach((row) => {
+          if (row.length < 2) return;
+          parts.forEach((p) => {
+            const els = row.map((c) => c.querySelector(p)).filter(Boolean);
+            const max = Math.max(...els.map((el) => el.getBoundingClientRect().height));
+            els.forEach((el) => { if (max - el.getBoundingClientRect().height > 0.5) el.style.minHeight = `${Math.ceil(max)}px`; });
+          });
+        });
+      });
+    }
+  }
+  let alignT = 0;
+  const alignSoon = () => { clearTimeout(alignT); alignT = setTimeout(alignParts, 60); };
+
   function init() {
     initMenu();
     labelAll();
+    alignSoon();
+    window.addEventListener("resize", alignSoon);
+    window.addEventListener("hashchange", () => setTimeout(alignParts, 300));
+    // re-drawn cards are aligned at once, inside the observer (it runs before the browser paints) - a delayed
+    // alignment let the unaligned layout show for a moment on every live update: flicker (client 20-11-2026)
+    new MutationObserver((recs) => { if (recs.some((r) => r.addedNodes.length && !(r.target.closest && r.target.closest("svg")))) alignParts(); })
+      .observe(document.body, { childList: true, subtree: true });
     // observer callbacks run before the next paint, so a re-drawn table never shows without its labels
     new MutationObserver((recs) => { if (recs.some((r) => r.addedNodes.length)) labelAll(); }).observe(document.body, { childList: true, subtree: true });
   }

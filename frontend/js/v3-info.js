@@ -36,7 +36,7 @@
     ['[data-section="instruments"] .card-head h2', /^Instruments/, "after", "Instruments",
       "Every measuring instrument with its live value. The bar shows where the value is in the instrument range; the red mark is the alarm set point. Scaling = the min / max of the range; Change alarm opens its set point on the Set points page."],
     ['[data-section="equipment"] .eq-legend', null, "in", "Equipment",
-      "Every motor and valve of the plant with its live state, Auto / Manual mode, run hours and starts. Click a tag (with the small mimic icon) to see that machine on the Mimic. Cards / List switch the view; the area buttons and the search filter the list."],
+      "Every motor and valve of the plant with its live state, Auto / Manual mode, run hours and starts. Click a card (or a row in List view) to see that machine on the Mimic. Cards / List switch the view; the area buttons and the search filter the list."],
     ['[data-section="trends"] .tr-ctl h2', /^Trends/, "after", "Trends",
       "Pick up to 6 values from the groups below, then a time range (Custom = your own dates). Separate = one chart per value, Combined = all on one chart. Drag across a chart to zoom in. Export CSV / PDF saves what is shown."],
     ["#ioCard .io-head h2", null, "in", "IO list",

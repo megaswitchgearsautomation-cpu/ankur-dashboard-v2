@@ -461,6 +461,7 @@
     if (/blower/.test(n)) return "blower";
     if (/\bfan\b/.test(n)) return "fan";
     if (/dosing/.test(n)) return "dosing";
+    if (/progressive|cavity/.test(n)) return "pcp";
     return "pump";
   }
   function eqIcon(kind) {
@@ -476,6 +477,15 @@
       case "dosing": return `<svg viewBox="0 0 64 64" class="ico"><rect x="14" y="26" width="28" height="22" rx="4" class="ln"/><path d="M42 37 H56 V52" class="ln"/>
         <g class="piston"><rect x="24" y="8" width="8" height="16" rx="2" class="fl"/></g><rect x="8" y="54" width="44" height="5" rx="2" class="fl"/>
         <path class="drop" d="M56 54 q-3 4 0 6 q3 -2 0 -6Z"/></svg>`;
+      // progressive cavity pump (client 20-11-2026, its own look - not a screw conveyor): end flange, dark stator with
+      // the rotor wave (travels while running), tie rods, suction housing with the inlet on top, motor, base
+      case "pcp": return `<svg viewBox="0 0 64 64" class="ico"><defs><clipPath id="eqPcpClip"><rect x="9" y="27" width="28" height="14" rx="7"/></clipPath></defs>
+        <rect x="4" y="54" width="56" height="5" rx="2" class="fl"/><path d="M8 22.5 H38 M8 45.5 H38" class="ln" style="stroke-width:1.6"/>
+        <rect x="3" y="20" width="5" height="28" rx="1.5" class="fl"/>
+        <rect x="8" y="25.5" width="30" height="17" rx="8.5" style="fill:#3f454d;stroke:#262a30;stroke-width:1.4"/>
+        <g clip-path="url(#eqPcpClip)"><path class="flt" d="M-3 34${" q3 -4.5 6 0 q3 4.5 6 0".repeat(6)}" style="fill:none;stroke:#e4e7ea;stroke-width:2.6;stroke-linecap:round"/></g>
+        <rect x="38" y="21" width="10" height="26" rx="2" class="ln"/><rect x="39.5" y="14" width="7" height="7" rx="1" class="fl"/>
+        <rect x="49" y="24" width="12" height="20" rx="3" class="fl"/><path d="M14 47 V54 M55 44 V54" class="ln"/></svg>`;
       case "valve": return `<svg viewBox="0 0 64 64" class="ico"><path d="M4 30 H14 M50 30 H60" class="ln"/><path d="M14 18 L32 30 L14 42 Z M50 18 L32 30 L50 42 Z" class="body"/>
         <path d="M32 30 V12" class="ln"/><path d="M22 10 H42" class="ln stem"/><g class="flow"><circle cx="8" cy="30" r="2"/><circle cx="56" cy="30" r="2"/></g>
         <path d="M27 24 L37 36" class="ln x"/></svg>`;
@@ -484,25 +494,27 @@
         <g class="rot">${blades(5, "M28 34 C 31 29, 31 23, 27 19", 28, 34)}<circle cx="28" cy="34" r="3.5" class="hub"/></g></svg>`;
     }
   }
-  // tag = link to the machine on the Mimic (client review 17-11-2026: "a small icon, so people know a click on the tag
-  // opens it on the mimic"); machines without a P&ID tag show the dash box with the same icon
-  const MM_IC = '<svg class="eq-mm-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="9" width="6" height="11" rx="1.5"/><rect x="16" y="4" width="6" height="16" rx="1.5"/><path d="M8 14h3v-4h5"/></svg>';
+  // tag = plain text (client 20-11-2026: no grey box); the WHOLE card / list row opens the machine on the Mimic
   function eqTagHTML(e) {
-    const t = e.tag_no || "–";
-    return `<button type="button" class="eqc-tag eq-mm${e.tag_no ? "" : " none"}" data-mm="${esc(e.id)}" title="Show ${esc(e.tag_no || e.name)} on the Mimic"
-      aria-label="Show ${esc(e.tag_no || e.name)} on the Mimic">${esc(t)}${MM_IC}</button>`;
+    return `<span class="eqc-tag eq-tag-txt${e.tag_no ? "" : " none"}"${e.tag_no ? "" : ' title="No tag number on the P&amp;ID"'}>${esc(e.tag_no || "–")}</span>`;
   }
+  const eqToMimic = (el) => {
+    if (!window.Plant || !Plant.showOnMimic) return;
+    if (!Plant.showOnMimic(el.dataset.mm)) toast("This item is not drawn on the mimic");
+  };
   document.addEventListener("click", (ev) => {
-    const b = ev.target.closest && ev.target.closest(".eq-mm[data-mm]");
-    if (!b || !window.Plant || !Plant.showOnMimic) return;
-    ev.preventDefault(); ev.stopPropagation();
-    if (!Plant.showOnMimic(b.dataset.mm)) toast("This item is not drawn on the mimic");
+    const el = ev.target.closest && ev.target.closest(".eqc[data-mm], .eql[data-mm]");
+    if (el && !ev.target.closest("button, a, input, select")) eqToMimic(el);
+  });
+  document.addEventListener("keydown", (ev) => {
+    const el = (ev.key === "Enter" || ev.key === " ") && ev.target.matches && ev.target.matches(".eqc[data-mm], .eql[data-mm]") ? ev.target : null;
+    if (el) { ev.preventDefault(); eqToMimic(el); }
   });
   function eqCardHTML(e) {
     const kind = eqKind(e);
     const spec = [e.kw != null ? `${e.kw} kW` : "", KIND_LABEL[kind]].filter(Boolean).join(" · ");
     const motor = e.type === "motor";
-    return `<div class="eqc" data-id="${esc(e.id)}" data-kind="${kind}" tabindex="0">
+    return `<div class="eqc" data-id="${esc(e.id)}" data-kind="${kind}" data-mm="${esc(e.id)}" tabindex="0" role="button" title="Show ${esc(e.tag_no || e.name)} on the Mimic">
       <div class="eqc-ic">${eqIcon(kind)}</div>
       <div class="eqc-main">
         <div class="eqc-top">${eqTagHTML(e)}<span class="eqc-pill"><span class="dot"></span><b class="st"></b></span></div>
@@ -520,7 +532,7 @@
   }
   function eqRowHTML(e) {
     const kind = eqKind(e);
-    return `<div class="eql" data-id="${esc(e.id)}" data-kind="${kind}"><span class="eqc-ic sm">${eqIcon(kind)}</span>
+    return `<div class="eql" data-id="${esc(e.id)}" data-kind="${kind}" data-mm="${esc(e.id)}" tabindex="0" role="button" title="Show ${esc(e.tag_no || e.name)} on the Mimic"><span class="eqc-ic sm">${eqIcon(kind)}</span>
       ${eqTagHTML(e)}<span class="eql-name" title="${esc(e.name)}">${esc(e.name)}</span>
       <span class="muted eql-area">${esc(e.area || "")}</span><span class="eqc-pill"><span class="dot"></span><b class="st"></b></span>
       <b class="mode">-</b><b class="num rh">${e.type === "motor" ? "-" : ""}</b><b class="num starts">${e.type === "motor" ? "-" : ""}</b></div>`;

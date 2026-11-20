@@ -49,12 +49,28 @@
 
 /* equipment page: no tag number - same grey box with a dash, so every card lines up (an empty spot looked like "not loaded") */
 .eqc-tag.none { display: inline-block; min-width: 40px; text-align: center; color: #71717a; }
-/* tag = button to the machine on the Mimic, with a small mimic icon (client review 17-11-2026) */
-.eqc-tag.eq-mm { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font: inherit; font-weight: 700; cursor: pointer;
-  border: 1px solid transparent; transition: border-color .15s, background .15s; }
-.eqc-tag.eq-mm .eq-mm-ic { width: 14px; height: 14px; flex: none; color: var(--fx-lime-ink, #3e6b00); opacity: .85; }
-.eqc-tag.eq-mm:hover { border-color: var(--fx-lime-ink, #3e6b00); background: #eef6dd; }
-.eqc-tag.eq-mm:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 1px; }
+/* equipment card text starts at the top (it was centred beside the icon, so cards with less text sat lower) */
+.eqc > .eqc-main { align-self: start; }
+.eqc { align-content: start; }    /* a card stretched to its row height keeps its rows at the top (no uneven spreading) */
+/* progressive cavity pump symbol on the dashboard cards: screw flights, coloured like the other symbols' moving part */
+.dc-sym .st { fill: #3f454d; stroke: #262a30; stroke-width: 1.2; }        /* rubber stator */
+.dc-sym .tr { fill: none; stroke: #8a8f86; stroke-width: 1.3; }               /* tie rods */
+.dc-sym .f { fill: none; stroke: #e4e7ea; stroke-width: 2; stroke-linecap: round; }   /* rotor wave */
+.dc-eq.st-on .dc-sym .f { animation: eq-pcp-s .6s linear infinite; }
+@keyframes eq-pcp-s { from { transform: translateX(0); } to { transform: translateX(-5px); } }
+@media (prefers-reduced-motion: reduce) { .dc-eq.st-on .dc-sym .f { animation: none; } }
+/* progressive cavity pump icon: the screw flights travel along the barrel while it runs (client 20-11-2026) */
+[data-state="run"] .ico .flt { animation: eq-pcp .6s linear infinite; }
+@keyframes eq-pcp { from { transform: translateX(0); } to { transform: translateX(-12px); } }
+@media (prefers-reduced-motion: reduce) { [data-state="run"] .ico .flt { animation: none; } }
+/* equipment tag = plain text, no grey box (client 20-11-2026); the whole card / list row opens the machine on the Mimic */
+.eqc-tag.eq-tag-txt { background: none !important; border: 0 !important; padding: 0 !important; min-width: 0; border-radius: 0;
+  font-weight: 700; color: var(--fx-ink, #18181b); }
+.eqc-tag.eq-tag-txt.none { color: #71717a; }
+.eqc[data-mm], .eql[data-mm] { cursor: pointer; transition: border-color .15s, box-shadow .15s, background .15s; }
+.eqc[data-mm]:hover { border-color: var(--fx-lime-ink, #3e6b00); box-shadow: 0 2px 10px rgb(62 107 0 / .12); }
+.eql[data-mm]:hover { background: #f4f8ec; }
+.eqc[data-mm]:focus-visible, .eql[data-mm]:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 2px; }
 
 /* =========================================================================================
    SC02 dashboard process cards
@@ -168,6 +184,14 @@ body[data-role="viewer"] .v3-pen { display: none !important; }      /* viewers: 
 @media (prefers-reduced-motion: reduce) { .dc-eq.dc-flash, .dc-r.dc-flash, tr.dc-flash, .dc-sw.dc-flash, .dc-note.dc-flash, .dc-stl.dc-flash { animation: none; outline: 3px solid var(--st-alarm); } }
 .dc-st.st-info { color: #3f3f46; border-color: #d4d4d8; white-space: normal; border-radius: 8px; }
 .dc-stl .dc-st, .dc-sw-i .dc-st { white-space: normal; border-radius: 8px; padding: 4px 12px; }   /* long status lines wrap as a box, not a pill */
+/* "Other process values" cards: name | value | trend | bar | alarm text share one row each across the whole row of
+   cards (CSS subgrid), so a name on 2, 3 or 4 lines never pushes its value lower than the card beside it (client 20-11-2026) */
+@supports (grid-template-rows: subgrid) {
+  .pv-list { row-gap: 14px; }
+  .pv-list > .pv { display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: 6px; align-content: start; }
+  .pv-list > .pv > * { margin-top: 0; margin-bottom: 0; }
+  .pv-list > .pv > .v, .pv-list > .pv > .bar, .pv-list > .pv > .meta, .pv-list > .pv > .pv-spark { align-self: end; }
+}
 /* (i) information icon beside every card heading (client 18-11-2026), same icon as on the Set points cards */
 .v3-info.v3-info-auto { flex: none; margin-left: 6px; vertical-align: middle; }
 h2 > .v3-info.v3-info-auto, h3 > .v3-info.v3-info-auto, .ps-k > .v3-info.v3-info-auto { width: 24px; height: 24px; min-width: 24px; margin-top: -3px; }

@@ -81,6 +81,15 @@
 #mimicCard.mm-fs-win #mimicLegend { display: none; }
 #mimicCard.mm-fs-win .p3-wrap { height: 100%; min-height: 0; }
 html.mm-fs-lock, html.mm-fs-lock body { overflow: hidden; }
+/* progressive cavity pump (client 20-11-2026 - must not look like a screw conveyor): dark rubber stator, light
+   steel rotor wave, tie rods, steel end flanges, drive shaft cover */
+#mimicSvg svg.mimic .pc-stat { fill: #3f454d; stroke: #262a30; stroke-width: 1.4; }
+#mimicSvg svg.mimic .pcp .rotor { stroke: #d9dee4; stroke-width: 3.2; stroke-linecap: round; }
+#mimicSvg svg.mimic .pc-tie { stroke: #8a8f86; stroke-width: 1.6; }
+#mimicSvg svg.mimic .pc-fl { fill: #b9bdb4; stroke: #6f6f68; stroke-width: 1.1; }
+#mimicSvg svg.mimic .pc-dr { fill: #9aa09a; stroke: #6f6f68; stroke-width: 1; }
+/* what the machine is (e.g. progressive cavity pump), under the pop-over title */
+.mm-pop .mp-desc, #mimicPop .mp-desc { margin: 4px 0 8px; font-size: 13px; line-height: 1.4; color: #52525b; max-width: 320px; }
 /* machine opened from the Equipment page: flashes a few times so the eye finds it */
 #mimicSvg svg.mimic g.eq.eq-find { animation: eq-find .7s ease-in-out 6; }
 @keyframes eq-find { 50% { filter: drop-shadow(0 0 4px #f59e0b) drop-shadow(0 0 10px #f59e0b); } }

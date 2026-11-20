@@ -226,6 +226,11 @@
     OP_F1: "CT-1 fan", OP_F2: "CT-2 fan" };
   const ST_IC = { ok: "✓", on: "✓", off: "■", warn: "⚠", alarm: "!", unk: "?", info: "▶" };   // alarm "!" is drawn as a red alert badge (css)
   const ST_TXT = { ok: "Normal", warn: "Check", alarm: "Alert", unk: "No data" };
+  // what a machine is, in the client's words - shown in its details pop-up and hover text (client 20-11-2026)
+  const EQ_DESC = {
+    PCP: "Rotary positive displacement pump designed to transfer thick, abrasive, or shear-sensitive fluids at a steady, pulse-free rate.",
+  };
+  window.MD_EQ_DESC = EQ_DESC;                          // also used by the Equipment page (dashboard.js)
   const SYM = {        // one simple symbol per equipment type (P&ID style)
     // centrifugal pump: base + volute casing with the outlet nozzle on top, impeller inside (turns while running)
     pump: '<path class="b" d="M11 31 H29 L32 37 H8 Z"/><path class="b" d="M20 8 H34 V14.5 H29.9 A12 12 0 1 1 20 8 Z"/>'
@@ -235,6 +240,14 @@
     // top-entry mixer: tank, motor + gearbox on top, shaft with a two-blade propeller (turns while running)
     mixer: '<rect class="b" x="6" y="14" width="28" height="22" rx="3"/><rect class="m" x="14.5" y="2.5" width="11" height="8" rx="1.5"/><rect class="m" x="18" y="10.5" width="4" height="3.5"/>'
       + '<g class="r"><rect x="19.1" y="14" width="1.8" height="14.5"/><path d="M20 28.5 C16.5 25.6 11.5 26 10 28.6 C11.5 31.2 16.5 31.4 20 28.5 Z M20 28.5 C23.5 25.6 28.5 26 30 28.6 C28.5 31.2 23.5 31.4 20 28.5 Z"/></g>',
+    // progressive cavity pump (client 20-11-2026, its own look - not a screw conveyor): dark stator with the rotor
+    // wave (travels while running), tie rods, end flange, suction housing with the inlet on top, motor, base
+    pcp: '<clipPath id="dcPcpClip"><rect x="5.5" y="16" width="18" height="10" rx="5"/></clipPath>'
+      + '<path class="b" d="M3 33 H37 V36.5 H3 Z"/><path class="tr" d="M5 13.8 H24 M5 28.2 H24"/>'
+      + '<rect class="b" x="2" y="12.5" width="3.5" height="17" rx="1"/><rect class="st" x="5" y="15.5" width="19" height="11" rx="5.5"/>'
+      + '<g clip-path="url(#dcPcpClip)"><path class="f" d="M-6 21' + " q2.5 -3.2 5 0 q2.5 3.2 5 0".repeat(5) + '"/></g>'
+      + '<rect class="b" x="24" y="13" width="7" height="16" rx="1.5"/><rect class="b" x="25" y="8.5" width="5" height="4.5" rx="1"/>'
+      + '<rect class="m" x="31.5" y="15" width="7" height="12" rx="2"/>',
     fan: '<circle class="b" cx="20" cy="20" r="14"/><g class="r"><path d="M20 20 C16 14 18 8 20 7 C22 8 24 14 20 20 Z"/><path d="M20 20 C27 18 31 23 31 25 C29 27 23 25 20 20 Z"/><path d="M20 20 C17 26 11 27 10 25 C10 23 14 18 20 20 Z"/></g>',
   };
   const GRIP = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
@@ -246,6 +259,7 @@
   function eqKind(id, e) {
     if ((e && e.type === "valve") || /^(MV_|OP_SV)/.test(id)) return "valve";
     if (id === "AGIT") return "mixer";
+    if (id === "PCP") return "pcp";
     if (/^OP_(F\d|M1)$/.test(id)) return "fan";
     return "pump";
   }
@@ -259,7 +273,7 @@
     const e = eq(id), s = eqSt(e), kind = eqKind(id, e);
     const txt = e ? STATE_TXT[e.status] || e.status : "No data";
     const name = EQ_LABEL[id] || PUMP_NAME[id] || (e ? e.name : id);
-    return `<div class="dc-eq st-${s}" title="${esc(`${PID[id] || id} ${e ? e.name : ""} - ${txt}`)}">
+    return `<div class="dc-eq st-${s}" title="${esc(`${PID[id] || id} ${e ? e.name : ""} - ${txt}${EQ_DESC[id] ? `\n${EQ_DESC[id]}` : ""}`)}">
       <svg class="dc-sym k-${kind}" viewBox="0 0 40 40" role="img" aria-label="${esc(`${PID[id] || id} ${name}, ${txt}`)}">${SYM[kind]}</svg>
       <span class="dc-eq-t"><b>${esc(PID[id] || id)}</b><span>${esc(name)}</span></span>
       <span class="dc-eq-s"><span class="dc-st st-${s}"><i aria-hidden="true">${ST_IC[s]}</i>${esc(txt)}</span>${e && e.auto != null ? `<em>${e.auto ? "Auto" : "Manual"}</em>` : ""}</span></div>`;
@@ -772,9 +786,9 @@
   // cards side by side: the "Equipment" line of every card in a row at the same height (client 18-11-2026: "both lines
   // not aligned"). Only where the equipment list sits UNDER the picture / values; recomputed on every update and resize.
   function dcAlignRows(box) {
-    if (box._alignRaf) return;
-    box._alignRaf = setTimeout(() => {               // (a timer, not an animation frame: also runs in a background tab)
-      box._alignRaf = 0;
+    // runs at once (after the update, before the browser paints) - a delayed run showed the unaligned layout for a
+    // moment on every live update: flicker (client 20-11-2026)
+    {
       const cards = [...box.querySelectorAll(".dc")].filter((d) => !d.hidden && d.offsetParent);
       const eqsOf = (d) => d.querySelector(":scope > .dc-body > .dc-eqs");
       // the first body row (picture | values) is made taller, so the values column divider still meets the line
@@ -793,7 +807,7 @@
         const max = Math.max(...below.map((x) => x.y));
         below.forEach((x) => { if (max - x.y > 0.5) x.b.style.gridTemplateRows = `${(x.row1 + max - x.y).toFixed(1)}px auto`; });
       });
-    }, 0);
+    }
   }
   // pencil beside a set point summary: open Set points at the matching section (editing stays there)
   let spTarget = null;
@@ -1126,22 +1140,31 @@
     },
     // progressive cavity pump on centre line y: discharge flange at the left end (x - 66), suction housing
     // with the inlet port on top at x + 42, drive on the right; the rotor wave travels while running
+    // progressive cavity pump - its own look, NOT a screw conveyor (client 20-11-2026): dark rubber stator held by
+    // tie rods between the discharge end flange and the suction housing, the single-helix rotor seen as a wave
+    // (travels while running = steady, pulse-free flow), suction housing with the vertical inlet flange on top,
+    // drive shaft cover, gearbox + motor
     pcp(x, y, id, o = {}) {
-      let rw = `M${x - 84} ${y}`;
-      for (let i = 0; i < 9; i++) rw += ` q6 -7 12 0 q6 7 12 0`;
+      let rw = `M${x - 86} ${y}`;
+      for (let i = 0; i < 6; i++) rw += ` q6 -6 12 0 q6 6 12 0`;
       const cid = `pc${x}_${y}`;
       return `<g ${P.head(id, "pump pcp", o.run, o.why)}>
-        <clipPath id="${cid}"><rect x="${x - 58}" y="${y - 8}" width="86" height="16"/></clipPath>
+        <clipPath id="${cid}"><rect x="${x - 56}" y="${y - 8}" width="80" height="16" rx="7"/></clipPath>
         <rect class="pm-base" x="${x - 66}" y="${y + 13}" width="170" height="5" rx="1"/>
-        <rect class="pm-noz" x="${x - 68}" y="${y - 11}" width="8" height="22" rx="1"/>
-        <rect class="pc-st" x="${x - 60}" y="${y - 10}" width="90" height="20" rx="4"/>
+        <path class="pc-tie" d="M${x - 60} ${y - 11.5} H${x + 28} M${x - 60} ${y + 11.5} H${x + 28}"/>
+        <rect class="pc-fl" x="${x - 68}" y="${y - 14}" width="9" height="28" rx="1.5"/>
+        <rect class="pc-stat" x="${x - 58}" y="${y - 9}" width="84" height="18" rx="9"/>
         <g clip-path="url(#${cid})"><path class="rotor" d="${rw}"/></g>
-        <rect class="pc-hs" x="${x + 30}" y="${y - 13}" width="26" height="26" rx="3"/><rect class="pm-noz" x="${x + 36}" y="${y - 22}" width="14" height="9" rx="1"/>
-        <rect class="ag-gb" x="${x + 56}" y="${y - 8}" width="12" height="16" rx="2"/>
-        <rect class="pm-motor" x="${x + 68}" y="${y - 11}" width="34" height="22" rx="4"/>
+        <rect class="pc-fl" x="${x + 25}" y="${y - 14}" width="6" height="28" rx="1.5"/>
+        <rect class="pc-hs" x="${x + 31}" y="${y - 13}" width="22" height="26" rx="3"/>
+        <rect class="pc-fl" x="${x + 34}" y="${y - 21}" width="16" height="5" rx="1"/><rect class="pc-hs" x="${x + 37}" y="${y - 17}" width="10" height="4"/>
+        <rect class="pc-dr" x="${x + 53}" y="${y - 5}" width="6" height="10" rx="1"/>
+        <rect class="ag-gb" x="${x + 59}" y="${y - 9}" width="10" height="18" rx="2"/>
+        <rect class="pm-motor" x="${x + 69}" y="${y - 11}" width="33" height="22" rx="4"/>
         <circle class="pm-led" cx="${x + 85}" cy="${y - 17}" r="3.2"/>
         <text class="eq-t" x="${x + 10}" y="${y + 20 + T(11.25)}" text-anchor="middle">${esc(o.label ?? PID[id] ?? "")}</text>
-        <text class="eq-n" x="${x + 10}" y="${y + 22 + T(11.25) + T(13)}" text-anchor="middle">Progressive cavity pump</text></g>` + ob(x - 68, y - 22, x + 104, y + 18);
+        <text class="eq-n" x="${x + 10}" y="${y + 22 + T(11.25) + T(13)}" text-anchor="middle">Progressive cavity pump</text>
+        ${EQ_DESC[id] ? `<title>${esc(`Progressive cavity pump - ${EQ_DESC[id]}`)}</title>` : ""}</g>` + ob(x - 68, y - 22, x + 104, y + 18);
     },
     // centrifugal exhaust blower at (x, y): motor on the left, scroll casing, discharge on top (to the vent duct)
     blower(x, y, id, o = {}) {
@@ -1222,7 +1245,7 @@
     // 3D view of the whole plant (js/plant3d.js, canvas): same live states, positions indicative (not to scale)
     d3: {
       name: "3D plant - whole plant (indicative layout)",
-      note: "Drag to rotate · wheel to zoom · right-drag to move · click a machine for details · pulsing green ring = running (shaft / fan turning), red ring = tripped, no ring = stopped · moving lights in a pipe = flowing · package equipment is shown faded and not animated",
+      note: "Whole plant from the P&ID (indicative layout) · drag to rotate · wheel to zoom · right-drag to move · click an area name to zoom to it · click a machine for its details · green ring = running, red ring + TRIP = tripped · moving dashes in a pipe = flowing · dashed outline = vendor package",
       d3: true,
       draw: () => [],
     },
@@ -2404,6 +2427,7 @@
     const pop = $(popId);
     if (!e || !pop) return;
     pop.innerHTML = `<div class="mp-h"><b>${esc(e.name)}</b><button class="btn sm" id="mpX" aria-label="Close">✕</button></div>
+      ${EQ_DESC[id] ? `<p class="mp-desc">${esc(EQ_DESC[id])}</p>` : ""}
       <dl class="kv"><dt>P&amp;ID tag</dt><dd>${esc(PID[e.id] || e.tag_no || "-")}</dd>
       ${e.type === "valve" ? (() => {                    // v3 (SC05): position + the four signals behind it
         const v = vState(e), io = e.io || {}, sig = (x) => (x == null ? "no data" : x ? "ON" : "OFF");
@@ -2429,12 +2453,30 @@
   // ======================================================================================
   const INST_GROUPS = ["Level", "Pressure", "Temperature", "Analysis"];
   let editing = null;                                    // instrument id whose scaling pop-up is open
+  // update an element in place to match a freshly built one: same elements stay (no flicker, hover / focus kept,
+  // bars glide); attributes and text are synced, a part whose structure changed is replaced
+  function morph(a, b) {
+    if (!a || !b) return;
+    if (a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) { a.replaceWith(b); return; }
+    if (a.nodeType === 3) { if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
+    if (a.nodeType !== 1) return;
+    for (const at of [...a.attributes]) if (!b.hasAttribute(at.name) && at.name !== "style") a.removeAttribute(at.name);
+    for (const at of [...b.attributes]) if (a.getAttribute(at.name) !== at.value) {
+      if (at.name === "style" && a.style.minHeight) {           // keep the row-alignment height set by v3-responsive.js
+        const mh = a.style.minHeight; a.setAttribute("style", at.value); a.style.minHeight = mh;
+      } else a.setAttribute(at.name, at.value);
+    }
+    if (!b.hasAttribute("style") && a.getAttribute("style") && !a.style.minHeight) a.removeAttribute("style");
+    const ac = [...a.childNodes], bc = [...b.childNodes];
+    if (ac.length !== bc.length) { a.replaceChildren(...bc); return; }
+    ac.forEach((n, i) => morph(n, bc[i]));
+  }
   function renderInstruments() {
     const box = $("instGrid");
     if (!box) return;
     const list = live.tags.filter((t) => INST_GROUPS.includes(t.group))
       .sort((a, b) => INST_GROUPS.indexOf(a.group) - INST_GROUPS.indexOf(b.group));
-    box.innerHTML = list.map((t) => {
+    const cards = list.map((t) => {
       const p = pct(t), d = t.decimals ?? 1;
       const sp = t.setpoint_value, spp = pct(t, sp);
       const f = (x, dd = d) => (x == null ? "--" : Number(x).toFixed(dd));
@@ -2457,7 +2499,24 @@
           The alarm can never come. Change the alarm value or the min / max range.</div>` : ""}
         ${acts}
         </div>`;
-    }).join("") || '<div class="empty">No instruments</div>';
+    });
+    // no flicker (client 20-11-2026): the grid is built once; on each live update only a card whose content changed
+    // is replaced, so nothing is redrawn needlessly every second
+    const ids = list.map((t) => t.id).join(",");
+    if (box._ids !== ids || !list.length) {
+      box._ids = ids;
+      box.innerHTML = cards.join("") || '<div class="empty">No instruments</div>';
+      box._html = cards.slice();
+    } else {
+      const els = box.children;
+      cards.forEach((html, i) => {
+        if (box._html[i] === html) return;
+        box._html[i] = html;
+        const t = document.createElement("div");
+        t.innerHTML = html;
+        morph(els[i], t.firstElementChild);           // only the changed text / bar width / class changes in place
+      });
+    }
     box.querySelectorAll("[data-alm]").forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); openSpEdit(b.dataset.alm); }));
     box.querySelectorAll("[data-scale]").forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); openScaling(b.dataset.scale); }));
     box.querySelectorAll("[data-open]").forEach((el) => {
