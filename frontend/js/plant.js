@@ -583,6 +583,14 @@
       } },
   ];
   const DC_BY = Object.fromEntries(DC.map((c) => [c.k, c]));
+  // tag pop-up trend (dashboard.js): the same Alarm / Min / level lines a card draws for that value
+  MD.trendLimits = (id) => {
+    const c = DC.find((x) => x.trend && x.trend.tag === id);
+    if (c) return c.trend.limits();
+    const t = tag(id), lv = t ? lvLimits(t) : [];
+    if (lv.length) return lv;
+    return t && t.setpoint_value != null ? [{ v: t.setpoint_value, label: "Alarm" }] : [];
+  };
   const TANK_CFG = (id) => LV_TANKS.find((x) => x.id === id);
   function dcSkeleton(c) {
     const lt = c.tankId ? tag(c.tankId) : null;
@@ -673,8 +681,21 @@
   });
   document.addEventListener("keydown", (e) => {      // Esc also closes the window-filling fallback
     if (e.key !== "Escape") return;
-    document.querySelectorAll(".dc-trend.fs").forEach((tr) => { if (!document.fullscreenElement) dcTrendFsDone(tr.closest(".dc"), false); });
+    document.querySelectorAll(".dc .dc-trend.fs").forEach((tr) => { if (!document.fullscreenElement) dcTrendFsDone(tr.closest(".dc"), false); });
   });
+  // after a card is moved: a row that holds an opened card opens its other cards too ("Show more" view),
+  // so a closed card never stands beside a tall opened one
+  function dcSyncRows(box) {
+    const rows = new Map();
+    [...box.children].filter((c) => !c.hidden).forEach((c) => {
+      const top = c.offsetTop;
+      if (!rows.has(top)) rows.set(top, []);
+      rows.get(top).push(c);
+    });
+    rows.forEach((row) => {
+      if (row.some((c) => c.classList.contains("open"))) row.forEach((c) => dcSetOpen(c, true));
+    });
+  }
   function dcWire(box) {
     let dragEl = null;
     box.addEventListener("dragstart", (e) => {
@@ -694,7 +715,7 @@
       if (kids.indexOf(dragEl) < kids.indexOf(over)) over.after(dragEl); else over.before(dragEl);
     });
     box.addEventListener("drop", (e) => { if (dragEl) e.preventDefault(); });
-    box.addEventListener("dragend", () => { if (!dragEl) return; dragEl.classList.remove("dragging"); dragEl = null; dcSave(box); });
+    box.addEventListener("dragend", () => { if (!dragEl) return; dragEl.classList.remove("dragging"); dragEl = null; dcSyncRows(box); dcSave(box); });
     box.addEventListener("click", (e) => {
       const tog = e.target.closest(".dc-tog");
       if (tog) {
@@ -722,6 +743,7 @@
         if (!sib) return;
         if (d < 0) sib.before(card); else sib.after(card);
         mv.focus();
+        dcSyncRows(box);
         dcSave(box);
       }
     });

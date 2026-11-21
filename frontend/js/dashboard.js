@@ -1180,23 +1180,75 @@
       <p>${qBadge(t)} <span class="muted">updated ${fmtTime(t.ts, true)} (${ago(t.ts)})</span></p>
       <dl class="kv"><dt>Type</dt><dd>${esc(t.group)}</dd><dt>Range</dt><dd>${t.eng_min ?? "-"} … ${t.eng_max ?? "-"} ${esc(t.unit)}</dd>
       ${t.setpoint_value != null ? `<dt>Alarm set point</dt><dd>${t.setpoint_value.toFixed(t.decimals ?? 1)} ${esc(t.unit)}</dd>` : ""}</dl>
-      <h3 style="font-size:14px;margin:18px 0 6px">Last 1 hour</h3><div class="chart" id="dChart"></div>`;
+      <div class="dc-trend" id="dTrend" style="margin-top:18px"><div class="dc-trend-h"><h4>Trend</h4><div class="dc-rp" id="dRp"></div>
+        <button class="dc-fs" id="dFs" type="button" aria-pressed="false" title="Show the trend on the whole screen (Esc to close)">${D_FS_IC}<span>Full screen</span></button></div>
+        <div class="chart dc-chart" id="dChart"></div></div>`;
     $("drawer").classList.remove("hidden");
     $("drawerBg").classList.remove("hidden");
     $("dClose").onclick = closeDrawer;
     $("dClose").focus();
-    try {
-      const r = await api(`/api/trend?tags=${encodeURIComponent(id)}&minutes=60&points=240`);
-      const s = r.series[0];
-      if (s) MDChart.render($("dChart"), { name: s.name, unit: s.unit, decimals: s.decimals, color: SERIES[0], points: s.points,
-        from: r.from, to: r.to, isBool: s.data_type === "BOOL", limits: t.setpoint_value != null ? [{ v: t.setpoint_value, label: "SP" }] : [],
-        yMin: t.trend_min, yMax: t.trend_max });
-    } catch (e) { $("dChart").textContent = e.message; }
+    // same trend as inside a card: 8 hours / 2 days / 7 days / custom, full screen, zoom with finer data, Alarm / Min lines
+    const st = { id, range: null, key: undefined, fs: false };
+    dTrend = st;
+    const load = async (f, tt, view, reset) => {
+      if (dTrend !== st) return;                        // another tag opened meanwhile
+      st.range = [f, tt];
+      const [qf, qt] = view || [f, tt], box = $("dChart");
+      try {
+        const r = await api(`/api/trend?tags=${encodeURIComponent(id)}&from=${Math.floor(qf)}&to=${Math.ceil(qt)}&points=300`);
+        if (dTrend !== st) return;
+        const s = r.series[0];
+        if (!s) { box.innerHTML = '<p class="muted">No trend is recorded for this value.</p>'; return; }
+        const tg = tagById(id) || t;
+        MDChart.render(box, { name: s.name, unit: s.unit, decimals: s.decimals, color: "var(--s3)", points: s.points, from: f, to: tt,
+          isBool: s.data_type === "BOOL", limits: MD.trendLimits ? MD.trendLimits(id) : [],
+          yMin: tg.eng_min ?? undefined, yMax: tg.eng_max ?? undefined,
+          height: st.fs ? Math.max(240, $("dTrend").clientHeight - box.offsetTop - 64) : 240,
+          zoomGroup: `tag-${id}`, resetZoom: !!reset, ...(view ? { view } : {}),
+          onView: (a, b, o) => { const [hf, ht] = st.range; load(hf, ht, o && o.reset ? null : [a, b]); } });
+      } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+    };
+    // a fresh pop-up starts unzoomed; a new range also resets the zoom
+    MD.v3.rangePicker($("dRp"), { presets: [["8 hours", "8h"], ["2 days", "2d"], ["7 days", "7d"], ["Custom", "custom"]], initial: "8h",
+      onApply: (f, tt, k) => { const reset = st.key === undefined || st.key !== k || k === "custom"; st.key = k; load(f, tt, null, reset); } });
+    st.reload = () => { if (st.range) { const v = MDChart.getView && MDChart.getView(`tag-${id}`); load(st.range[0], st.range[1], v || null); } };
+    $("dFs").onclick = () => {
+      const tr = $("dTrend");
+      if (document.fullscreenElement === tr || tr.classList.contains("fs")) {
+        if (document.fullscreenElement) document.exitFullscreen(); else dTrendFs(false);
+      } else if (tr.requestFullscreen) tr.requestFullscreen().catch(() => dTrendFs(true));
+      else dTrendFs(true);                                // no Fullscreen API: fill the window instead
+    };
   }
-  function closeDrawer() { $("drawer").classList.add("hidden"); $("drawerBg").classList.add("hidden"); }
+  const D_FS_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>';
+  let dTrend = null;                                    // the open pop-up's trend state
+  function dTrendFs(on) {
+    const tr = $("dTrend"), b = $("dFs");
+    if (!tr || !dTrend) return;
+    tr.classList.toggle("fs", on && document.fullscreenElement !== tr);
+    dTrend.fs = on;
+    b.setAttribute("aria-pressed", String(on));
+    b.querySelector("span").textContent = on ? "Exit full screen" : "Full screen";
+    requestAnimationFrame(() => dTrend && dTrend.reload());
+  }
+  document.addEventListener("fullscreenchange", () => {
+    const tr = $("dTrend");
+    if (!tr || !dTrend) return;
+    const on = document.fullscreenElement === tr;
+    if (on !== dTrend.fs) dTrendFs(on);
+  });
+  function closeDrawer() {
+    if (document.fullscreenElement && document.fullscreenElement.id === "dTrend") document.exitFullscreen();
+    dTrend = null;
+    $("drawer").classList.add("hidden"); $("drawerBg").classList.add("hidden");
+  }
   $("drawerBg").onclick = closeDrawer;
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeDrawer();
+    if (e.key === "Escape") {
+      const tr = $("dTrend");
+      if (tr && tr.classList.contains("fs")) { dTrendFs(false); return; }   // Esc leaves the window-filling view first
+      closeDrawer();
+    }
     if (e.key === "Enter" && e.target.classList && e.target.classList.contains("pv")) openTag(e.target.dataset.tag);
   });
 

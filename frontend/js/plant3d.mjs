@@ -1,4 +1,8 @@
 /* 3D plant - Muttathara FSTP 200 KLD (rebuild 20-11-2026 from the indicative P&ID R1, 12-12-2025, 15 sheets).
+   21-11-2026: "digital twin" look and controls after the Medge Controls smart-factory 3D (medgecontrols.com/demos/plantops):
+   soft studio light, pastel area floors, trees, people in the aisles, white machine tags, Status / Alarms / Lines / Plain
+   colour modes, area tabs, guided tour, first-person walk, tile card, KPI strip. SolidWorks mouse / keys kept.
+   Edit this file directly - the old scratchpad part files (p3_engine / p3_plant / p3_builders) are out of date.
    Placement and sizes are illustrative (indicative drawing); connectivity follows the P&ID.
    - bounded plant floor, grouped process areas with names, service aisles
    - every machine has its own industrial shape; motor colour + status lamp = live state, TRIP shown as text too
@@ -18,13 +22,21 @@ const PLANT = {
   bounds: { x: 0, y: 0, w: 98, d: 44 },
   fitH: 7,
   areas: [
-    { id: "a1", name: "Sludge receiving · tanks", x: 1.5, y: 1.5, w: 21, d: 17, tint: 0xd3d6cc, h: 5 },
-    { id: "a2", name: "Dewatering · Norsen", x: 25.5, y: 1.5, w: 22, d: 17, tint: 0xd6d3cb, h: 5 },
-    { id: "a3", name: "Paddle dryer · VAPCO", x: 51.5, y: 1.5, w: 23, d: 17, tint: 0xd1d4d8, h: 6 },
-    { id: "a4", name: "Raw water", x: 1.5, y: 24.5, w: 19, d: 18, tint: 0xcdd6dc, h: 5 },
-    { id: "a5", name: "Cooling towers · hot water", x: 23.5, y: 24.5, w: 24, d: 18, tint: 0xccd5da, h: 6 },
-    { id: "a6", name: "Degasifier · CTP", x: 50.5, y: 24.5, w: 24, d: 18, tint: 0xd0d6d0, h: 7 },
-    { id: "a7", name: "Boiler · turbine · PAR", x: 77.5, y: 1.5, w: 19, d: 41, tint: 0xd8d4cd, h: 9 },
+    // tint = pastel floor zone; tab = short name on the area tabs; sub = second line of the floor label; tour = guided-tour text
+    { id: "a1", name: "Sludge receiving · tanks", tab: "Sludge", sub: "screening · sludge & filtrate tanks", x: 1.5, y: 1.5, w: 21, d: 17, tint: 0xd3d6cc, h: 5,
+      tour: "Faecal sludge arrives through inlet valve 01-MV-101, passes the coarse and fine screens and collects in the sludge storage tank. Sludge pumps 01-P-101 / 102 (one working, one standby) send it to the flocculation tank in dewatering. Filtrate from the press collects in the filtrate tank and pumps 01-P-103 / 104 send it to the client." },
+    { id: "a2", name: "Dewatering · Norsen", tab: "Dewatering", sub: "polymer dosing · volute press (Norsen)", x: 25.5, y: 1.5, w: 22, d: 17, tint: 0xd6d3cb, h: 5,
+      tour: "Polymer is mixed in the dilution tank and dosed into the flocculation tank. The progressive cavity pump feeds the flocculated sludge to the volute press screws; the dewatered cake drops into the hopper and the filtrate flows back to the filtrate tank." },
+    { id: "a3", name: "Paddle dryer · VAPCO", tab: "Dryer", sub: "PD-101 vacuum paddle dryer (VAPCO)", x: 51.5, y: 1.5, w: 23, d: 17, tint: 0xd1d4d8, h: 6,
+      tour: "The vacuum paddle dryer is heated by the hot water loop. Vapour goes through bag filter BF-101 to surface condenser SC-101; condensate collects in T-101 and pump 05-P-501 sends it to the degasifier. The dried product leaves on the discharge conveyor to the bucket elevator of the boiler package." },
+    { id: "a4", name: "Raw water", tab: "Raw water", sub: "ground water · storage · supply pumps", x: 1.5, y: 24.5, w: 19, d: 18, tint: 0xcdd6dc, h: 5,
+      tour: "Ground water pumps 03-P-301 / 302 fill the raw water storage tank between its low and high float switches. Raw water supply pumps 03-P-303 / 304 (VFD) keep the service header above 3 bar - the header feeds the screens, dosing, cooling tower make-up and the boiler." },
+    { id: "a5", name: "Cooling towers · hot water", tab: "Cooling", sub: "CT-1 · CT-2 · hot water loop", x: 23.5, y: 24.5, w: 24, d: 18, tint: 0xccd5da, h: 6,
+      tour: "Cooling tower 1 serves the dryer condenser, the degasifier PHE and the boiler through pumps 06-P-601 / 602 / 603; cooling tower 2 serves the turbine through 06-P-604. Hot water pump 06-P-605 circulates hot water to the paddle dryer and back through the radiator." },
+    { id: "a6", name: "Degasifier · CTP", tab: "Degasifier", sub: "column · pH dosing · gravity tank · RO", x: 50.5, y: 24.5, w: 24, d: 18, tint: 0xd0d6d0, h: 7,
+      tour: "Condensate is heated in PHE-1 (steam valve 07-XV-701) and stripped in the degasifier column with the hot air blower. Acid and alkali dosing pumps hold the pH. Treated water drains to the gravity tank and pump 07-P-704 sends it through PHE-2 to the CTP / RO plant." },
+    { id: "a7", name: "Boiler · turbine · PAR", tab: "Boiler", sub: "PAR scope - shown for reference", x: 77.5, y: 1.5, w: 19, d: 41, tint: 0xd8d4cd, h: 9,
+      tour: "The boiler, turbine, flue gas cleaning and water treatment are the PAR package - shown for reference only. The dried product feeds the boiler through the bucket elevator and fuel bunker; steam drives the turbine and returns as condensate." },
   ],
   aisles: [
     { x: 0.5, y: 19, w: 76.5, d: 5 }, { x: 22.5, y: 0.5, w: 3, d: 18.5 }, { x: 47.5, y: 0.5, w: 4, d: 18.5 },
@@ -223,6 +235,8 @@ function buildPlant() {
 let renderer, scene, camera, controls, wrap, labelBox, panel, raf = 0, clock, live = null, helpers = null, onPick = null;
 let pickables = [], machines = {}, levels = [], switches = [], flows = [], labels = [], selected = null, fly = null, framed = null;
 let pipeMeshes = [], isoSvc = null, faintMat = null;
+// v3 twin UI (21-11-2026): stage = canvas + overlays (the KPI strip sits below it); colour mode; guided tour; walk; people
+let stage = null, mode = "status", tour = null, walk = null, crowd = [];
 const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
 
 // ------------------------------------------------------------------ materials
@@ -237,6 +251,7 @@ function mat(color, o = {}) {
   }
   return matCache[k];
 }
+// original 3D look (restored 21-11-2026 at the client's request - the twin controls stay, the scene looks as before)
 const STEEL = () => mat(0xd5dade, { metal: 0.88, rough: 0.3 });          // brushed stainless
 const STEEL_DK = () => mat(0x6b737b, { metal: 0.6, rough: 0.42 });
 const CONCRETE = () => mat(0xc2c4bd, { rough: 0.95 });
@@ -277,7 +292,9 @@ function label(pos, html, cls = "", o = {}) {
   if (o.eq) { el.dataset.eq = o.eq; el.onclick = (e) => { e.stopPropagation(); select(o.eq); }; }
   if (o.area) { el.dataset.area = o.area; el.onclick = (e) => { e.stopPropagation(); zoomArea(o.area); }; el.title = "Zoom to this area"; }
   labelBox.appendChild(el);
-  const l = { pos: pos.clone(), el, cls, prio: o.prio ?? 3, ...o };
+  // placement order (lower = first): area boxes, machines, instruments, vessel / package names
+  const prio = cls === "area" ? 0 : cls === "eq" ? 1 : cls === "tx" ? 2 : (o.prio ?? 3) + 0.5;
+  const l = { pos: pos.clone(), el, cls, ...o, prio };
   labels.push(l);
   return l;
 }
@@ -796,16 +813,20 @@ function applyLive() {
   for (const m of Object.values(machines)) {
     const e = eqOf(m.id), s = stateOf(m, e);
     m.state = s; m.running = s.k === "run"; m.trip = s.k === "trip";
-    m.mats.forEach((mm) => { mm.color.setHex(s.col); mm.emissive.setHex(m.running ? 0x0f2a00 : m.trip ? 0x2a0000 : 0); });
-    if (m.lamp) { m.lamp.material.color.setHex(s.col); m.lamp.material.emissive.setHex(m.running ? 0x2f8a00 : m.trip ? 0x8a0000 : 0); }
+    // colour mode: Status = state colours; Alarms = only tripped machines in red; Lines / Plain = neutral machine paint
+    const col = mode === "status" ? s.col : mode === "alarms" ? (m.trip ? ST.trip : 0xd5d9de) : 0xe8eaee;
+    const glow = mode === "status" || (mode === "alarms" && m.trip);
+    m.mats.forEach((mm) => { mm.color.setHex(col); mm.emissive.setHex(glow && m.running ? 0x0f2a00 : glow && m.trip ? 0x2a0000 : 0); });
+    if (m.lamp) { m.lamp.material.color.setHex(col); m.lamp.material.emissive.setHex(glow && m.running ? 0x2f8a00 : glow && m.trip ? 0x8a0000 : 0); }
     if (m.lb) {
-      const tag = helpers.pid(m.id) || m.id;
-      m.lb.el.className = `p3-lb eq st-${s.k}${m.vendor ? " vendor" : ""}${selected === m.id ? " sel" : ""}`;
-      m.lb.el.innerHTML = `<em class="dot" style="background:${hex(s.col)}"></em><b>${esc(tag)}</b>${s.k === "trip" ? '<span class="trip">TRIP</span>' : ""}${e && e.auto === false ? '<span class="man">MAN</span>' : ""}`;
+      const tag = helpers.pid(m.id) || m.id, dot = mode === "plain" || mode === "lines" ? "" : `<em class="dot" style="background:${hex(mode === "alarms" && !m.trip ? 0xc4c9cf : s.col)}"></em>`;
+      m.lb.el.className = `p3-lb eq st-${s.k}${m.vendor ? " vendor" : ""}${selected === m.id ? " sel" : ""}${mode === "alarms" && !m.trip ? " dim" : ""}`;
+      m.lb.el.innerHTML = `${dot}<b>${esc(tag)}</b>${m.trip ? '<span class="trip">TRIP</span>' : ""}${e && e.auto === false ? '<span class="man">MAN</span>' : ""}`;
       m.lb.el.title = `${e ? e.name : tag} - ${s.txt}`;
       m.lb.dirty = true;
     }
   }
+  updateFoot();
   for (const t of levels) t.update();
   for (const s of switches) { const v = helpers.sw(s.key); s.m.color.setHex(v == null ? 0xbdbdb5 : v ? 0xffc21a : 0x8d8d86); s.m.emissive.setHex(v ? 0x8a6000 : 0); }
   for (const l of labels) {
@@ -815,6 +836,7 @@ function applyLive() {
     l.el.classList.toggle("over", helpers.over(l.tid));
     l.dirty = true;
   }
+  for (const m of Object.values(machines)) if (m.halo) m.halo.userData.off = !(mode === "status" || (mode === "alarms" && m.trip));
   for (const f of flows) f.on = helpers.flowOn ? helpers.flowOn(f.by) : f.by.some((id) => { const e = eqOf(id); return !!e && RUNS.includes(e.status); });
   if (selected) fillPanel(selected);
 }
@@ -830,14 +852,17 @@ function select(id) {
   fillPanel(id);
   panelOffset();
   // bring the machine's area into view (once - not again while that area is already framed)
-  if (m.area && framed !== m.area) zoomArea(m.area);
+  if (m.area && framed !== m.area && !walk) zoomArea(m.area);
   applyLive();
 }
 // with the side panel open, shift the picture left so the plant is not hidden under the panel
 function panelOffset() {
-  const w = wrap.clientWidth, h = wrap.clientHeight;
+  if (walk) return;                                   // walking: full view, the card floats over it
+  const w = stage.clientWidth, h = stage.clientHeight;
   if (!w || !h) return;
-  const px = !panel.hidden && w > 760 ? Math.round((panel.offsetWidth + 10) / 2) : 0;
+  // machine card on the right: picture moves left; guided-tour card on the left: picture moves right
+  const narr = wrap.querySelector(".tw-narr");
+  const px = w <= 900 ? 0 : !panel.hidden ? Math.round((panel.offsetWidth + 10) / 2) : narr && !narr.hidden ? -Math.round((narr.offsetWidth + 10) / 2) : 0;
   if (px) camera.setViewOffset(w, h, px, 0, w, h); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
 }
@@ -845,33 +870,37 @@ function fillPanel(id) {
   const m = machines[id], e = eqOf(id);
   if (!m || !panel) return;
   const s = m.state || stateOf(m, e), tag = helpers.pid(id) || id;
-  const demo = e && e.simulated;
-  const rows = [];
-  if (e && e.auto != null) rows.push(["Mode", e.auto ? "Auto" : "Manual"]);
-  if (e && e.kw != null) rows.push(["Rating", `${e.kw} kW`]);
-  if (e && e.type === "motor" && e.run_hours != null) rows.push(["Run hours", `${Number(e.run_hours).toFixed(1)} h`]);
-  if (e && e.starts != null) rows.push(["Starts", String(e.starts)]);
-  if (e && e.pair && e.standby_selected != null) rows.push(["Selected", e.standby_selected ? "Standby" : "Main"]);
+  const demo = e && e.simulated, area = PLANT.areas.find((a) => a.id === m.area);
+  // tiles (2 columns, like the reference twin card): state first, then mode / rating / hours / starts / duty, then readings
+  const sc = s.k === "trip" ? "cr" : s.k === "run" || s.k === "open" ? "cg" : "";
+  const tiles = [["State", s.k === "trip" ? "TRIPPED" : s.txt, sc]];
+  if (e && e.auto != null) tiles.push(["Mode", e.auto ? "Auto" : "Manual", e.auto ? "" : "ca"]);
+  if (e && e.kw != null) tiles.push(["Rating", `${e.kw} kW`]);
+  if (e && e.type === "motor" && e.run_hours != null) tiles.push(["Run hours", `${Number(e.run_hours).toFixed(1)} h`]);
+  if (e && e.starts != null) tiles.push(["Starts", String(e.starts)]);
+  if (e && e.pair && e.standby_selected != null) tiles.push(["Selected", e.standby_selected ? "Standby" : "Main"]);
+  for (const t of m.readings) { const v = helpers.val(t); if (v != null) tiles.push([helpers.tagName(t) || t, v, helpers.over(t) ? "cr" : ""]); }
   const io = e && e.io ? Object.entries(e.io).map(([k, v]) => `<span class="sig ${v ? "on" : ""}">${esc(k.replace("_", " ").toUpperCase())}</span>`).join("") : "";
-  const rd = m.readings.map((t) => { const v = helpers.val(t); return v == null ? "" : `<tr><td>${esc(helpers.tagName(t) || t)}</td><td><b>${esc(v)}</b></td></tr>`; }).join("");
-  panel.innerHTML = `<div class="p3-ph"><div><b>${esc(tag)}</b>${demo ? '<span class="demo">DEMO DATA</span>' : ""}</div><button type="button" class="p3-x" aria-label="Close">×</button></div>
-    <div class="p3-pn">${esc(e ? e.name : m.service)}</div>
-    <div class="p3-ps st-${s.k}"><i></i>${esc(s.k === "trip" ? "TRIPPED - check the motor / overload" : s.txt)}</div>
-    <dl class="p3-pd"><dt>Service</dt><dd>${esc(m.service || "-")}</dd><dt>Area</dt><dd>${esc((PLANT.areas.find((a) => a.id === m.area) || {}).name || "-")}</dd>
-      ${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
-    ${io ? `<div class="p3-io">${io}</div>` : ""}
-    ${rd ? `<table class="p3-rd"><caption>Readings</caption>${rd}</table>` : ""}
+  panel.innerHTML = `<button type="button" class="p3-x" aria-label="Close">×</button>
+    <h4>${esc(tag)} · ${esc(e ? e.name : m.service)}</h4>
+    <div class="sub">${esc(area ? area.name : "")}${demo ? ' · <span class="demo">DEMO DATA</span>' : ""}</div>
+    <div class="kv">${tiles.map(([k, v, c]) => `<div><small>${esc(k)}</small><b class="${c || ""}" title="${esc(v)}">${esc(v)}</b></div>`).join("")}</div>
+    ${io ? `<div class="flags">${io}</div>` : ""}
+    <div class="note">${s.k === "trip" ? "<b>Tripped:</b> check the motor / overload. " : ""}${esc(m.service || "")}</div>
     ${m.vendor ? '<p class="p3-vn">Vendor package - shown for reference</p>' : ""}`;
   panel.querySelector(".p3-x").onclick = () => { select(null); };
 }
 
 // ------------------------------------------------------------------ camera
-function fitBox(box3, dir = new THREE.Vector3(-0.28, 0.66, 0.70), pad = 1.06, animate = true) {
+// home view direction: from the south-south-west, ~41° above the floor; on a portrait screen (phone)
+// from the west, so the long plant runs up the screen instead of shrinking to a thin strip
+function homeDir() { return camera && camera.aspect < 0.9 ? new THREE.Vector3(-0.70, 0.66, 0.26) : new THREE.Vector3(-0.28, 0.66, 0.70); }
+function fitBox(box3, dir = homeDir(), pad = 1.06, animate = true) {
   const c = box3.getCenter(new THREE.Vector3()), size = box3.getSize(new THREE.Vector3());
   const d = dir.clone().normalize();
   framed = null;
   // visible width excludes the side panel when it is open
-  const vis = camera.view && camera.view.enabled ? Math.max(0.3, 1 - (2 * camera.view.offsetX) / camera.view.fullWidth) : 1;
+  const vis = camera.view && camera.view.enabled ? Math.max(0.3, 1 - (2 * Math.abs(camera.view.offsetX)) / camera.view.fullWidth) : 1;
   const vf = THREE.MathUtils.degToRad(camera.fov), hf = 2 * Math.atan(Math.tan(vf / 2) * camera.aspect * vis);
   // fit every box corner inside both view angles
   const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), d).normalize(), up = new THREE.Vector3().crossVectors(d, right).normalize();
@@ -908,7 +937,7 @@ const VIEWS = {
 };
 // standard views turn to the orientation and fit the whole plant (SolidWorks "zoom to fit on view change")
 function setView(name) {
-  const d = VIEWS[name]; if (!d) return;
+  const d = name === "plant" ? homeDir() : VIEWS[name]; if (!d) return;
   controls.autoRotate = false; syncTools();
   fitBox(plantBox(), d.clone(), name === "top" ? 1.0 : 1.02);
 }
@@ -951,38 +980,13 @@ function zoomAt(cx, cy, zoomIn) {
   const dist = THREE.MathUtils.clamp(cp.distanceTo(p) * 0.5, controls.minDistance, controls.maxDistance);
   flyTo(p.clone().add(dir.multiplyScalar(dist)), p);
 }
-// zoom to area: the dragged rectangle fills the view
-function zoomToRect(x0, y0, x1, y1) {
-  const r = renderer.domElement.getBoundingClientRect(), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-  const p = hitPoint(cx, cy);
-  if (!p) return;
-  const k = Math.max(Math.abs(x1 - x0) / r.width, Math.abs(y1 - y0) / r.height, 0.04);
-  const o = camera.position.clone().sub(p), dist = THREE.MathUtils.clamp(camera.position.distanceTo(p) * k, controls.minDistance, controls.maxDistance);
-  flyTo(p.clone().add(o.normalize().multiplyScalar(dist)), p);
-}
-// display style: shaded / shaded with edges / wireframe
-let dispStyle = "shaded", edgeMat = null, allMats = null;
-function setStyle(st) {
-  dispStyle = st;
-  if (!allMats) { allMats = new Set(); scene.traverse((o) => { if (o.isMesh && !o.userData.blob && !o.userData.edgeLine) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => allMats.add(m)); }); if (faintMat) allMats.add(faintMat); }
-  allMats.forEach((m) => { if (m.wireframe !== (st === "wire")) { m.wireframe = st === "wire"; m.needsUpdate = true; } });
-  scene.traverse((o) => { if (o.userData.blob) o.visible = st !== "wire"; });
-  if (st === "edges" && !edgeMat) {                     // built once, on first use
-    edgeMat = new THREE.LineBasicMaterial({ color: 0x1b2430, transparent: true, opacity: 0.45 });
-    const list = []; scene.traverse((o) => { if (o.isMesh && !o.userData.blob && o.geometry && !(o.geometry.parameters && o.geometry.parameters.width > 30)) list.push(o); });
-    for (const o of list) { const e = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 35), edgeMat); e.userData.edgeLine = true; e.raycast = () => {}; o.add(e); }
-  }
-  if (edgeMat) edgeMat.visible = st === "edges";
-  renderer.shadowMap.enabled = st !== "wire"; scene.traverse((o) => { if (o.material && o.isMesh) o.material.needsUpdate = true; });
-  syncTools();
-}
 const boxOf = (x0, y0, x1, y1, z0, z1) => new THREE.Box3().setFromPoints([W2(x0, y0, z0), W2(x1, y1, z1), W2(x0, y1, z0), W2(x1, y0, z1)]);
 function plantBox() { const b = PLANT.bounds; return boxOf(b.x, b.y, b.x + b.w, b.y + b.d, 0, PLANT.fitH || 5); }
 function zoomArea(id) {
   const a = PLANT.areas.find((q) => q.id === id);
   if (!a) return;
   fitBox(boxOf(a.x, a.y, a.x + a.w, a.y + a.d, 0, a.h || 4), undefined, 1.04);
-  framed = id;
+  framed = id; activeTab = id; syncTools();
 }
 
 // ------------------------------------------------------------------ loop
@@ -993,54 +997,63 @@ function frame() {
   if (document.hidden || wrap.offsetParent === null) return;
   const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
   resize();
-  if (fly) {
-    fly.s = Math.min(1, fly.s + dt / 0.7); const k = 1 - Math.pow(1 - fly.s, 3);
-    controls.target.lerpVectors(fly.t0, fly.t1, k);
-    const dir = fly.d0.clone().applyQuaternion(new THREE.Quaternion().slerp(fly.q, k));
-    camera.position.copy(controls.target).add(dir.multiplyScalar(fly.r0 + (fly.r1 - fly.r0) * k));
-    if (fly.s >= 1) fly = null;
+  if (walk) stepWalk(dt);
+  else {
+    if (fly) {
+      fly.s = Math.min(1, fly.s + dt / 0.7); const k = 1 - Math.pow(1 - fly.s, 3);
+      controls.target.lerpVectors(fly.t0, fly.t1, k);
+      const dir = fly.d0.clone().applyQuaternion(new THREE.Quaternion().slerp(fly.q, k));
+      camera.position.copy(controls.target).add(dir.multiplyScalar(fly.r0 + (fly.r1 - fly.r0) * k));
+      if (fly.s >= 1) fly = null;
+    }
+    controls.update();
   }
-  controls.update();
   for (const m of Object.values(machines)) {
     if (m.rot && m.running) m.rot.obj.rotation[m.rot.axis] += m.rot.speed * dt;
     if (m.lamp) m.lamp.visible = !m.trip || Math.floor(t * 2.5) % 2 === 0;
     if (m.halo) {
-      const on = m.running || m.trip; m.halo.visible = on;
+      const on = (m.running || m.trip) && !m.halo.userData.off; m.halo.visible = on;
       if (on) { const p = 0.5 + 0.5 * Math.sin(t * (m.trip ? 7 : 3.2)); m.halo.material.color.setHex(m.trip ? 0xe5484d : 0x46c21b); m.halo.material.opacity = 0.3 + 0.4 * p; }
     }
     if (m.sel && m.sel.visible) m.sel.material.opacity = 0.6 + 0.35 * Math.sin(t * 4);
   }
+  const showFlow = mode === "status" || mode === "lines";
   for (const f of flows) {
-    f.mat.emissiveIntensity = f.on ? 0.25 + 0.1 * Math.sin(t * 3) : 0;
-    f.sleeve.visible = !!f.on && (!isoSvc || f.s === isoSvc);
-    if (f.on) f.tex.offset.x -= (dt * 2 / f.length) * f.tex.repeat.x;
+    const on = !!f.on && showFlow;
+    f.mat.emissiveIntensity = on ? 0.25 + 0.1 * Math.sin(t * 3) : 0;
+    f.sleeve.visible = on && (!isoSvc || f.s === isoSvc);
+    if (on) f.tex.offset.x -= (dt * 2 / f.length) * f.tex.repeat.x;
   }
+  stepCrowd(dt, t);
+  if (tour) stepTour(dt);
   renderer.render(scene, camera);
-  updateCube();
   placeLabels();
 }
+// tags never overlap, never cut off at the edge, never under an overlay (HUD, card, tour text, bars)
 function placeLabels() {
-  const w = wrap.clientWidth, h = wrap.clientHeight, v = new THREE.Vector3(), placed = [];
+  const w = stage.clientWidth, h = stage.clientHeight, v = new THREE.Vector3(), placed = [];
   const off = labelBox.classList.contains("off");
   const rank = (l) => (selected && l.el.dataset.eq === selected ? -1 : l.prio);
   const order = labels.slice().sort((a, b) => rank(a) - rank(b));
-  // overlays (toolbar, side panel, legend, help line) are no-go zones for tags
-  const wr = wrap.getBoundingClientRect();
-  for (const o of wrap.querySelectorAll(".p3-tools, .p3-panel, .p3-legend, .p3-help, .p3-cube, .p3-triad, .p3-menu")) {
-    if (o.hidden || !o.offsetWidth) continue;
+  const sr = stage.getBoundingClientRect();
+  for (const o of stage.querySelectorAll(".tw-hud .t, .tw-hud .k, .tw-legend, .tw-hud.tr .seg, .p3-panel, .tw-bar > *, .o3-ui > *, .tw-narr, .wk-hud > *")) {
+    if (o.hidden || !o.offsetWidth || o.closest("[hidden]")) continue;
     const r = o.getBoundingClientRect();
-    placed.push({ x0: r.left - wr.left, x1: r.right - wr.left, y0: r.top - wr.top, y1: r.bottom - wr.top });
+    placed.push({ x0: r.left - sr.left, x1: r.right - sr.left, y0: r.top - sr.top, y1: r.bottom - sr.top });
   }
+  const cam = camera.position;
   for (const l of order) {
     v.copy(l.pos).project(camera);
     let vis = v.z < 1 && v.x > -1 && v.x < 1 && v.y > -1 && v.y < 1 && !(off && l.prio > 0 && l.el.dataset.eq !== selected);
+    if (vis && walk && l.pos.distanceTo(cam) > 32) vis = false;              // walking: only what is near
+    if (vis && l.cls === "area" && walk) vis = false;
     const x = ((v.x + 1) / 2) * w, y = ((1 - v.y) / 2) * h;
     if (vis && (!l.size || l.dirty)) { l.el.style.display = ""; l.size = [l.el.offsetWidth || 50, l.el.offsetHeight || 16]; l.dirty = false; }
-    let x0 = l.anchor === "left" ? x : x - (l.size ? l.size[0] / 2 : 0), y0 = y - (l.size ? l.size[1] : 0) - (l.anchor === "left" ? 0 : 6);
+    const x0 = l.anchor === "left" ? x : x - (l.size ? l.size[0] / 2 : 0), y0 = y - (l.size ? l.size[1] : 0) - (l.anchor === "left" ? 0 : 6);
     if (vis) {
       const r = { x0: x0 - 2, x1: x0 + l.size[0] + 2, y0: y0 - 2, y1: y0 + l.size[1] + 2 };
-      if (r.x0 < 0 || r.x1 > w || r.y0 < 0 || r.y1 > h) vis = false;                     // never cut off at the edge
-      else if (placed.some((o) => !(o.x1 < r.x0 || o.x0 > r.x1 || o.y1 < r.y0 || o.y0 > r.y1))) vis = false;   // never overlap
+      if (r.x0 < 0 || r.x1 > w || r.y0 < 0 || r.y1 > h) vis = false;
+      else if (placed.some((o) => !(o.x1 < r.x0 || o.x0 > r.x1 || o.y1 < r.y0 || o.y0 > r.y1))) vis = false;
       else placed.push(r);
     }
     l.el.style.display = vis ? "" : "none";
@@ -1048,7 +1061,7 @@ function placeLabels() {
   }
 }
 function resize() {
-  const w = wrap.clientWidth, h = wrap.clientHeight;
+  const w = stage.clientWidth, h = stage.clientHeight;
   if (!w || !h) return;
   const c = renderer.domElement;
   if (c.width !== Math.round(w * renderer.getPixelRatio()) || c.height !== Math.round(h * renderer.getPixelRatio())) {
@@ -1065,49 +1078,203 @@ function pickAt(cx, cy) {
   return hit ? hit.object.userData : null;
 }
 
-// ------------------------------------------------------------------ build + public API
+// ------------------------------------------------------------------ colour modes + legend (top right / top left)
+const MODES = [["status", "Status"], ["alarms", "Alarms"], ["lines", "Lines"], ["plain", "Plain"]];
 function legendHTML() {
-  return Object.entries(PLANT.services).filter(([, s]) => !s.hide).map(([k, s]) => `<span data-s="${k}" title="Show only this line (click again for all)"><i style="background:${hex(s.color)}"></i>${esc(s.name)}</span>`).join("")
-    + '<span class="vd"><i></i>Vendor package (scope)</span>';
+  const sw = (c, t, x = "") => `<span${x}><i style="background:${hex(c)}"></i>${esc(t)}</span>`;
+  if (mode === "status") return sw(ST.run, "Running / open") + sw(ST.stop, "Stopped / closed") + sw(ST.trip, "Tripped") + sw(ST.unk, "No data") + '<span class="vd"><i></i>Vendor package</span>';
+  if (mode === "alarms") return sw(ST.trip, "Tripped") + sw(0xd5d9de, "No alarm") + '<span><i class="ov"></i>Value above its alarm set point</span>';
+  if (mode === "lines") return Object.entries(PLANT.services).filter(([, s]) => !s.hide).map(([k, s]) => `<span data-s="${k}" role="button" tabindex="0" title="Show only this line (click again for all)"><i class="pl" style="background:${hex(s.color)}"></i>${esc(s.name)}</span>`).join("");
+  return "<span>Plain view - machines in their own colours, no live state</span>";
 }
-// legend click: show only one service line (e.g. filtrate) so it can be traced end to end; others fade
+function setMode(m) {
+  if (!MODES.some(([k]) => k === m)) return;
+  mode = m;
+  if (mode !== "lines" && isoSvc) isolate(null);
+  const lg = wrap.querySelector(".tw-legend");
+  lg.innerHTML = legendHTML();
+  lg.querySelectorAll("[data-s]").forEach((s) => { s.onclick = () => isolate(s.dataset.s); s.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); isolate(s.dataset.s); } }; });
+  applyLive(); syncTools();
+}
+// Lines mode legend click: show only one service line (e.g. filtrate) so it can be traced end to end; others fade
 function isolate(k) {
   isoSvc = !k || isoSvc === k ? null : k;
-  if (!faintMat) faintMat = new THREE.MeshStandardMaterial({ color: 0xb9c0c8, transparent: true, opacity: 0.18, depthWrite: false });
+  if (!faintMat) faintMat = new THREE.MeshStandardMaterial({ color: 0xc9d0d8, transparent: true, opacity: 0.18, depthWrite: false });
   for (const t of pipeMeshes) {
     if (!t.userData.m0) t.userData.m0 = t.material;
     t.material = !isoSvc || t.userData.pipe === isoSvc ? t.userData.m0 : faintMat;
   }
-  for (const f of flows) f.iso = !!isoSvc;
   if (isoSvc) {                                     // frame the whole traced line
     const bb = new THREE.Box3();
     for (const t of pipeMeshes) if (t.userData.pipe === isoSvc) bb.expandByObject(t);
     if (!bb.isEmpty()) { bb.min.y = 0; fitBox(bb, undefined, 1.1); }
   }
-  wrap.querySelectorAll(".p3-legend [data-s]").forEach((s) => { s.classList.toggle("on", s.dataset.s === isoSvc); s.classList.toggle("dim", !!isoSvc && s.dataset.s !== isoSvc); });
+  wrap.querySelectorAll(".tw-legend [data-s]").forEach((s) => { s.classList.toggle("on", s.dataset.s === isoSvc); s.classList.toggle("dim", !!isoSvc && s.dataset.s !== isoSvc); });
 }
+
+// ------------------------------------------------------------------ KPI strip under the twin + live / demo badge
+function updateFoot() {
+  if (!wrap || !helpers) return;
+  const f = wrap.querySelector(".twin-foot");
+  if (!f) return;
+  // measured values only - tank levels, pressure, temperatures, pH (client 21-11-2026: no running / trip / alarm counts here);
+  // a value above its alarm set point turns red
+  const cell = (k, id, txt) => { const v = (txt ? helpers.tagTxt(id) : helpers.val(id)) || "--"; return `<div><small>${esc(k)}</small><b class="${helpers.over(id) ? "cr" : ""}" title="${esc(v)}">${esc(v)}</b></div>`; };
+  f.innerHTML = cell("Sludge tank", "LT_01", true) + cell("Filtrate tank", "LT_02", true) + cell("Supply pressure", "PT_01")
+    + cell("Hot water to dryer", "T_02") + cell("Degasifier temperature", "T_04") + cell("pH", "PH_01");
+  const demo = ((live && live.equipment) || []).some((e) => e.simulated), k = wrap.querySelector(".tw-hud .k");
+  if (k) { k.classList.toggle("demo", demo); k.querySelector("span").textContent = demo ? "Digital twin · DEMO data" : "Digital twin · live"; }
+}
+
+// ------------------------------------------------------------------ guided tour (narrated fly-through of the areas)
+const OVERVIEW = "Sludge flows from west to east. The south row receives, dewaters and dries the sludge; the north row holds raw water, the cooling towers with the hot water loop, and the degasifier with the CTP. The boiler and turbine package stands on the east side. Machine colours show the live state: green running, grey stopped, red tripped.";
+let activeTab = "plant";
+function tourSteps() { return [{ id: null, name: "FSTP-200 plant · Muttathara", text: OVERVIEW }, ...PLANT.areas.map((a) => ({ id: a.id, name: a.name, text: a.tour }))]; }
+function startTour() { if (walk) stopWalk(); select(null); tour = { i: -1, steps: tourSteps(), auto: true, t: 0 }; wrap.classList.add("touring"); tourGo(0); }
+function tourGo(i) {
+  if (!tour) return;
+  if (i < 0 || i >= tour.steps.length) { stopTour(); return; }
+  tour.i = i; tour.t = 0;
+  const st = tour.steps[i];
+  renderNarr(); panelOffset();                         // card first, so the area is framed in the free part of the view
+  if (st.id) zoomArea(st.id); else { setView("plant"); activeTab = "plant"; syncTools(); }
+}
+function stopTour() { tour = null; if (!wrap) return; wrap.classList.remove("touring"); const n = wrap.querySelector(".tw-narr"); if (n) n.hidden = true; panelOffset(); syncTools(); }
+function stepTour(dt) {
+  if (!tour.auto) return;
+  tour.t += dt;
+  const bar = wrap.querySelector(".tw-narr .prog i");
+  if (bar) bar.style.width = `${Math.min(100, (tour.t / 12) * 100)}%`;
+  if (tour.t >= 12) { if (tour.i + 1 < tour.steps.length) tourGo(tour.i + 1); else { tour.auto = false; renderNarr(); } }
+}
+function areaSummary(id) {
+  const ms = Object.values(machines).filter((m) => m.area === id && m.kind !== "valve");
+  if (!ms.length) return "";
+  const run = ms.filter((m) => m.running).length, trip = ms.filter((m) => m.trip).length;
+  return `<b>Now:</b> ${run} of ${ms.length} machines running${trip ? ` · <b class="cr">${trip} tripped</b>` : ""}.`;
+}
+function renderNarr() {
+  const n = wrap.querySelector(".tw-narr"), bar = wrap.querySelector(".tw-bar");
+  if (!n || !tour) return;
+  const st = tour.steps[tour.i], last = tour.i === tour.steps.length - 1;
+  n.innerHTML = `<div class="h">GUIDED TOUR<em>${tour.i + 1} / ${tour.steps.length}${tour.auto ? " · auto" : ""}</em></div>
+    <h4>${esc(st.name)}</h4><p>${esc(st.text)}</p>${st.id ? `<p>${areaSummary(st.id)}</p>` : ""}
+    ${tour.auto ? '<div class="prog"><i></i></div>' : ""}
+    <div class="dots">${tour.steps.map((_, k) => `<i class="${k === tour.i ? "on" : ""}"></i>`).join("")}</div>
+    <div class="nav"><button type="button" data-t="prev" ${tour.i ? "" : "disabled"}>‹ Back</button><button type="button" class="pri" data-t="next">${last ? "Finish" : "Next ›"}</button>
+      ${tour.auto ? '<button type="button" data-t="pause">Pause</button>' : ""}<button type="button" class="end" data-t="end">End tour</button></div>`;
+  n.style.bottom = `${(bar ? bar.offsetHeight : 40) + 22}px`;
+  n.hidden = false;
+  n.querySelectorAll("[data-t]").forEach((b) => (b.onclick = (e) => {
+    e.stopPropagation();
+    const a = b.dataset.t;
+    if (a === "prev") { tour.auto = false; tourGo(tour.i - 1); }
+    else if (a === "next") { tour.auto = false; if (last) stopTour(); else tourGo(tour.i + 1); }
+    else if (a === "pause") { tour.auto = false; renderNarr(); }
+    else stopTour();
+  }));
+}
+
+// ------------------------------------------------------------------ walk (first person at eye height)
+const EYE = 1.65, FOV = 34;                              // eye height when walking; normal camera field of view
+function startWalk() {
+  if (tour) stopTour();
+  select(null);
+  walk = { saved: { p: camera.position.clone(), t: controls.target.clone() }, pos: W2(2.5, 21.5, FLOOR_Z + EYE), yaw: -Math.PI / 2, pitch: -0.06, keys: new Set(), drag: null };
+  fly = null; controls.enabled = false;
+  camera.rotation.order = "YXZ"; camera.fov = 62; camera.near = 0.1; camera.clearViewOffset(); camera.updateProjectionMatrix();
+  wrap.classList.add("walking"); wrap.querySelector(".wk-hud").hidden = false;
+  wrap.focus({ preventScroll: true });
+  syncTools();
+}
+function stopWalk() {
+  if (!walk) return;
+  const s = walk.saved; walk = null;
+  camera.rotation.order = "XYZ"; camera.fov = FOV; camera.near = 0.5; camera.updateProjectionMatrix();
+  camera.position.copy(s.p); controls.target.copy(s.t); controls.enabled = true; controls.update();
+  wrap.classList.remove("walking"); wrap.querySelector(".wk-hud").hidden = true;
+  panelOffset(); syncTools();
+}
+function stepWalk(dt) {
+  const k = walk.keys, run = k.has("shift") ? 2.2 : 1;
+  const fw = (k.has("w") || k.has("up") ? 1 : 0) - (k.has("s") || k.has("down") ? 1 : 0);
+  const st = (k.has("d") ? 1 : 0) - (k.has("a") ? 1 : 0);
+  walk.yaw += ((k.has("left") ? 1 : 0) - (k.has("right") ? 1 : 0)) * 1.7 * dt;
+  const sp = 2.0 * run * dt, f = new THREE.Vector3(-Math.sin(walk.yaw), 0, -Math.cos(walk.yaw)), r = new THREE.Vector3(Math.cos(walk.yaw), 0, -Math.sin(walk.yaw));
+  walk.pos.addScaledVector(f, fw * sp).addScaledVector(r, st * sp);
+  const b = PLANT.bounds;                                   // stay on the plant (a few metres of yard around it)
+  walk.pos.x = THREE.MathUtils.clamp(walk.pos.x, b.x - 4, b.x + b.w + 4);
+  walk.pos.z = THREE.MathUtils.clamp(walk.pos.z, -(b.y + b.d + 4), -(b.y - 4));
+  camera.position.copy(walk.pos);
+  camera.rotation.set(walk.pitch, walk.yaw, 0);
+}
+const WALK_KEYS = { w: "w", a: "a", s: "s", d: "d", arrowup: "up", arrowdown: "down", arrowleft: "left", arrowright: "right", shift: "shift" };
+
+// ------------------------------------------------------------------ people walking the aisles (life in the twin)
+const ROUTES = [[[1.5, 21.5], [74, 21.5]], [[4, 20.4], [70, 20.4]], [[24, 2], [24, 19]], [[49.5, 2], [49.5, 19]], [[22, 25], [22, 42]],
+  [[49, 25], [49, 42]], [[76, 2], [76, 42]], [[30, 22.6], [72, 22.6]], [[76, 40], [76, 6]]];
+function buildCrowd() {
+  crowd = [];
+  const skin = mat(0xc58c63, { rough: 0.7 }), helmet = mat(0xffffff, { rough: 0.35 }), trouser = mat(0x2f3a4f, { rough: 0.8 });
+  const vest = new THREE.MeshStandardMaterial({ color: 0xd7ff3a, roughness: 0.6, emissive: 0x334400, emissiveIntensity: 0.15 });
+  const shirt = mat(0x2f6fb5, { rough: 0.6 });
+  const noPick = (o) => o.traverse((q) => { if (q.isMesh) q.raycast = () => {}; });
+  ROUTES.forEach((route, i) => {
+    const g = new THREE.Group(), legs = [];
+    for (const sx of [-0.1, 0.1]) {
+      const hip = new THREE.Group(); hip.position.set(sx, 0.86, 0);
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.82, 0.15), trouser); leg.position.y = -0.41; leg.castShadow = true; hip.add(leg); g.add(hip); legs.push(hip);
+    }
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.42, 4, 10), i % 3 === 2 ? shirt : vest); body.position.y = 1.18; body.castShadow = true; g.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 10), skin); head.position.y = 1.62; g.add(head);
+    const hat = new THREE.Mesh(new THREE.SphereGeometry(0.135, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), helmet); hat.position.y = 1.66; g.add(hat);
+    noPick(g); scene.add(g);
+    const len = Math.hypot(route[1][0] - route[0][0], route[1][1] - route[0][1]);
+    crowd.push({ g, legs, route, len, s: (i * 0.37 % 1) * len, dir: i % 2 ? -1 : 1, v: 0.9 + (i % 4) * 0.12, ph: i * 1.3 });
+  });
+}
+function stepCrowd(dt, t) {
+  for (const p of crowd) {
+    p.s += p.dir * p.v * dt;
+    if (p.s > p.len) { p.s = p.len; p.dir = -1; } else if (p.s < 0) { p.s = 0; p.dir = 1; }
+    const [[x0, y0], [x1, y1]] = p.route, k = p.s / p.len, dx = (x1 - x0) * p.dir, dy = (y1 - y0) * p.dir;
+    p.g.position.copy(W2(x0 + (x1 - x0) * k, y0 + (y1 - y0) * k, FLOOR_Z));
+    p.g.rotation.y = Math.atan2(dx, -dy);
+    const sw = Math.sin(t * 6.5 + p.ph) * 0.45;
+    p.legs[0].rotation.x = sw; p.legs[1].rotation.x = -sw;
+  }
+}
+
+// ------------------------------------------------------------------ build + public API
 function build(container) {
-  container.innerHTML = `<div class="p3-wrap p3n"><div class="p3-labels"></div>
-    ${toolsHTML()}
-    <div class="p3-cube" title="View cube - click a face"><div class="p3-cube-in">
-      <div class="f" data-v="front">FRONT</div><div class="f" data-v="back">BACK</div><div class="f" data-v="right">RIGHT</div>
-      <div class="f" data-v="left">LEFT</div><div class="f" data-v="top">TOP</div><div class="f bot">BOTTOM</div></div></div>
-    <svg class="p3-triad" viewBox="0 0 70 70" aria-hidden="true"><g class="ax"></g></svg>
-    <div class="p3-rect" hidden></div>
-    <aside class="p3-panel" hidden aria-live="polite"></aside>
-    <div class="p3-legend">${legendHTML()}</div>
-    <div class="p3-help">Drag or middle-drag = rotate · right-drag or Ctrl+middle-drag = move · wheel = zoom at cursor · double-tap = zoom in (sky / Shift = out) · F = fit · Space = views</div></div>`;
-  wrap = container.querySelector(".p3-wrap"); labelBox = wrap.querySelector(".p3-labels"); panel = wrap.querySelector(".p3-panel");
+  const tabs = [["plant", "Plant"], ...PLANT.areas.map((a) => [a.id, a.tab || a.name])];
+  container.innerHTML = `<div class="p3-wrap p3n"><div class="p3-stage"><div class="p3-labels"></div>
+    <div class="tw-hud tl"><div class="k"><i></i><span>Digital twin · live</span></div>
+      <div class="t">FSTP-200 plant<span>Muttathara · indicative layout from the P&amp;ID · click a machine for details</span></div>
+      <div class="tw-legend"></div></div>
+    <div class="tw-hud tr"><div class="seg" role="group" aria-label="Colour the plant by">${MODES.map(([k, n]) => `<button type="button" data-mode="${k}">${n}</button>`).join("")}</div></div>
+    <aside class="p3-panel tw-card" hidden aria-live="polite"></aside>
+    <div class="tw-narr" hidden aria-live="polite"></div>
+    <div class="tw-bar"><button type="button" class="tw-b pri" data-p3="tour"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>Guided tour</button>
+      <button type="button" class="tw-b" data-p3="walk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M10 22l2-7 3 3v6M8 12l3-4 3 1 2 4 3 1M11 8l-2 6"/></svg>Walk</button>
+      <div class="seg tw-areas" role="group" aria-label="Zoom to an area">${tabs.map(([k, n]) => `<button type="button" data-tab="${k}">${esc(n)}</button>`).join("")}</div></div>
+    <div class="o3-ui"><span class="o3-hint">Click to explore · scroll to zoom</span>
+      <div class="o3-row"><button type="button" class="o3-zoom" data-p3="zin" aria-label="Zoom in" title="Zoom in">+</button><button type="button" class="o3-zoom" data-p3="zout" aria-label="Zoom out" title="Zoom out">−</button>
+      <button type="button" class="o3-reset" data-p3="reset"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v5h5"/></svg>Reset view</button></div></div>
+    <div class="wk-hud" hidden><div class="wk-top"><b>Walking</b><span class="wk-hint">W A S D or arrow keys to walk · drag to look · Shift = faster</span><button type="button" class="wk-exit" data-p3="walk">Exit walk</button></div>
+      <div class="wk-pad" aria-label="Walk buttons"><button type="button" data-k="up" aria-label="Walk forward">▲</button><button type="button" data-k="left" aria-label="Turn left">◀</button>
+        <button type="button" data-k="down" aria-label="Walk back">▼</button><button type="button" data-k="right" aria-label="Turn right">▶</button></div></div>
+    </div><div class="twin-foot"></div></div>`;
+  wrap = container.querySelector(".p3-wrap"); stage = wrap.querySelector(".p3-stage"); labelBox = wrap.querySelector(".p3-labels"); panel = wrap.querySelector(".p3-panel");
   pickables = []; machines = {}; levels = []; switches = []; flows = []; labels = []; selected = null; fly = null;
-  pipeMeshes = []; isoSvc = null; framed = null;
-  wrap.querySelectorAll(".p3-legend [data-s]").forEach((s) => { s.onclick = () => isolate(s.dataset.s); });
+  pipeMeshes = []; isoSvc = null; framed = null; tour = null; walk = null; activeTab = "plant";
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.domElement.className = "p3-cv"; wrap.prepend(renderer.domElement);
+  renderer.domElement.className = "p3-cv"; stage.prepend(renderer.domElement);
   scene = new THREE.Scene(); buildSky();
-  camera = new THREE.PerspectiveCamera(34, 1.6, 0.5, 600);
+  camera = new THREE.PerspectiveCamera(FOV, 1.6, 0.5, 600);
   scene.add(new THREE.HemisphereLight(0xeef3f8, 0x8f928a, 1.0));
   const sun = new THREE.DirectionalLight(0xfff4e4, 2.3);
   const b = PLANT.bounds, cx = b.x + b.w / 2, cy = b.y + b.d / 2;
@@ -1117,42 +1284,50 @@ function build(container) {
   Object.assign(sun.shadow.camera, { left: -R, right: R, top: R, bottom: -R, near: 1, far: 220 });
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; scene.add(sun);
   controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.minDistance = 4; controls.maxDistance = 260; controls.maxPolarAngle = Math.PI / 2; controls.autoRotateSpeed = 0.5;
+  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.minDistance = 4; controls.maxDistance = 300; controls.maxPolarAngle = Math.PI / 2 - 0.04;
   controls.zoomToCursor = true;                          // wheel zooms about the point under the mouse (as in SolidWorks)
   controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: THREE.MOUSE.PAN };
-  controls.addEventListener("start", () => { fly = null; pushView(); });
-  history.length = 0; dispStyle = "shaded"; edgeMat = null; allMats = null; leftMode = "rotate"; areaMode = false;
+  controls.addEventListener("start", () => { fly = null; pushView(); if (tour && tour.auto) { tour.auto = false; renderNarr(); } });
+  history.length = 0;
   buildFloor();
   buildPlant();
   PLANT.pipes.forEach(buildPipe);
+  buildCrowd();
   fitBox(plantBox(), undefined, 1.02, false);
   clock = new THREE.Clock();
+  setMode(mode);
   let down = null;
   const cv = renderer.domElement;
-  // taps: single = pick, double = zoom in at the point (Shift / sky = zoom out), two-finger tap = zoom out
+  // taps: single = pick, double = zoom in at the point (Shift / sky = zoom out), two-finger tap = zoom out; walking: drag = look
   const act = new Map(); let multi = null, lastTap = null;
   cv.addEventListener("pointerdown", (e) => {
     act.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (act.size === 1) down = { x: e.clientX, y: e.clientY, t: performance.now() };
     if (act.size === 2) multi = { t: performance.now(), moved: false, start: new Map(act) };
     if (act.size > 2) multi = null;
+    if (walk) { walk.drag = { x: e.clientX, y: e.clientY }; try { cv.setPointerCapture(e.pointerId); } catch (_) { /* ok */ } }
   });
   cv.addEventListener("pointermove", (e) => {
     if (multi && multi.start.has(e.pointerId)) { const s = multi.start.get(e.pointerId); if (Math.hypot(e.clientX - s.x, e.clientY - s.y) > 12) multi.moved = true; }
+    if (walk && walk.drag) {
+      walk.yaw -= (e.clientX - walk.drag.x) * 0.005;
+      walk.pitch = THREE.MathUtils.clamp(walk.pitch - (e.clientY - walk.drag.y) * 0.004, -1.2, 1.0);
+      walk.drag = { x: e.clientX, y: e.clientY };
+    }
   });
-  const lift = (e) => { act.delete(e.pointerId); };
+  const lift = (e) => { act.delete(e.pointerId); if (walk) walk.drag = null; };
   cv.addEventListener("pointercancel", (e) => { lift(e); multi = null; down = null; });
   cv.addEventListener("pointerup", (e) => {
     lift(e);
     if (multi) {                                       // two-finger gesture: wait for both fingers
-      if (act.size === 0) { if (!multi.moved && performance.now() - multi.t < 400) zoomBy(2); multi = null; }
+      if (act.size === 0) { if (!multi.moved && performance.now() - multi.t < 400 && !walk) zoomBy(2); multi = null; }
       down = null; lastTap = null; return;
     }
-    if (areaMode || e.button !== 0) { down = null; return; }
+    if (e.button !== 0) { down = null; return; }
     const tol = e.pointerType === "touch" ? 12 : 5;
     if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < tol) {
       const now = performance.now();
-      if (lastTap && now - lastTap.t < 350 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 40) {
+      if (!walk && lastTap && now - lastTap.t < 350 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 40) {
         lastTap = null; down = null;
         zoomAt(e.clientX, e.clientY, !e.shiftKey);
         return;
@@ -1165,93 +1340,47 @@ function build(container) {
     } else lastTap = null;
     down = null;
   });
-  cv.addEventListener("pointermove", (e) => { if (!down && !areaMode) { const u = pickAt(e.clientX, e.clientY); cv.style.cursor = u ? "pointer" : "grab"; } });
+  cv.addEventListener("pointermove", (e) => { if (!down && !walk) { const u = pickAt(e.clientX, e.clientY); cv.style.cursor = u ? "pointer" : "grab"; } });
+  cv.addEventListener("wheel", (e) => { if (!walk) return; e.preventDefault(); walk.pos.addScaledVector(new THREE.Vector3(-Math.sin(walk.yaw), 0, -Math.cos(walk.yaw)), -Math.sign(e.deltaY) * 0.8); }, { passive: false });
   wireControls(cv);
 }
 
-// ------------------------------------------------------------------ SolidWorks-style view tools
-let leftMode = "rotate", areaMode = false, winH = null;
-const ICON = {
-  fit: '<rect x="8" y="8" width="8" height="8"/><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/>',
-  area: '<circle cx="10" cy="10" r="6.5"/><path d="M15 15l6 6"/><rect x="7" y="7" width="6" height="6" stroke-dasharray="2 1.6"/>',
-  zin: '<circle cx="10" cy="10" r="6.5"/><path d="M15 15l6 6M7 10h6M10 7v6"/>',
-  zout: '<circle cx="10" cy="10" r="6.5"/><path d="M15 15l6 6M7 10h6"/>',
-  prev: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/>',
-  views: '<path d="M12 2L3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/>',
-  style: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 010 17z" fill="currentColor"/>',
-  rot: '<path d="M20 12a8 8 0 11-2.3-5.6"/><path d="M20 3.5v5h-5"/>',
-  pan: '<path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/>',
-  auto: '<circle cx="12" cy="12" r="9"/><path d="M10 8l6 4-6 4z" fill="currentColor"/>',
-  lbl: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="7.5" r="1.6"/>',
-};
-const ib = (a, title, extra = "") => `<button type="button" class="p3-ib" data-p3="${a}" title="${title}" aria-label="${title}" ${extra}><svg viewBox="0 0 24 24">${ICON[a]}</svg></button>`;
-function toolsHTML() {
-  const views = [["front", "Front", "1"], ["back", "Back", "2"], ["left", "Left", "3"], ["right", "Right", "4"], ["top", "Top", "5"], ["iso", "Isometric", "7"], ["plant", "Plant view (3/4)", "0"]];
-  return `<div class="p3-tools" role="toolbar" aria-label="View tools">
-    ${ib("fit", "Zoom to fit (F)")}${ib("area", "Zoom to area - drag a box")}${ib("zin", "Zoom in (Shift+Z)")}${ib("zout", "Zoom out (Z)")}${ib("prev", "Previous view (Ctrl+Shift+Z)")}
-    <span class="sep"></span>
-    <div class="p3-dd">${ib("views", "View orientation (Space)", 'aria-haspopup="true"')}<div class="p3-menu" data-menu="views" hidden>
-      ${views.map(([k, n, s]) => `<button type="button" data-view="${k}"><span>${n}</span><kbd>${s}</kbd></button>`).join("")}</div></div>
-    <div class="p3-dd">${ib("style", "Display style", 'aria-haspopup="true"')}<div class="p3-menu" data-menu="style" hidden>
-      <button type="button" data-style="shaded"><span>Shaded</span></button><button type="button" data-style="edges"><span>Shaded with edges</span></button>
-      <button type="button" data-style="wire"><span>Wireframe</span></button></div></div>
-    <span class="sep"></span>
-    ${ib("rot", "Rotate - left-drag turns the view")}${ib("pan", "Pan - left-drag moves the view")}
-    <span class="sep"></span>
-    ${ib("auto", "Auto-rotate")}${ib("lbl", "Hide / show tags")}
-    <div class="p3-dd"><button type="button" class="p3-ib q" data-p3="keys" title="Mouse and keyboard" aria-haspopup="true">?</button><div class="p3-menu keys" data-menu="keys" hidden>
-      <b>Mouse (SolidWorks style)</b>
-      <p><kbd>Left / middle drag</kbd> rotate</p><p><kbd>Right drag</kbd> or <kbd>Ctrl + middle drag</kbd> pan</p>
-      <p><kbd>Shift + middle drag</kbd> zoom</p><p><kbd>Wheel</kbd> zoom at the cursor</p><p><kbd>Middle double-click</kbd> zoom to fit</p>
-      <p><kbd>Double-click / double-tap</kbd> zoom in on that spot</p><p><kbd>Shift + double-click</kbd>, double-tap the sky or <kbd>two-finger tap</kbd> zoom out</p>
-      <b>Keyboard (click the 3D view first)</b>
-      <p><kbd>F</kbd> zoom to fit · <kbd>Z</kbd> / <kbd>Shift+Z</kbd> zoom out / in</p><p><kbd>Arrows</kbd> rotate 15° · <kbd>Shift+Arrows</kbd> 90°</p>
-      <p><kbd>Ctrl+Arrows</kbd> pan · <kbd>Space</kbd> view menu</p><p><kbd>1</kbd> Front <kbd>2</kbd> Back <kbd>3</kbd> Left <kbd>4</kbd> Right <kbd>5</kbd> Top <kbd>7</kbd> Iso <kbd>0</kbd> Plant</p>
-      <p><kbd>Ctrl+Shift+Z</kbd> previous view · <kbd>Esc</kbd> close / clear</p></div></div>
-  </div>`;
-}
+// ------------------------------------------------------------------ controls: twin buttons + SolidWorks-style mouse / keys
 function syncTools() {
   if (!wrap) return;
-  const on = (a, v) => { const b = wrap.querySelector(`[data-p3="${a}"]`); if (b) { b.classList.toggle("on", !!v); b.setAttribute("aria-pressed", String(!!v)); } };
-  on("auto", controls && controls.autoRotate); on("lbl", labelBox && !labelBox.classList.contains("off"));
-  on("rot", leftMode === "rotate" && !areaMode); on("pan", leftMode === "pan" && !areaMode); on("area", areaMode);
-  wrap.querySelectorAll("[data-style]").forEach((b) => b.classList.toggle("on", b.dataset.style === dispStyle));
+  wrap.querySelectorAll("[data-mode]").forEach((b) => { const on = b.dataset.mode === mode; b.classList.toggle("active", on); b.setAttribute("aria-pressed", String(on)); });
+  wrap.querySelectorAll("[data-tab]").forEach((b) => { const on = b.dataset.tab === activeTab; b.classList.toggle("active", on); b.setAttribute("aria-pressed", String(on)); });
+  const tb = wrap.querySelector('.tw-bar [data-p3="tour"]'); if (tb) tb.classList.toggle("on", !!tour);
 }
-function closeMenus(except) { wrap.querySelectorAll(".p3-menu").forEach((m) => { if (m !== except) m.hidden = true; }); }
-function toggleMenu(name) { const m = wrap.querySelector(`[data-menu="${name}"]`); if (!m) return; closeMenus(m); m.hidden = !m.hidden; }
-function setLeft(mode) {
-  leftMode = mode;
-  controls.mouseButtons.LEFT = mode === "pan" ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
-  controls.touches.ONE = mode === "pan" ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
-  syncTools();
-}
-function setArea(on) { areaMode = on; controls.enabled = !on; renderer.domElement.style.cursor = on ? "crosshair" : ""; syncTools(); }
 function fitAll() {                                    // zoom to fit: whole plant, keep the current direction
   const { t, p } = dest(), d = p.sub(t).normalize();
   fitBox(plantBox(), d.y > 0.999 ? VIEWS.top.clone() : d, 1.02);
+  activeTab = "plant"; syncTools();
 }
+function resetView() { if (walk) stopWalk(); if (isoSvc) isolate(null); select(null); setView("plant"); activeTab = "plant"; syncTools(); }
 function wireControls(cv) {
   wrap.tabIndex = 0;
   wrap.querySelectorAll("[data-p3]").forEach((btn) => (btn.onclick = (e) => {
     e.stopPropagation();
     const a = btn.dataset.p3;
-    if (a === "fit") fitAll();
-    if (a === "area") setArea(!areaMode);
     if (a === "zin") zoomBy(0.75);
     if (a === "zout") zoomBy(1.33);
-    if (a === "prev") prevView();
-    if (a === "views" || a === "style" || a === "keys") { toggleMenu(a); return; }
-    if (a === "rot") { setArea(false); setLeft("rotate"); }
-    if (a === "pan") { setArea(false); setLeft("pan"); }
-    if (a === "auto") { controls.autoRotate = !controls.autoRotate; }
-    if (a === "lbl") labelBox.classList.toggle("off");
-    closeMenus(); syncTools();
+    if (a === "reset") resetView();
+    if (a === "tour") { if (tour) stopTour(); else startTour(); }
+    if (a === "walk") { if (walk) stopWalk(); else startWalk(); }
   }));
-  wrap.querySelectorAll("[data-view]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); setView(b.dataset.view); closeMenus(); }));
-  wrap.querySelectorAll("[data-style]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); setStyle(b.dataset.style); closeMenus(); }));
-  wrap.querySelectorAll(".p3-cube [data-v]").forEach((f) => (f.onclick = () => setView(f.dataset.v)));
-  wrap.querySelectorAll(".p3-menu").forEach((m) => m.addEventListener("click", (e) => e.stopPropagation()));
-  wrap.addEventListener("click", () => closeMenus());
+  wrap.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); setMode(b.dataset.mode); }));
+  wrap.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = (e) => {
+    e.stopPropagation();
+    if (walk) stopWalk();
+    if (tour) stopTour();
+    if (b.dataset.tab === "plant") { select(null); setView("plant"); activeTab = "plant"; syncTools(); } else zoomArea(b.dataset.tab);
+  }));
+  // walk buttons (touch): hold to walk / turn
+  wrap.querySelectorAll(".wk-pad [data-k]").forEach((b) => {
+    const on = (e) => { e.preventDefault(); if (walk) walk.keys.add(b.dataset.k); }, off = () => { if (walk) walk.keys.delete(b.dataset.k); };
+    b.addEventListener("pointerdown", on); b.addEventListener("pointerup", off); b.addEventListener("pointerleave", off); b.addEventListener("pointercancel", off);
+  });
   // middle button like SolidWorks: drag = rotate, Ctrl = pan, Shift = zoom; double-click = zoom to fit
   wrap.addEventListener("pointerdown", (e) => {
     if (e.target === cv) wrap.focus({ preventScroll: true });
@@ -1259,39 +1388,20 @@ function wireControls(cv) {
   }, true);
   cv.addEventListener("mousedown", (e) => { if (e.button === 1) e.preventDefault(); });     // no browser auto-scroll
   let midClick = 0;
-  cv.addEventListener("auxclick", (e) => { if (e.button !== 1) return; const n = performance.now(); if (n - midClick < 400) fitAll(); midClick = n; });
-  // zoom to area: drag a box
-  const box = wrap.querySelector(".p3-rect"); let a0 = null;
-  wrap.addEventListener("pointerdown", (e) => {
-    if (!areaMode || e.button !== 0 || e.target.closest(".p3-tools, .p3-menu, .p3-panel, .p3-cube, .p3-legend")) return;
-    e.preventDefault(); e.stopPropagation();                 // no text selection / no orbit while drawing the box
-    a0 = { x: e.clientX, y: e.clientY };
-  }, true);
-  const aMove = (e) => {
-    if (!a0) return;
-    e.preventDefault();
-    const r = wrap.getBoundingClientRect();
-    Object.assign(box.style, { left: `${Math.min(a0.x, e.clientX) - r.left}px`, top: `${Math.min(a0.y, e.clientY) - r.top}px`, width: `${Math.abs(e.clientX - a0.x)}px`, height: `${Math.abs(e.clientY - a0.y)}px` });
-    box.hidden = false;
-  };
-  const aUp = (e) => {
-    if (!a0) return;
-    const s = a0; a0 = null; box.hidden = true;
-    if (e.type === "pointerup" && Math.abs(e.clientX - s.x) > 8 && Math.abs(e.clientY - s.y) > 8) zoomToRect(s.x, s.y, e.clientX, e.clientY);
-    setArea(false);
-  };
-  if (winH) { window.removeEventListener("pointermove", winH.m); window.removeEventListener("pointerup", winH.u); window.removeEventListener("pointercancel", winH.u); }
-  winH = { m: aMove, u: aUp };
-  window.addEventListener("pointermove", aMove); window.addEventListener("pointerup", aUp); window.addEventListener("pointercancel", aUp);
-  wrap.addEventListener("selectstart", (e) => { if (areaMode) e.preventDefault(); });
-  // keyboard (SolidWorks shortcuts) while the 3D view has focus
+  cv.addEventListener("auxclick", (e) => { if (e.button !== 1 || walk) return; const n = performance.now(); if (n - midClick < 400) fitAll(); midClick = n; });
+  // keyboard while the 3D view has focus: walking keys, or the SolidWorks shortcuts
   wrap.addEventListener("keydown", (e) => {
-    const k = e.key, step = e.shiftKey ? Math.PI / 2 : Math.PI / 12;
+    const k = e.key, lk = k.toLowerCase();
+    if (walk) {
+      if (k === "Escape") { stopWalk(); e.preventDefault(); return; }
+      if (WALK_KEYS[lk]) { walk.keys.add(WALK_KEYS[lk]); e.preventDefault(); e.stopPropagation(); }
+      return;
+    }
+    const step = e.shiftKey ? Math.PI / 2 : Math.PI / 12;
     let done = true;
-    if (k === "Escape") { closeMenus(); if (areaMode) setArea(false); else if (isoSvc) isolate(null); else select(null); }
-    else if (k === "f" || k === "F") fitAll();
-    else if (k === "z" || k === "Z") { if (e.ctrlKey && e.shiftKey) prevView(); else zoomBy(e.shiftKey ? 0.75 : 1.33); }
-    else if (k === " ") toggleMenu("views");
+    if (k === "Escape") { if (tour) stopTour(); else if (isoSvc) isolate(null); else select(null); }
+    else if (lk === "f") fitAll();
+    else if (lk === "z") { if (e.ctrlKey && e.shiftKey) prevView(); else zoomBy(e.shiftKey ? 0.75 : 1.33); }
     else if (k.startsWith("Arrow")) {
       const dx = k === "ArrowLeft" ? -1 : k === "ArrowRight" ? 1 : 0, dy = k === "ArrowUp" ? 1 : k === "ArrowDown" ? -1 : 0;
       if (e.ctrlKey) panBy(-dx, -dy); else orbitBy(-dx * step, dy * step);
@@ -1300,21 +1410,9 @@ function wireControls(cv) {
     else done = false;
     if (done) { e.preventDefault(); e.stopPropagation(); }
   });
+  wrap.addEventListener("keyup", (e) => { if (walk) { const w = WALK_KEYS[e.key.toLowerCase()]; if (w) walk.keys.delete(w); } });
+  wrap.addEventListener("blur", () => { if (walk) walk.keys.clear(); });
   syncTools();
-}
-// view cube + axis triad follow the camera
-const SGN = [1, -1, 1, 0, -1, 1, -1, 0, 1, -1, 1, 0];
-function updateCube() {
-  const cube = wrap.querySelector(".p3-cube-in"), ax = wrap.querySelector(".p3-triad .ax");
-  if (!cube) return;
-  const e = camera.matrixWorldInverse.elements, m = [];
-  for (let i = 0; i < 12; i++) m.push(i % 4 === 3 ? 0 : (e[i] * SGN[i]).toFixed(5));
-  cube.style.transform = `matrix3d(${m.join(",")},0,0,0,1)`;
-  const axes = [["X", new THREE.Vector3(1, 0, 0), "#d93a3f"], ["Y", new THREE.Vector3(0, 0, -1), "#2f9e44"], ["Z", new THREE.Vector3(0, 1, 0), "#2f6fd8"]];
-  ax.innerHTML = axes.map(([n, v, c]) => {
-    const p = v.transformDirection(camera.matrixWorldInverse), x = 35 + p.x * 24, y = 35 - p.y * 24;
-    return `<line x1="35" y1="35" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/><text x="${(35 + p.x * 31).toFixed(1)}" y="${(35 - p.y * 31 + 4).toFixed(1)}" fill="${c}">${n}</text>`;
-  }).join("");
 }
 
 window.Plant3D = {
@@ -1329,7 +1427,7 @@ window.Plant3D = {
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
     if (renderer) { renderer.dispose(); renderer.forceContextLoss && renderer.forceContextLoss(); }
-    renderer = null; scene = null; wrap = null;
+    renderer = null; scene = null; wrap = null; stage = null; tour = null; walk = null; crowd = [];
   },
   /** test hooks: clickable machines in screen pixels, select / zoom by id, label boxes */
   targets() {
@@ -1342,7 +1440,8 @@ window.Plant3D = {
     }
     return Object.values(out);
   },
-  select, zoomArea, isolate, setView, setStyle, zoomBy, prevView, fitAll, reset: () => fitBox(plantBox(), undefined, 1.02),
+  select, zoomArea, isolate, setView, setMode, zoomBy, prevView, fitAll, startTour, stopTour, startWalk, stopWalk, reset: resetView,
+  get mode() { return mode; },
   ready: true,
 };
 window.dispatchEvent(new Event("plant3d-ready"));
