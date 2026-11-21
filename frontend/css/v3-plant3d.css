@@ -1,5 +1,5 @@
 /* v3-plant3d (21-11-2026): 3D plant - original scene look and tags (gradient sky, grey floor, dark machine tags, blue area
-   names) with the twin controls: Status / Alarms / Lines / Plain modes, area tabs, guided tour, walk, tile card and the
+   names) with the twin controls: Status / Alarms / Lines / Plain modes, area tabs, walk, tile card and the
    measured-values strip under the scene. Scoped to .p3n so nothing else changes. Accent = the dashboard's own green. */
 .p3n { --p3-brand: var(--fx-lime-ink, #3e6b00); --p3-tint: var(--fx-lime-2, #eef6df); --p3-ink: #1b1d22; --p3-ink-2: #4a505a; --p3-ink-3: #7a818c;
   --p3-line: #e3e6eb; --p3-line-2: #eef0f3; --p3-shadow: 0 4px 14px rgba(16, 24, 40, .10); --p3-surface-2: #f5f6f8;
@@ -45,7 +45,7 @@
 .p3n .seg button { min-height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: none; color: var(--p3-ink-2); font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .p3n .seg button:hover { color: var(--p3-ink); background: var(--p3-surface-2); }
 .p3n .seg button.active { background: #fff; color: var(--p3-ink); box-shadow: 0 1px 3px rgba(16,24,40,.16); }
-.p3n .seg button:focus-visible, .p3n .tw-b:focus-visible, .p3n .o3-ui button:focus-visible, .p3n .tw-card .p3-x:focus-visible, .p3n .tw-narr button:focus-visible { outline: 2px solid var(--p3-brand); outline-offset: 2px; }
+.p3n .seg button:focus-visible, .p3n .tw-b:focus-visible, .p3n .o3-ui button:focus-visible, .p3n .tw-card .p3-x:focus-visible, .p3n .wk-hud button:focus-visible { outline: 2px solid var(--p3-brand); outline-offset: 2px; }
 .p3n .tw-b, .p3n .o3-reset, .p3n .o3-zoom, .p3n .wk-exit { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 10px;
   border: 1px solid var(--p3-line); background: rgba(255,255,255,.96); box-shadow: var(--p3-shadow); color: var(--p3-ink); font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .p3n .tw-b:hover, .p3n .o3-reset:hover, .p3n .o3-zoom:hover { background: #fff; border-color: #c9ced6; }
@@ -99,32 +99,12 @@
 .p3n .tw-card .note b { color: #b42318; }
 .p3n .tw-card .p3-vn { margin: 10px 0 0; color: var(--p3-ink-3); font-size: 12px; border-left: 3px dashed #9aa0a8; padding-left: 8px; }
 
-/* ---- bottom bar: tour, walk, area tabs (left) - zoom + reset (right) ---- */
+/* ---- bottom bar: walk, area tabs (left) - zoom + reset (right) ---- */
 .p3n .tw-bar { position: absolute; z-index: 4; left: 12px; bottom: 12px; right: 250px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .p3n .o3-ui { position: absolute; z-index: 4; right: 12px; bottom: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .p3n .o3-hint { padding: 6px 11px; border-radius: 999px; background: rgba(16,24,40,.78); color: #fff; font-size: 11.5px; font-weight: 600; pointer-events: none; }
 .p3n .o3-row { display: flex; gap: 6px; }
 .p3n .o3-zoom { width: 36px; padding: 0; font-size: 18px; }
-
-/* ---- guided tour card ---- */
-.p3n .tw-narr { position: absolute; z-index: 5; left: 12px; bottom: 60px; width: min(440px, calc(100% - 340px)); padding: 14px 16px; border-radius: 14px;
-  background: rgba(255,255,255,.98); border: 1px solid var(--p3-line); box-shadow: 0 12px 32px rgba(16,24,40,.18); color: var(--p3-ink); }
-.p3n .tw-narr[hidden] { display: none; }
-.p3n .tw-narr .h { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; color: var(--p3-brand); letter-spacing: .04em; }
-.p3n .tw-narr .h em { margin-left: auto; font-style: normal; color: var(--p3-ink-3); font-weight: 600; letter-spacing: 0; }
-.p3n .tw-narr h4 { margin: 8px 0 0; font-size: 15.5px; font-weight: 700; line-height: 1.3; }
-.p3n .tw-narr p { margin: 6px 0 0; font-size: 13px; line-height: 1.55; color: var(--p3-ink-2); }
-.p3n .tw-narr p b { color: var(--p3-ink); } .p3n .tw-narr p b.cr { color: #b42318; }
-.p3n .tw-narr .prog { height: 3px; margin-top: 10px; border-radius: 2px; background: var(--p3-line-2); overflow: hidden; }
-.p3n .tw-narr .prog i { display: block; height: 100%; width: 0; background: var(--p3-brand); }
-.p3n .tw-narr .dots { display: flex; gap: 5px; margin-top: 10px; }
-.p3n .tw-narr .dots i { width: 7px; height: 7px; border-radius: 50%; background: #d0d5dd; }
-.p3n .tw-narr .dots i.on { width: 18px; border-radius: 4px; background: var(--p3-brand); }
-.p3n .tw-narr .nav { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.p3n .tw-narr .nav button { height: 34px; min-width: 40px; padding: 0 12px; border-radius: 9px; border: 1px solid #d0d5dd; background: #fff; font-size: 12.5px; font-weight: 600; color: var(--p3-ink); cursor: pointer; }
-.p3n .tw-narr .nav button:disabled { opacity: .45; cursor: default; }
-.p3n .tw-narr .nav button.pri { background: var(--p3-brand); border-color: var(--p3-brand); color: #fff; }
-.p3n .tw-narr .nav .end { margin-left: auto; }
 
 /* ---- walk ---- */
 .p3n .wk-hud[hidden] { display: none; }
@@ -137,7 +117,7 @@
 .p3n .wk-pad button:active { background: var(--p3-tint); }
 .p3n .wk-pad [data-k="up"] { grid-column: 2; grid-row: 1; } .p3n .wk-pad [data-k="left"] { grid-column: 1; grid-row: 2; }
 .p3n .wk-pad [data-k="down"] { grid-column: 2; grid-row: 2; } .p3n .wk-pad [data-k="right"] { grid-column: 3; grid-row: 2; }
-.p3n.walking .tw-hud, .p3n.walking .tw-bar, .p3n.walking .o3-ui, .p3n.walking .tw-narr { display: none !important; }
+.p3n.walking .tw-hud, .p3n.walking .tw-bar, .p3n.walking .o3-ui { display: none !important; }
 .p3n.walking .tw-card { top: 64px; }
 .p3n.walking .p3-cv { cursor: move; }
 
@@ -165,7 +145,6 @@
   .p3n .o3-ui { bottom: 60px; }
   .p3n .o3-hint { display: none; }
   .p3n .tw-card { top: auto; left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 62%; }
-  .p3n .tw-narr { left: 12px; right: 12px; width: auto; }
   .p3n .twin-foot { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .p3n .twin-foot > div:nth-child(3n) { border-right: 0; }
   .p3n .twin-foot > div:nth-child(-n+3) { border-bottom: 1px solid var(--p3-line-2); }
@@ -177,10 +156,7 @@
   .p3n .o3-zoom { display: none; }                 /* pinch to zoom on a phone */
   .p3n .tw-legend { display: none; }
   .p3n .wk-hint { display: none; }
-  .p3n .tw-narr .dots { display: none; }
-  .p3n .tw-narr { max-height: 52%; overflow: auto; padding: 12px 14px; }
-  .p3n .tw-narr p { font-size: 12.5px; line-height: 1.45; }
-  .p3n .seg button, .p3n .tw-b, .p3n .o3-reset, .p3n .o3-zoom, .p3n .tw-narr .nav button, .p3n .tw-card .p3-x { min-height: 44px; }
+  .p3n .seg button, .p3n .tw-b, .p3n .o3-reset, .p3n .tw-card .p3-x { min-height: 44px; }
   .p3n .tw-card .p3-x { width: 44px; }
   .p3n .o3-ui { bottom: 70px; }
 }

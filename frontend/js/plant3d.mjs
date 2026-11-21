@@ -1,7 +1,7 @@
 /* 3D plant - Muttathara FSTP 200 KLD (rebuild 20-11-2026 from the indicative P&ID R1, 12-12-2025, 15 sheets).
    21-11-2026: "digital twin" look and controls after the Medge Controls smart-factory 3D (medgecontrols.com/demos/plantops):
    soft studio light, pastel area floors, trees, people in the aisles, white machine tags, Status / Alarms / Lines / Plain
-   colour modes, area tabs, guided tour, first-person walk, tile card, KPI strip. SolidWorks mouse / keys kept.
+   colour modes, area tabs, first-person walk, tile card, KPI strip. SolidWorks mouse / keys kept.
    Edit this file directly - the old scratchpad part files (p3_engine / p3_plant / p3_builders) are out of date.
    Placement and sizes are illustrative (indicative drawing); connectivity follows the P&ID.
    - bounded plant floor, grouped process areas with names, service aisles
@@ -22,21 +22,14 @@ const PLANT = {
   bounds: { x: 0, y: 0, w: 98, d: 44 },
   fitH: 7,
   areas: [
-    // tint = pastel floor zone; tab = short name on the area tabs; sub = second line of the floor label; tour = guided-tour text
-    { id: "a1", name: "Sludge receiving · tanks", tab: "Sludge", sub: "screening · sludge & filtrate tanks", x: 1.5, y: 1.5, w: 21, d: 17, tint: 0xd3d6cc, h: 5,
-      tour: "Faecal sludge arrives through inlet valve 01-MV-101, passes the coarse and fine screens and collects in the sludge storage tank. Sludge pumps 01-P-101 / 102 (one working, one standby) send it to the flocculation tank in dewatering. Filtrate from the press collects in the filtrate tank and pumps 01-P-103 / 104 send it to the client." },
-    { id: "a2", name: "Dewatering · Norsen", tab: "Dewatering", sub: "polymer dosing · volute press (Norsen)", x: 25.5, y: 1.5, w: 22, d: 17, tint: 0xd6d3cb, h: 5,
-      tour: "Polymer is mixed in the dilution tank and dosed into the flocculation tank. The progressive cavity pump feeds the flocculated sludge to the volute press screws; the dewatered cake drops into the hopper and the filtrate flows back to the filtrate tank." },
-    { id: "a3", name: "Paddle dryer · VAPCO", tab: "Dryer", sub: "PD-101 vacuum paddle dryer (VAPCO)", x: 51.5, y: 1.5, w: 23, d: 17, tint: 0xd1d4d8, h: 6,
-      tour: "The vacuum paddle dryer is heated by the hot water loop. Vapour goes through bag filter BF-101 to surface condenser SC-101; condensate collects in T-101 and pump 05-P-501 sends it to the degasifier. The dried product leaves on the discharge conveyor to the bucket elevator of the boiler package." },
-    { id: "a4", name: "Raw water", tab: "Raw water", sub: "ground water · storage · supply pumps", x: 1.5, y: 24.5, w: 19, d: 18, tint: 0xcdd6dc, h: 5,
-      tour: "Ground water pumps 03-P-301 / 302 fill the raw water storage tank between its low and high float switches. Raw water supply pumps 03-P-303 / 304 (VFD) keep the service header above 3 bar - the header feeds the screens, dosing, cooling tower make-up and the boiler." },
-    { id: "a5", name: "Cooling towers · hot water", tab: "Cooling", sub: "CT-1 · CT-2 · hot water loop", x: 23.5, y: 24.5, w: 24, d: 18, tint: 0xccd5da, h: 6,
-      tour: "Cooling tower 1 serves the dryer condenser, the degasifier PHE and the boiler through pumps 06-P-601 / 602 / 603; cooling tower 2 serves the turbine through 06-P-604. Hot water pump 06-P-605 circulates hot water to the paddle dryer and back through the radiator." },
-    { id: "a6", name: "Degasifier · CTP", tab: "Degasifier", sub: "column · pH dosing · gravity tank · RO", x: 50.5, y: 24.5, w: 24, d: 18, tint: 0xd0d6d0, h: 7,
-      tour: "Condensate is heated in PHE-1 (steam valve 07-XV-701) and stripped in the degasifier column with the hot air blower. Acid and alkali dosing pumps hold the pH. Treated water drains to the gravity tank and pump 07-P-704 sends it through PHE-2 to the CTP / RO plant." },
-    { id: "a7", name: "Boiler · turbine · PAR", tab: "Boiler", sub: "PAR scope - shown for reference", x: 77.5, y: 1.5, w: 19, d: 41, tint: 0xd8d4cd, h: 9,
-      tour: "The boiler, turbine, flue gas cleaning and water treatment are the PAR package - shown for reference only. The dried product feeds the boiler through the bucket elevator and fuel bunker; steam drives the turbine and returns as condensate." },
+    // tint = pastel floor zone; tab = short name on the area tabs; sub = second line of the floor label
+    { id: "a1", name: "Sludge receiving · tanks", tab: "Sludge", sub: "screening · sludge & filtrate tanks", x: 1.5, y: 1.5, w: 21, d: 17, tint: 0xd3d6cc, h: 5 },
+    { id: "a2", name: "Dewatering · Norsen", tab: "Dewatering", sub: "polymer dosing · volute press (Norsen)", x: 25.5, y: 1.5, w: 22, d: 17, tint: 0xd6d3cb, h: 5 },
+    { id: "a3", name: "Paddle dryer · VAPCO", tab: "Dryer", sub: "PD-101 vacuum paddle dryer (VAPCO)", x: 51.5, y: 1.5, w: 23, d: 17, tint: 0xd1d4d8, h: 6 },
+    { id: "a4", name: "Raw water", tab: "Raw water", sub: "ground water · storage · supply pumps", x: 1.5, y: 24.5, w: 19, d: 18, tint: 0xcdd6dc, h: 5 },
+    { id: "a5", name: "Cooling towers · hot water", tab: "Cooling", sub: "CT-1 · CT-2 · hot water loop", x: 23.5, y: 24.5, w: 24, d: 18, tint: 0xccd5da, h: 6 },
+    { id: "a6", name: "Degasifier · CTP", tab: "Degasifier", sub: "column · pH dosing · gravity tank · RO", x: 50.5, y: 24.5, w: 24, d: 18, tint: 0xd0d6d0, h: 7 },
+    { id: "a7", name: "Boiler · turbine · PAR", tab: "Boiler", sub: "PAR scope - shown for reference", x: 77.5, y: 1.5, w: 19, d: 41, tint: 0xd8d4cd, h: 9 },
   ],
   aisles: [
     { x: 0.5, y: 19, w: 76.5, d: 5 }, { x: 22.5, y: 0.5, w: 3, d: 18.5 }, { x: 47.5, y: 0.5, w: 4, d: 18.5 },
@@ -235,8 +228,8 @@ function buildPlant() {
 let renderer, scene, camera, controls, wrap, labelBox, panel, raf = 0, clock, live = null, helpers = null, onPick = null;
 let pickables = [], machines = {}, levels = [], switches = [], flows = [], labels = [], selected = null, fly = null, framed = null;
 let pipeMeshes = [], isoSvc = null, faintMat = null;
-// v3 twin UI (21-11-2026): stage = canvas + overlays (the KPI strip sits below it); colour mode; guided tour; walk; people
-let stage = null, mode = "status", tour = null, walk = null, crowd = [];
+// v3 twin UI (21-11-2026): stage = canvas + overlays (the KPI strip sits below it); colour mode; walk; people
+let stage = null, mode = "status", walk = null, crowd = [];
 const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
 
 // ------------------------------------------------------------------ materials
@@ -860,9 +853,8 @@ function panelOffset() {
   if (walk) return;                                   // walking: full view, the card floats over it
   const w = stage.clientWidth, h = stage.clientHeight;
   if (!w || !h) return;
-  // machine card on the right: picture moves left; guided-tour card on the left: picture moves right
-  const narr = wrap.querySelector(".tw-narr");
-  const px = w <= 900 ? 0 : !panel.hidden ? Math.round((panel.offsetWidth + 10) / 2) : narr && !narr.hidden ? -Math.round((narr.offsetWidth + 10) / 2) : 0;
+  // machine card on the right: picture moves left so the plant is not hidden under it
+  const px = w <= 900 || panel.hidden ? 0 : Math.round((panel.offsetWidth + 10) / 2);
   if (px) camera.setViewOffset(w, h, px, 0, w, h); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
 }
@@ -1025,18 +1017,17 @@ function frame() {
     if (on) f.tex.offset.x -= (dt * 2 / f.length) * f.tex.repeat.x;
   }
   stepCrowd(dt, t);
-  if (tour) stepTour(dt);
   renderer.render(scene, camera);
   placeLabels();
 }
-// tags never overlap, never cut off at the edge, never under an overlay (HUD, card, tour text, bars)
+// tags never overlap, never cut off at the edge, never under an overlay (HUD, card, bars)
 function placeLabels() {
   const w = stage.clientWidth, h = stage.clientHeight, v = new THREE.Vector3(), placed = [];
   const off = labelBox.classList.contains("off");
   const rank = (l) => (selected && l.el.dataset.eq === selected ? -1 : l.prio);
   const order = labels.slice().sort((a, b) => rank(a) - rank(b));
   const sr = stage.getBoundingClientRect();
-  for (const o of stage.querySelectorAll(".tw-hud .t, .tw-hud .k, .tw-legend, .tw-hud.tr .seg, .p3-panel, .tw-bar > *, .o3-ui > *, .tw-narr, .wk-hud > *")) {
+  for (const o of stage.querySelectorAll(".tw-hud .t, .tw-hud .k, .tw-legend, .tw-hud.tr .seg, .p3-panel, .tw-bar > *, .o3-ui > *, .wk-hud > *")) {
     if (o.hidden || !o.offsetWidth || o.closest("[hidden]")) continue;
     const r = o.getBoundingClientRect();
     placed.push({ x0: r.left - sr.left, x1: r.right - sr.left, y0: r.top - sr.top, y1: r.bottom - sr.top });
@@ -1126,59 +1117,11 @@ function updateFoot() {
   if (k) { k.classList.toggle("demo", demo); k.querySelector("span").textContent = demo ? "Digital twin · DEMO data" : "Digital twin · live"; }
 }
 
-// ------------------------------------------------------------------ guided tour (narrated fly-through of the areas)
-const OVERVIEW = "Sludge flows from west to east. The south row receives, dewaters and dries the sludge; the north row holds raw water, the cooling towers with the hot water loop, and the degasifier with the CTP. The boiler and turbine package stands on the east side. Machine colours show the live state: green running, grey stopped, red tripped.";
-let activeTab = "plant";
-function tourSteps() { return [{ id: null, name: "FSTP-200 plant · Muttathara", text: OVERVIEW }, ...PLANT.areas.map((a) => ({ id: a.id, name: a.name, text: a.tour }))]; }
-function startTour() { if (walk) stopWalk(); select(null); tour = { i: -1, steps: tourSteps(), auto: true, t: 0 }; wrap.classList.add("touring"); tourGo(0); }
-function tourGo(i) {
-  if (!tour) return;
-  if (i < 0 || i >= tour.steps.length) { stopTour(); return; }
-  tour.i = i; tour.t = 0;
-  const st = tour.steps[i];
-  renderNarr(); panelOffset();                         // card first, so the area is framed in the free part of the view
-  if (st.id) zoomArea(st.id); else { setView("plant"); activeTab = "plant"; syncTools(); }
-}
-function stopTour() { tour = null; if (!wrap) return; wrap.classList.remove("touring"); const n = wrap.querySelector(".tw-narr"); if (n) n.hidden = true; panelOffset(); syncTools(); }
-function stepTour(dt) {
-  if (!tour.auto) return;
-  tour.t += dt;
-  const bar = wrap.querySelector(".tw-narr .prog i");
-  if (bar) bar.style.width = `${Math.min(100, (tour.t / 12) * 100)}%`;
-  if (tour.t >= 12) { if (tour.i + 1 < tour.steps.length) tourGo(tour.i + 1); else { tour.auto = false; renderNarr(); } }
-}
-function areaSummary(id) {
-  const ms = Object.values(machines).filter((m) => m.area === id && m.kind !== "valve");
-  if (!ms.length) return "";
-  const run = ms.filter((m) => m.running).length, trip = ms.filter((m) => m.trip).length;
-  return `<b>Now:</b> ${run} of ${ms.length} machines running${trip ? ` · <b class="cr">${trip} tripped</b>` : ""}.`;
-}
-function renderNarr() {
-  const n = wrap.querySelector(".tw-narr"), bar = wrap.querySelector(".tw-bar");
-  if (!n || !tour) return;
-  const st = tour.steps[tour.i], last = tour.i === tour.steps.length - 1;
-  n.innerHTML = `<div class="h">GUIDED TOUR<em>${tour.i + 1} / ${tour.steps.length}${tour.auto ? " · auto" : ""}</em></div>
-    <h4>${esc(st.name)}</h4><p>${esc(st.text)}</p>${st.id ? `<p>${areaSummary(st.id)}</p>` : ""}
-    ${tour.auto ? '<div class="prog"><i></i></div>' : ""}
-    <div class="dots">${tour.steps.map((_, k) => `<i class="${k === tour.i ? "on" : ""}"></i>`).join("")}</div>
-    <div class="nav"><button type="button" data-t="prev" ${tour.i ? "" : "disabled"}>‹ Back</button><button type="button" class="pri" data-t="next">${last ? "Finish" : "Next ›"}</button>
-      ${tour.auto ? '<button type="button" data-t="pause">Pause</button>' : ""}<button type="button" class="end" data-t="end">End tour</button></div>`;
-  n.style.bottom = `${(bar ? bar.offsetHeight : 40) + 22}px`;
-  n.hidden = false;
-  n.querySelectorAll("[data-t]").forEach((b) => (b.onclick = (e) => {
-    e.stopPropagation();
-    const a = b.dataset.t;
-    if (a === "prev") { tour.auto = false; tourGo(tour.i - 1); }
-    else if (a === "next") { tour.auto = false; if (last) stopTour(); else tourGo(tour.i + 1); }
-    else if (a === "pause") { tour.auto = false; renderNarr(); }
-    else stopTour();
-  }));
-}
+let activeTab = "plant";                                  // highlighted area tab
 
 // ------------------------------------------------------------------ walk (first person at eye height)
 const EYE = 1.65, FOV = 34;                              // eye height when walking; normal camera field of view
 function startWalk() {
-  if (tour) stopTour();
   select(null);
   walk = { saved: { p: camera.position.clone(), t: controls.target.clone() }, pos: W2(2.5, 21.5, FLOOR_Z + EYE), yaw: -Math.PI / 2, pitch: -0.06, keys: new Set(), drag: null };
   fly = null; controls.enabled = false;
@@ -1254,9 +1197,7 @@ function build(container) {
       <div class="tw-legend"></div></div>
     <div class="tw-hud tr"><div class="seg" role="group" aria-label="Colour the plant by">${MODES.map(([k, n]) => `<button type="button" data-mode="${k}">${n}</button>`).join("")}</div></div>
     <aside class="p3-panel tw-card" hidden aria-live="polite"></aside>
-    <div class="tw-narr" hidden aria-live="polite"></div>
-    <div class="tw-bar"><button type="button" class="tw-b pri" data-p3="tour"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>Guided tour</button>
-      <button type="button" class="tw-b" data-p3="walk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M10 22l2-7 3 3v6M8 12l3-4 3 1 2 4 3 1M11 8l-2 6"/></svg>Walk</button>
+    <div class="tw-bar"><button type="button" class="tw-b" data-p3="walk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M10 22l2-7 3 3v6M8 12l3-4 3 1 2 4 3 1M11 8l-2 6"/></svg>Walk</button>
       <div class="seg tw-areas" role="group" aria-label="Zoom to an area">${tabs.map(([k, n]) => `<button type="button" data-tab="${k}">${esc(n)}</button>`).join("")}</div></div>
     <div class="o3-ui"><span class="o3-hint">Click to explore · scroll to zoom</span>
       <div class="o3-row"><button type="button" class="o3-zoom" data-p3="zin" aria-label="Zoom in" title="Zoom in">+</button><button type="button" class="o3-zoom" data-p3="zout" aria-label="Zoom out" title="Zoom out">−</button>
@@ -1267,7 +1208,7 @@ function build(container) {
     </div><div class="twin-foot"></div></div>`;
   wrap = container.querySelector(".p3-wrap"); stage = wrap.querySelector(".p3-stage"); labelBox = wrap.querySelector(".p3-labels"); panel = wrap.querySelector(".p3-panel");
   pickables = []; machines = {}; levels = []; switches = []; flows = []; labels = []; selected = null; fly = null;
-  pipeMeshes = []; isoSvc = null; framed = null; tour = null; walk = null; activeTab = "plant";
+  pipeMeshes = []; isoSvc = null; framed = null; walk = null; activeTab = "plant";
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
@@ -1287,7 +1228,7 @@ function build(container) {
   controls.enableDamping = true; controls.dampingFactor = 0.08; controls.minDistance = 4; controls.maxDistance = 300; controls.maxPolarAngle = Math.PI / 2 - 0.04;
   controls.zoomToCursor = true;                          // wheel zooms about the point under the mouse (as in SolidWorks)
   controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: THREE.MOUSE.PAN };
-  controls.addEventListener("start", () => { fly = null; pushView(); if (tour && tour.auto) { tour.auto = false; renderNarr(); } });
+  controls.addEventListener("start", () => { fly = null; pushView(); });
   history.length = 0;
   buildFloor();
   buildPlant();
@@ -1350,7 +1291,6 @@ function syncTools() {
   if (!wrap) return;
   wrap.querySelectorAll("[data-mode]").forEach((b) => { const on = b.dataset.mode === mode; b.classList.toggle("active", on); b.setAttribute("aria-pressed", String(on)); });
   wrap.querySelectorAll("[data-tab]").forEach((b) => { const on = b.dataset.tab === activeTab; b.classList.toggle("active", on); b.setAttribute("aria-pressed", String(on)); });
-  const tb = wrap.querySelector('.tw-bar [data-p3="tour"]'); if (tb) tb.classList.toggle("on", !!tour);
 }
 function fitAll() {                                    // zoom to fit: whole plant, keep the current direction
   const { t, p } = dest(), d = p.sub(t).normalize();
@@ -1366,14 +1306,12 @@ function wireControls(cv) {
     if (a === "zin") zoomBy(0.75);
     if (a === "zout") zoomBy(1.33);
     if (a === "reset") resetView();
-    if (a === "tour") { if (tour) stopTour(); else startTour(); }
     if (a === "walk") { if (walk) stopWalk(); else startWalk(); }
   }));
   wrap.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); setMode(b.dataset.mode); }));
   wrap.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = (e) => {
     e.stopPropagation();
     if (walk) stopWalk();
-    if (tour) stopTour();
     if (b.dataset.tab === "plant") { select(null); setView("plant"); activeTab = "plant"; syncTools(); } else zoomArea(b.dataset.tab);
   }));
   // walk buttons (touch): hold to walk / turn
@@ -1399,7 +1337,7 @@ function wireControls(cv) {
     }
     const step = e.shiftKey ? Math.PI / 2 : Math.PI / 12;
     let done = true;
-    if (k === "Escape") { if (tour) stopTour(); else if (isoSvc) isolate(null); else select(null); }
+    if (k === "Escape") { if (isoSvc) isolate(null); else select(null); }
     else if (lk === "f") fitAll();
     else if (lk === "z") { if (e.ctrlKey && e.shiftKey) prevView(); else zoomBy(e.shiftKey ? 0.75 : 1.33); }
     else if (k.startsWith("Arrow")) {
@@ -1427,7 +1365,7 @@ window.Plant3D = {
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
     if (renderer) { renderer.dispose(); renderer.forceContextLoss && renderer.forceContextLoss(); }
-    renderer = null; scene = null; wrap = null; stage = null; tour = null; walk = null; crowd = [];
+    renderer = null; scene = null; wrap = null; stage = null; walk = null; crowd = [];
   },
   /** test hooks: clickable machines in screen pixels, select / zoom by id, label boxes */
   targets() {
@@ -1440,7 +1378,7 @@ window.Plant3D = {
     }
     return Object.values(out);
   },
-  select, zoomArea, isolate, setView, setMode, zoomBy, prevView, fitAll, startTour, stopTour, startWalk, stopWalk, reset: resetView,
+  select, zoomArea, isolate, setView, setMode, zoomBy, prevView, fitAll, startWalk, stopWalk, reset: resetView,
   get mode() { return mode; },
   ready: true,
 };
