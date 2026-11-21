@@ -61,6 +61,41 @@ body.client .rp-bar .btn { height: 40px; min-height: 40px; box-sizing: border-bo
   .rp-bar .dr-pick input[type="date"] { font-size: 14px; width: 128px; }
 }
 
+/* ---------- plant report on screen: one tab per topic + pages for long tables (21-11-2026) ---------- */
+.rp-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 12px; }
+.rp-nav .rp-srch { margin: 0; }
+.rp-tabs { display: inline-flex; flex-wrap: wrap; gap: 2px; }
+.rp-tabs button small { margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: rgba(0,0,0,.07); font-size: 12px; font-weight: 600; color: var(--fx-ink-2, #55554f); }
+.rp-tabs button.active small { background: var(--fx-lime-2, #dff2bf); color: var(--fx-lime-ink, #3e6b00); }
+.rp-doc .rp-sec.rp-off { display: none; }
+.rp-doc tr.pg-off { display: none; }
+.rp-doc.rp-searching .rp-sec { margin-bottom: 8px; }
+.rp-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 12px 0 4px; padding: 10px 12px; border: 1px solid var(--fx-line, #ecece8);
+  border-radius: 12px; background: #fff; font-size: 14px; color: var(--fx-ink-2, #55554f); font-variant-numeric: tabular-nums; }
+.rp-pager[hidden] { display: none; }
+.rp-pager .pg-at { display: inline-flex; align-items: center; gap: 8px; }
+.rp-pager .pg-at input { width: 54px; height: 36px; box-sizing: border-box; padding: 0 8px; border: 1px solid #d4d4d0; border-radius: 8px; text-align: center; font: inherit; color: var(--fx-ink, #151515); }
+.rp-pager .pg-n { padding-left: 12px; border-left: 1px solid var(--fx-line, #ecece8); }
+.rp-pager .pg-btns { display: inline-flex; align-items: center; gap: 6px; margin: 0 auto; }
+.rp-pager .pg-btns button { min-width: 36px; height: 36px; padding: 0 8px; border: 1px solid #d4d4d0; border-radius: 8px; background: #fff; color: var(--fx-ink, #151515);
+  font: inherit; font-weight: 600; cursor: pointer; }
+.rp-pager .pg-btns button:hover:not([disabled]):not(.on) { background: #f4f4f1; }
+.rp-pager .pg-btns button.on { background: var(--fx-lime-ink, #3e6b00); border-color: var(--fx-lime-ink, #3e6b00); color: #fff; }
+.rp-pager .pg-btns button[disabled] { opacity: .4; cursor: default; }
+.rp-pager .pg-btns button:focus-visible, .rp-pager input:focus-visible, .rp-pager select:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 2px; }
+.rp-pager .gap { padding: 0 2px; color: var(--fx-ink-3, #9a9a93); }
+.rp-pager .pg-rows { display: inline-flex; align-items: center; gap: 8px; }
+.rp-pager .pg-rows select { height: 36px; padding: 0 8px; border: 1px solid #d4d4d0; border-radius: 8px; background: #fff; font: inherit; color: var(--fx-ink, #151515); }
+@media (max-width: 760px) {
+  .rp-tabs { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+  .rp-tabs::-webkit-scrollbar { display: none; }
+  .rp-pager .pg-btns { margin: 0; order: 3; flex-basis: 100%; flex-wrap: wrap; }
+}
+
 @media print {
   body.print-rp .rp-note { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* the PDF is the whole report: every topic and every row, no tabs / pagers */
+  body.print-rp .rp-doc .rp-sec.rp-off { display: block !important; }
+  body.print-rp .rp-doc tr.pg-off { display: table-row !important; }
+  body.print-rp .rp-pager, body.print-rp .rp-nav { display: none !important; }
 }

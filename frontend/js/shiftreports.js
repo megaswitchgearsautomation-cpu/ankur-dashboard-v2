@@ -210,6 +210,7 @@
       ${r.history_note ? `<p class="rp-note">${esc(r.history_note)}</p>` : ""}
       ${noData ? '<p class="dv-empty">No history was recorded in this period (the dashboard server was not running, or the data source was offline).</p>' : ""}
 
+      <section class="rp-sec" data-sec="summary" data-tab="Summary">
       <h4><span>1</span> Summary</h4>
       <div class="rp-kpis">
         ${kpi("System run time", `${hrs(s.system_run_hours)} h`, `of ${hrs(s.period_hours)} h period · hot air blower`)}
@@ -219,47 +220,58 @@
         ${kpi("Set point exceeded", s.values_above_sp, s.values_above_sp ? "values reached their alarm set point" : "all within set points", s.values_above_sp ? "warn" : "ok")}
         ${kpi("Data coverage", `${s.data_coverage_pct}%`, "minutes with valid readings", s.data_coverage_pct >= 95 ? "ok" : s.data_coverage_pct > 0 ? "warn" : "bad")}
       </div>
+      </section>
 
+      <section class="rp-sec" data-sec="values" data-tab="Process values">
       <h4><span>2</span> Process values</h4>
       <table class="dv-t rp-t"><thead><tr><th>Value</th><th>Unit</th><th class="r">Min</th><th class="r">Max</th><th class="r">Average</th>
         <th class="r">Alarm set point*</th><th class="r">Time at / above set point</th><th>Trend</th><th class="r">Coverage</th></tr></thead>
       ${groups.map(([g, l]) => `<tbody><tr class="rp-grp"><td colspan="9">${esc(GROUP[g])}</td></tr>${valueRows(l)}</tbody>`).join("")}</table>
       <p class="muted small">* Current alarm set point (set points are not kept in the history). Tank levels also in % of range. Trend = ${(KIND_STEP[r.log_step_s] || "").toLowerCase()} averages, red dashed line = alarm set point. Coverage below 100 % means minutes without data - they are not in min / max / average.</p>
+      </section>
 
+      <section class="rp-sec" data-sec="log" data-tab="Log sheet">
       <h4><span>3</span> ${esc(KIND_STEP[r.log_step_s] || "")} log sheet <small class="muted">(average per ${r.log_step_s >= 86400 ? "day" : r.log_step_s >= 21600 ? "6 hours" : "hour"} · readings at every interval are in the Data log view)</small></h4>
-      <div class="rp-scroll"><table class="dv-t rp-t rp-log"><thead><tr><th>Time (IST)</th>${r.values.map((v) => `<th class="r" title="${esc(v.name)}">${esc(v.name.split(" ")[0])}<small>${esc(v.unit)}</small></th>`).join("")}</tr></thead><tbody>
+      <div class="rp-scroll"><table class="dv-t rp-t rp-log rp-pg"><thead><tr><th>Time (IST)</th>${r.values.map((v) => `<th class="r" title="${esc(v.name)}">${esc(v.name.split(" ")[0])}<small>${esc(v.unit)}</small></th>`).join("")}</tr></thead><tbody>
       ${r.log_times.map((t, i) => [t, i]).filter(([t]) => t < nowTs).map(([t, i]) => `<tr><td class="num">${ist(t, logFmt)}</td>${r.values.map((v) => {
         const y = v.log[i], over = y != null && v.set_point != null && (v.group === "Temperature" || v.group === "Pressure") && y >= v.set_point;
         return `<td class="r num${over ? " rp-bad" : ""}">${num(y, v.decimals)}</td>`; }).join("")}</tr>`).join("")}</tbody></table></div>
+      </section>
 
+      <section class="rp-sec" data-sec="equipment" data-tab="Equipment">
       <h4><span>4</span> Equipment</h4>
-      <table class="dv-t rp-t"><thead><tr><th>Tag</th><th>Equipment</th><th>Area</th><th class="r">kW</th><th class="r">Run hours</th><th>Utilisation</th><th class="r">Starts</th><th class="r">Trips</th></tr></thead><tbody>
+      <table class="dv-t rp-t rp-pg"><thead><tr><th>Tag</th><th>Equipment</th><th>Area</th><th class="r">kW</th><th class="r">Run hours</th><th>Utilisation</th><th class="r">Starts</th><th class="r">Trips</th></tr></thead><tbody>
       ${eqSorted.map((e) => `<tr${e.trips ? ' class="rp-row-bad"' : ""}><td class="mono">${esc(e.tag_no)}</td><td>${esc(e.name)}</td><td class="muted">${esc(e.area || "")}</td>
         <td class="r num">${e.kw ?? "-"}</td><td class="r num"><b>${e.run_hours.toFixed(2)}</b></td>
         <td><span class="rp-bar"><i style="width:${Math.min(100, (e.run_hours / maxRun) * 100).toFixed(0)}%"></i></span> <span class="small">${e.utilisation_pct}%</span></td>
         <td class="r num">${e.starts}</td><td class="r num">${e.trips ? `<span class="rp-bad">${e.trips}</span>` : "0"}</td></tr>`).join("")}</tbody></table>
       <p class="muted small">From the logged run-feedback signals; stretches without data are not counted as running. Utilisation = run time ÷ period. A machine already running at the start of the period is not counted as a start.</p>
+      </section>
 
+      <section class="rp-sec" data-sec="alarms" data-tab="Alarm summary">
       <h4><span>5</span> Alarm summary <small class="muted">(${r.alarm_counts.total} alarms · ${r.alarm_counts.plc} from the plant · ${r.alarm_counts.dashboard} dashboard-calculated)</small></h4>
-      ${r.top_alarms.length ? `<table class="dv-t rp-t"><thead><tr><th>Most frequent alarms</th><th>Severity</th><th class="r">Count</th><th class="r">Total time active</th><th>Last raised (IST)</th></tr></thead><tbody>
+      ${r.top_alarms.length ? `<table class="dv-t rp-t rp-pg"><thead><tr><th>Most frequent alarms</th><th>Severity</th><th class="r">Count</th><th class="r">Total time active</th><th>Last raised (IST)</th></tr></thead><tbody>
         ${r.top_alarms.map((g) => `<tr><td>${esc(g.message)}</td><td>${g.priority === "red" ? '<span class="rp-bad">Critical</span>' : "Warning"}</td>
           <td class="r num"><b>${g.count}</b></td><td class="r num">${g.minutes >= 120 ? (g.minutes / 60).toFixed(1) + " h" : g.minutes + " min"}</td><td class="num">${fmtTime(g.last, true)}</td></tr>`).join("")}</tbody></table>`
         : '<p class="rp-ok">No alarms in this period.</p>'}
+      </section>
 
-      ${r.alarms.length ? `<h4><span>6</span> Alarm log</h4>
-      <table class="dv-t rp-t"><thead><tr><th>Raised (IST)</th><th>Severity</th><th>Source</th><th>Alarm</th><th class="r">Duration</th><th>Acknowledged</th><th>Cleared</th></tr></thead><tbody>
+      ${r.alarms.length ? `<section class="rp-sec" data-sec="alarmlog" data-tab="Alarm log"><h4><span>6</span> Alarm log</h4>
+      <table class="dv-t rp-t rp-pg"><thead><tr><th>Raised (IST)</th><th>Severity</th><th>Source</th><th>Alarm</th><th class="r">Duration</th><th>Acknowledged</th><th>Cleared</th></tr></thead><tbody>
       ${r.alarms.map((a) => `<tr><td class="num">${fmtTime(a.raised_at, true)}</td><td>${a.priority === "red" ? '<span class="rp-bad">Critical</span>' : "Warning"}</td>
         <td>${a.source === "dashboard" ? '<span class="al-src-b dash">DASHBOARD</span>' : '<span class="al-src-b plc">PLANT</span>'}</td>
         <td>${esc(a.message)}${a.simulated ? ' <span class="q SIMULATED">DEMO</span>' : ""}</td>
         <td class="r num">${a.duration_min >= 120 ? (a.duration_min / 60).toFixed(1) + " h" : a.duration_min + " min"}</td>
         <td>${a.acked_at ? `${esc(a.acked_by || "")} ${fmtTime(a.acked_at)}` : '<span class="muted">-</span>'}</td>
-        <td>${a.cleared_at ? fmtTime(a.cleared_at, true) : '<span class="al-pill act">ACTIVE</span>'}</td></tr>`).join("")}</tbody></table>` : ""}
+        <td>${a.cleared_at ? fmtTime(a.cleared_at, true) : '<span class="al-pill act">ACTIVE</span>'}</td></tr>`).join("")}</tbody></table></section>` : ""}
 
+      <section class="rp-sec" data-sec="sign" data-tab="Sign-off">
       <h4 class="rp-keep"><span>${r.alarms.length ? 7 : 6}</span> Remarks &amp; sign-off</h4>
       <div class="rp-sign rp-keep">
         <div class="rp-remarks">Remarks:</div>
         <div><span>Prepared by (operator)</span></div><div><span>Checked by (shift in-charge)</span></div><div><span>Approved by (plant in-charge)</span></div>
       </div>
+      </section>
       <footer class="rp-ft">Generated ${fmtTime(r.generated, true)} IST from the dashboard history · Medge Controls plant monitoring · Production / consumption figures are not shown: no source data is configured for them.</footer>
     </article>`;
     // wide tables scroll inside the report on small screens instead of widening the page
@@ -269,14 +281,78 @@
       w.className = "rp-scroll";
       t.before(w); w.append(t);
     });
-    // v3 (SC03): search bar for the report tables (process values, log sheet, equipment, alarms)
-    $("rpBody").insertAdjacentHTML("afterbegin", '<div class="rp-srch no-print" id="rpSrch"></div>');
-    MD.v3.tableSearch($("rpSrch"), $("rpDoc"), { placeholder: "Search value, tag, equipment or alarm…", onSearch: (s) => {
+    // v3 (21-11-2026, client): on screen every topic is a tab and long tables are split into pages.
+    // The PDF (print) and the Excel / CSV files still hold the whole report - see body.print-rp in v3-reports.css.
+    const secs = [...$("rpDoc").querySelectorAll(".rp-sec")];
+    const count = (s) => { const t = s.querySelector("table.rp-pg"); return t ? t.tBodies[0].rows.length : 0; };
+    $("rpBody").insertAdjacentHTML("afterbegin", `<div class="rp-nav no-print"><div class="rp-srch" id="rpSrch"></div>
+      <div class="seg rp-tabs" id="rpTabs" role="tablist" aria-label="Report sections">${secs.map((s) => {
+        const n = count(s);
+        return `<button type="button" role="tab" data-sec="${s.dataset.sec}">${esc(s.dataset.tab)}${n ? ` <small>${n}</small>` : ""}</button>`; }).join("")}</div></div>`);
+    $("rpDoc").querySelectorAll("table.rp-pg").forEach((t) => pager(t));
+    const show = () => {
+      const searching = !!(srch && srch.value.trim());
+      secs.forEach((s) => s.classList.toggle("rp-off", !searching && s.dataset.sec !== rpTab));
+      $("rpTabs").querySelectorAll("button").forEach((b) => {
+        const on = !searching && b.dataset.sec === rpTab;
+        b.classList.toggle("active", on); b.setAttribute("aria-selected", String(on));
+      });
+      $("rpDoc").classList.toggle("rp-searching", searching);
+    };
+    if (!secs.some((s) => s.dataset.sec === rpTab)) rpTab = "summary";
+    $("rpTabs").querySelectorAll("button").forEach((b) => (b.onclick = () => {
+      rpTab = b.dataset.sec;
+      if (srch && srch.value) { const i = $("rpSrch").querySelector("input"); i.value = ""; srch.run(); }
+      show();
+    }));
+    // search: looks in every topic at once (all tabs shown); pages restart on the matching rows
+    const srch = MD.v3.tableSearch($("rpSrch"), $("rpDoc"), { placeholder: "Search value, tag, equipment or alarm…", onSearch: (s) => {
       // keep a group heading row visible while any row of its group matches
       $("rpDoc").querySelectorAll("tr.rp-grp").forEach((g) => {
         g.hidden = !!s && ![...g.parentElement.querySelectorAll("tr:not(.rp-grp)")].some((r) => !r.hidden);
       });
+      $("rpDoc").querySelectorAll("table.rp-pg").forEach((t) => t._pg && t._pg.go(1));
+      show();
     } });
+    show();
+  }
+  let rpTab = "summary";                                // remembered while the page is open (next report opens the same tab)
+
+  // pager under a long report table: Page [n] of N · a–b of total · « ‹ 1 2 3 … › » · Rows [25]. Rows hidden by the
+  // search are skipped; rows on other pages get .pg-off (shown again when printing).
+  let pgSize = 25;
+  function pager(table) {
+    const host = document.createElement("div");
+    host.className = "rp-pager no-print";
+    (table.closest(".rp-scroll") || table).after(host);
+    let page = 1;
+    const rowsOf = () => [...table.tBodies[0].rows].filter((r) => !r.hidden);
+    const go = (p) => {
+      const rows = rowsOf(), total = rows.length, pages = Math.max(1, Math.ceil(total / pgSize));
+      page = Math.min(Math.max(1, p), pages);
+      [...table.tBodies[0].rows].forEach((r) => r.classList.remove("pg-off"));
+      rows.forEach((r, i) => r.classList.toggle("pg-off", Math.floor(i / pgSize) + 1 !== page));
+      if (total <= 25) { host.hidden = true; return; }      // short table: no pager
+      host.hidden = false;
+      const nums = [];
+      for (let k = 1; k <= pages; k++) if (k <= 3 || k > pages - 3 || Math.abs(k - page) <= 1) nums.push(k);
+      const btns = nums.map((k, i) => `${i && k - nums[i - 1] > 1 ? '<span class="gap">…</span>' : ""}<button type="button" data-p="${k}" class="${k === page ? "on" : ""}" aria-label="Page ${k}"${k === page ? ' aria-current="page"' : ""}>${k}</button>`).join("");
+      const a = (page - 1) * pgSize + 1, b = Math.min(total, page * pgSize);
+      host.innerHTML = `<span class="pg-at">Page <input type="number" min="1" max="${pages}" value="${page}" aria-label="Page number"> of ${pages}</span>
+        <span class="pg-n">${a}–${b} of ${total}</span>
+        <span class="pg-btns"><button type="button" data-p="1" aria-label="First page" ${page === 1 ? "disabled" : ""}>«</button><button type="button" data-p="${page - 1}" aria-label="Previous page" ${page === 1 ? "disabled" : ""}>‹</button>
+          ${btns}<button type="button" data-p="${page + 1}" aria-label="Next page" ${page === pages ? "disabled" : ""}>›</button><button type="button" data-p="${pages}" aria-label="Last page" ${page === pages ? "disabled" : ""}>»</button></span>
+        <label class="pg-rows">Rows <select aria-label="Rows per page">${[25, 50, 100].map((n) => `<option ${n === pgSize ? "selected" : ""}>${n}</option>`).join("")}</select></label>`;
+      host.querySelectorAll("[data-p]").forEach((x) => (x.onclick = () => { go(+x.dataset.p); host.scrollIntoView({ block: "nearest" }); }));
+      const inp = host.querySelector("input");
+      inp.onchange = () => go(+inp.value || 1);
+      host.querySelector("select").onchange = (e) => {
+        pgSize = +e.target.value;                        // same rows-per-page for every table of the report
+        document.querySelectorAll("#rpDoc table.rp-pg").forEach((t) => t._pg && t._pg.go(1));
+      };
+    };
+    table._pg = { go };
+    go(1);
   }
 
   // ======================================================================================
