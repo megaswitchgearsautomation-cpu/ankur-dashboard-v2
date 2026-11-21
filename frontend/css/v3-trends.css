@@ -1,0 +1,138 @@
+/* v3-trends - v3 brief 14-11-2026
+   SC06 trends + date controls + chart zoom (js/chart.js), overview "Process trend" card header,
+   SC05 equipment filter note, SC01 readable sizes for chart controls / exports, alarms page readability.
+   4 px grid · text >= 12 px · controls 36-44 px tall · no horizontal page scroll 360-2560 px. */
+
+/* =================================================================================================
+   chart library (js/chart.js): every chart box gets .mdc - zoom toolbar + chart layers
+   ================================================================================================= */
+.mdc { position: relative; min-width: 0; }
+.mdc > svg { display: block; width: 100%; max-width: 100%; }
+.mdc-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 8px; min-height: 40px; margin: 0 0 4px; }
+.mdc-win { min-width: 0; font-size: 13px; line-height: 1.4; color: var(--fx-ink-2, #55554f); font-variant-numeric: tabular-nums; }
+.mdc-win b { margin-right: 4px; font-weight: 700; color: var(--fx-ink, #151515); }
+.mdc-btns { display: inline-flex; flex: none; gap: 4px; margin-left: auto; }
+.mdc-btns button { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 8px;
+  border: 1px solid #d4d4d8; border-radius: 8px; background: #fff; color: #27272a; font: inherit; font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer; }
+.mdc-btns .mdc-reset { padding: 0 12px; font-size: 14px; font-weight: 600; }
+.mdc-btns button:hover:not(:disabled) { border-color: #71717a; background: #f4f4f5; }
+.mdc-btns button:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 2px; }
+.mdc-btns button:disabled { opacity: .4; cursor: default; }
+@media (max-width: 560px) { .mdc-hint { display: none; } }
+/* scroll bar under a zoomed chart: thumb = visible window inside the selected range (drag it, or click the track) */
+.mdc-scroll { position: relative; height: 12px; margin: 4px 0 2px; border-radius: 6px; background: #f1f1f2; cursor: pointer; touch-action: none; }
+.mdc-thumb { position: absolute; top: 0; bottom: 0; min-width: 24px; border-radius: 6px; background: #a1a1aa; cursor: grab; touch-action: none; }
+.mdc-thumb:hover, .mdc-thumb.drag { background: #71717a; }
+.mdc-thumb.drag { cursor: grabbing; }
+
+/* chart layers (same look as the existing .chart rules, so a chart outside a .chart box looks the same) */
+body.client .mdc svg .tick { fill: var(--ink-3, #6b6b66); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mdc svg .gridline { stroke: var(--grid, #ececea); stroke-width: 1; }
+.mdc svg .axis { stroke: #d4d4d8; stroke-width: 1; }
+.mdc svg .line { fill: none; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.mdc svg .band { opacity: .08; }
+.mdc svg .area { stroke: none; }
+.mdc svg .zone { fill: color-mix(in srgb, var(--st-alarm, #b91c1c) 6%, transparent); }
+.mdc svg .limit { stroke: var(--st-alarm, #b91c1c); stroke-dasharray: 6 4; stroke-width: 1.3; }
+.mdc svg .limit-tag rect { fill: var(--st-alarm, #b91c1c); }
+body.client .mdc svg .limit-tag text { fill: #fff; font-size: 12px; font-weight: 700; }
+.mdc svg .cross { stroke: var(--ink-3, #6b6b66); stroke-width: 1; stroke-dasharray: 3 3; }
+.mdc svg .zoom-sel { fill: rgba(77, 122, 0, .14); stroke: rgba(77, 122, 0, .55); stroke-dasharray: 4 3; }
+.mdc svg .pulse { opacity: .35; transform-box: fill-box; transform-origin: center; animation: tr-pulse 1.8s ease-out infinite; }
+.mdc svg .mdc-barr { transition: opacity .15s; }
+.mdc svg .mdc-barr.hl { opacity: .7; }
+.mdc .tip { z-index: 5; min-width: 168px; padding: 8px 12px; font-size: 14px; line-height: 1.45; }
+body.client .mdc .tip b { font-size: 15px; }
+.mdc .tip i { flex: none; width: 10px; height: 10px; border-radius: 50%; }
+@media (prefers-reduced-motion: reduce) { .mdc svg .pulse { animation: none !important; } }
+
+/* =================================================================================================
+   range pickers owned here (overview trend card, Trends page, alarm history) - MD.v3.rangePicker
+   ================================================================================================= */
+.tr-rangehost { min-width: 0; max-width: 100%; }
+.tr-rangehost .dr-presets { flex-wrap: wrap; max-width: 100%; border-radius: 20px; }
+body.client .tr-rangehost .dr-presets button { min-height: 36px; padding: 6px 14px; font-size: 14px; }
+.tr-rangehost .dr-pick { flex-wrap: wrap; max-width: 100%; }
+body.client .tr-rangehost .dr-applied { font-size: 14px; }
+
+/* overview "Process trend" card header: title + group tabs, range control on the right (wraps under on narrow screens) */
+.ov-th .ov-rng { margin-left: auto; justify-content: flex-end; }
+@media (max-width: 900px) { .ov-th .ov-rng { margin-left: 0; justify-content: flex-start; width: 100%; } }
+#ovLiveBadge.hist { color: #3f3f46; background: #f4f4f5; border-color: #d4d4d8; }
+body.client #ovLiveBadge.sm { font-size: 12px; }
+#ovChart.mdc { min-height: 0; }
+body.client .ov-foot { font-size: 14px; }
+body.client .ov-chip .nm { font-size: 13px; }
+body.client .ov-chip .tr-delta, body.client .ov-chip b small { font-size: 12px; }
+
+/* =================================================================================================
+   Trends page
+   ================================================================================================= */
+.tr-ctl .tr-top { margin-bottom: 12px; }
+.tr-range { margin: 0 0 8px; }
+.tr-hint { margin: 0 0 16px; font-size: 14px; line-height: 1.5; color: var(--fx-ink-2, #55554f); }
+body.client #trCount, body.client #trCount .link-btn { font-size: 14px; }
+body.client .tr-live { font-size: 13px; min-height: 32px; }
+.tr-live.hidden { display: none; }
+
+/* exports: same readable standard as the other controls (15 px, 40 px tall) */
+body.client .btn.tr-exp { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px;
+  font-size: 15px; font-weight: 600; white-space: nowrap; }
+
+/* applied range, right above the charts */
+.tr-applied { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-height: 40px;
+  font-size: 15px; color: var(--fx-ink, #151515); font-variant-numeric: tabular-nums; }
+.tr-applied .v3-cal { flex: none; width: 18px; height: 18px; color: var(--fx-ink-2, #55554f); }
+.tr-applied b { font-weight: 700; }
+.tr-applied .btn { margin-left: auto; }
+
+/* charts grid: never wider than the screen (the old 520 px minimum caused sideways scroll on small screens) */
+.charts { grid-template-columns: repeat(auto-fill, minmax(min(520px, 100%), 1fr)); }
+.charts.combined { grid-template-columns: minmax(0, 1fr); }
+.tr-card { min-width: 0; }
+body.client .tr-head .t { font-size: 16px; }
+body.client .tr-head .s, body.client .tr-delta { font-size: 13px; }
+body.client .tr-legend { font-size: 14px; }
+.tr-legend i { border-radius: 50%; flex: none; }
+body.client .tr-stats > div > span:first-child:not(.pill) { font-size: 12px; }
+body.client .tr-stats b { font-size: 15px; }
+
+/* value pills: equal width inside each group (Temperature / Pressure / Level / Analysis); long names wrap */
+/* every pill the same size (2 lines high, user request 16-11-2026) and every group box the same height in a row */
+.tr-picker { grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 12px; align-items: stretch; }
+.tp-group { display: block; padding: 12px; }
+body.client .tp-h { display: block; width: auto; margin: 0 0 8px; font-size: 13px; }
+.tp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: 8px; }
+body.client .tp-chip { display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; min-width: 0; min-height: 40px; height: 100%;
+  padding: 6px 12px 6px 10px; border-radius: 12px; font-size: 14px; line-height: 1.3; text-align: left; white-space: normal; }
+body.client .tp-chip { min-height: 52px; height: 52px; }
+.tp-chip .tp-n { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }   /* full name on hover */
+/* colour dot: fixed circle - never stretches into an oval */
+.tp-chip i { flex: none; box-sizing: border-box; width: 12px; height: 12px; min-width: 12px; aspect-ratio: 1 / 1; border-radius: 50%; }
+.tp-chip:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 2px; }
+
+/* =================================================================================================
+   Equipment: what the status filter + area currently show
+   ================================================================================================= */
+.eq-showing { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 12px; font-size: 14px; color: var(--fx-ink-2, #55554f); }
+body.client .eq-showing .link-btn { font-size: 14px; min-height: 36px; }
+.eq-kpi[aria-pressed="true"] { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 2px; }
+
+/* =================================================================================================
+   Alarms page: larger text, one left alignment, search + exports above the history table
+   ================================================================================================= */
+body.client .al-msg { font-size: 16px; font-weight: 700; }
+body.client .al-meta { font-size: 14px; color: #52525b; }
+body.client .al-note { font-size: 14px; }
+body.client .al-ack .btn { min-height: 40px; font-size: 15px; }
+body.client .al-hhead h2 { margin-right: auto; }
+.al-hrange { justify-content: flex-end; }
+@media (max-width: 900px) { .al-hrange { justify-content: flex-start; width: 100%; } }
+.al-htools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.al-htools .spacer { flex: 1 1 0; min-width: 0; }
+#histSearch { flex: 1 1 280px; min-width: 0; max-width: 420px; }
+#histSearch .v3-search { width: 100%; min-height: 40px; }
+body.client .al-table td { font-size: 15px; vertical-align: top; }
+body.client .al-table th { font-size: 13px; white-space: nowrap; }
+.al-table th .v3-cal { width: 16px; height: 16px; margin-right: 8px; vertical-align: -3px; color: #52525b; }
+.al-table td.num { white-space: nowrap; }

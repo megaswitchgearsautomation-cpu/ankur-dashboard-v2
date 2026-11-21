@@ -8,6 +8,18 @@
   <link rel="stylesheet" href="css/app.css">
   <style>
     .tag-table td, .tag-table th { padding: 6px 8px; font-size: 12.5px; }
+    .rtd-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 12px; margin-top: 12px; }
+    .rtd-slot { display: flex; gap: 8px; align-items: center; font-size: 12.5px; }
+    .rtd-slot span { width: 42px; font-weight: 700; color: var(--ink-3); flex: none; }
+    .rtd-slot select { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 5px 6px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12.5px; }
+    .shift-row { gap: 10px; align-items: end; margin-bottom: 8px; }
+    .shift-row .field { flex: 1; }
+    .tz-blk { border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; margin: 8px 0; background: var(--surface-2); }
+    .tz-blk .form-grid { margin-top: 6px; }
+    #gwBox .form-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    #gwBox .form-grid > * { min-width: 0; }
+    #gwBox .form-grid input { width: 100%; box-sizing: border-box; }
+    #gwBox .gw-wide { grid-column: 1 / -1; }
     .tag-table tr:hover td { background: var(--surface-2); }
     .warn-txt { color: var(--warn-ink); font-size: 11.5px; }
     .err-txt { color: var(--crit-ink); font-size: 12px; }
@@ -89,8 +101,30 @@
             <div class="seg" id="modeSeg">
               <button type="button" data-mode="simulation">Demo data</button>
               <button type="button" data-mode="modbus">Live from PLC</button>
+              <button type="button" data-mode="gateway_api">Gateway API</button>
             </div>
-            <select name="source.mode" id="modeSel" hidden><option value="simulation">Simulation</option><option value="modbus">Modbus TCP</option></select>
+            <select name="source.mode" id="modeSel" hidden><option value="simulation">Simulation</option><option value="modbus">Modbus TCP</option><option value="gateway_api">Gateway HTTP API</option></select>
+
+            <!-- Gateway HTTP API: undocumented, so the URL and JSON layout are configured here; the key stays on the server -->
+            <div id="gwBox" class="mapbox hidden" style="margin-top:12px">
+              <div class="section-title" style="margin-top:0">Gateway HTTP API <span class="muted" style="font-weight:500">(read-only GET; layout from the gateway's API documentation)</span></div>
+              <div class="form-grid">
+                <label class="field" style="grid-column:1/-1">Readings URL<input name="gateway_api.url" placeholder="https://… (from the gateway API documentation)" spellcheck="false" autocomplete="off"></label>
+                <label class="field">Auth header name<input name="gateway_api.auth_header" placeholder="Authorization" spellcheck="false"></label>
+                <label class="field gw-wide">Auth header value (API key)<input name="gateway_api.auth_value" id="gwKey" type="password" autocomplete="new-password"><span class="hint" id="gwKeyHint">Kept on the server, never sent to the browser. Leave blank to keep the stored key.</span></label>
+                <label class="field">Poll every (s)<input name="gateway_api.poll_s" type="number" min="1" max="3600"></label>
+                <label class="field">Timeout (s)<input name="gateway_api.timeout_s" type="number" min="1" max="120"></label>
+                <label class="check gw-wide"><input type="checkbox" name="gateway_api.verify_tls"> Check HTTPS certificate</label>
+                <label class="field">Readings path<input name="gateway_api.values_path" placeholder="e.g. data.tags (blank = whole reply)" spellcheck="false"></label>
+                <label class="field">ID field<input name="gateway_api.id_field" placeholder="id" spellcheck="false"></label>
+                <label class="field">Value field<input name="gateway_api.value_field" placeholder="value" spellcheck="false"></label>
+                <label class="field">Time stamp field<input name="gateway_api.ts_field" placeholder="ts (blank = time of the poll)" spellcheck="false"></label>
+                <label class="field">Quality field<input name="gateway_api.quality_field" placeholder="blank = all readings good" spellcheck="false"></label>
+              </div>
+              <div class="hint muted" style="font-size:12px;margin-top:6px">Each tag is matched by its <b>Source ID</b> (Tags page), falling back to its PLC tag, then its tag id.
+                A tag missing from the reply shows CONFIG ERROR; a failed request marks every tag OFFLINE (last value kept, never shown as live).
+                Example layouts: <span class="code">docs/examples/gateway_api_response.example.json</span>.</div>
+            </div>
 
             <div class="row" style="margin-top:18px">
               <button class="btn primary" type="submit">Save</button>
@@ -252,6 +286,18 @@
           </form>
         </div>
       </div>
+      <div class="panel" style="margin-top:16px">
+        <h2>All accounts &amp; roles</h2>
+        <p class="muted" style="margin-top:0;font-size:12.5px"><b>Admin</b>: dashboard + this Settings page · <b>Operator</b>: dashboard, may acknowledge alarms and edit set points / scaling ·
+          <b>Viewer</b>: dashboard read-only. The server enforces these rules; deleting or changing an account signs it out.</p>
+        <div class="table-wrap"><table id="userTable"></table></div>
+        <form id="userForm" class="form-grid" style="margin-top:12px">
+          <label class="field">Username<input name="username" autocomplete="off" maxlength="32" required></label>
+          <label class="field">Role<select name="role"><option value="viewer">Viewer (read-only)</option><option value="operator">Operator</option></select></label>
+          <label class="field">Password (min 8; blank = keep, when editing)<input name="password" type="password" autocomplete="new-password" minlength="8"></label>
+          <div class="row" style="align-self:end"><button class="btn primary" type="submit">Add / update account</button></div>
+        </form>
+      </div>
     </section>
   </main>
 </div>
@@ -260,6 +306,7 @@
 <aside id="drawer" class="drawer hidden" role="dialog" aria-modal="true"></aside>
 
 <script src="js/common.js"></script>
-<script src="js/admin.js"></script>
+<script src="js/admin.js?v=20261104b"></script>
+<script src="js/admin-extra.js?v=20261113a"></script>
 </body>
 </html>

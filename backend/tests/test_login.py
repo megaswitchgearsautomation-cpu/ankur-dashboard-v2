@@ -80,7 +80,8 @@ class TestLogin(unittest.TestCase):
         self.assertEqual(self.post(cli, "/api/client/scaling", bad)[0], 400)
         self.assertEqual(self.post(cli, "/api/client/scaling", dict(body, id="PT_01"))[0], 400)   # levels: level tags only
         self.assertEqual(self.post(self.browser(), "/api/client/scaling", body)[0], 401)          # login required
-        # Tank levels page: set points only
+        # Tank levels page: set points only (LT-02 range fixed here: the live config may have been re-ranged)
+        self.assertEqual(self.post(cli, "/api/client/scaling", {"id": "LT_02", "source": "plc", "range_min": 0, "range_max": 3600})[0], 200)
         ok = self.post(cli, "/api/client/levels", {"id": "LT_02", "levels": {"hh": 3300, "h": 2800, "l": 800, "ll": 400}})
         self.assertEqual(ok[0], 200)
         self.assertEqual(self.app.store.tag_map()["LT_02"]["levels"]["h"], 2800.0)
@@ -90,6 +91,11 @@ class TestLogin(unittest.TestCase):
     def test_client_write_set_point(self):
         cli = self.browser()
         self.login(cli, "ankur", "ankur123")
+        eng = self.app.engine                       # engine not running in this test: give the set point a current reading
+        eng._reload_if_needed()
+        eng.states["LT_01_H_DLY"].value = None
+        self.assertEqual(self.post(cli, "/api/client/write", {"id": "LT_01_H_DLY", "value": 12})[0], 400)   # never read: refused
+        eng.states["LT_01_H_DLY"].value = 5.0
         code, r = self.post(cli, "/api/client/write", {"id": "LT_01_H_DLY", "value": 12})       # demo mode: simulated write
         self.assertEqual((code, r.get("value"), r.get("simulated")), (200, 12.0, True))
         self.assertEqual(self.post(cli, "/api/client/write", {"id": "LT_01", "value": 100})[0], 400)       # not writable
@@ -106,25 +112,47 @@ class TestLogin(unittest.TestCase):
         self.assertEqual(self.get(op, "/api/live")[0], 401)
         self.assertEqual(self.get(op, "/api/admin/tags")[0], 401)
 
-    def test_client_view_only(self):
+    def test_operator_dashboard_no_settings(self):
         op = self.browser()
         self.assertEqual(self.login(op, "ankur", "wrong").get("code"), 401)
-        r = self.login(op, "ankur", "ankur123")
-        self.assertEqual((r["role"], r["home"]), ("client", "/"))
+        r = self.login(op, "ankur", "ankur123")                         # built-in client login = operator
+        self.assertEqual((r["role"], r["home"]), ("operator", "/"))
         self.assertEqual(self.get(op, "/")[0], 200)
         self.assertEqual(self.get(op, "/api/live")[0], 200)
-        self.assertEqual(self.get(op, "/admin")[:2], (302, "/"))          # client cannot open admin
+        self.assertEqual(self.get(op, "/admin")[:2], (302, "/"))          # operator cannot open Settings
         self.assertEqual(self.get(op, "/api/admin/tags")[0], 401)
         self.assertEqual(self.get(op, "/login")[:2], (302, "/"))
 
-    def test_admin_tag_page_only(self):
+    def test_admin_dashboard_and_settings(self):
         op = self.browser()
         r = self.login(op, "admin", "admin123")
-        self.assertEqual((r["role"], r["home"]), ("admin", "/admin"))
+        self.assertEqual((r["role"], r["home"]), ("admin", "/"))
         self.assertEqual(self.get(op, "/admin")[0], 200)
         self.assertEqual(self.get(op, "/api/admin/tags")[0], 200)
-        self.assertEqual(self.get(op, "/")[:2], (302, "/admin"))         # admin does not get the client view
-        self.assertEqual(self.get(op, "/api/live")[0], 401)
+        self.assertEqual(self.get(op, "/")[0], 200)                      # admin also sees the dashboard
+        self.assertEqual(self.get(op, "/api/live")[0], 200)
+
+    def test_viewer_is_read_only(self):
+        adm = self.browser()
+        self.login(adm, "admin", "admin123")
+        self.assertEqual(self.post(adm, "/api/admin/users", {"username": "view1", "role": "viewer", "password": "short"})[0], 400)
+        self.assertEqual(self.post(adm, "/api/admin/users", {"username": "view1", "role": "viewer", "password": "viewer-pass-1"})[0], 200)
+        users = json.loads(self.get(adm, "/api/admin/users")[2])["users"]
+        self.assertIn({"username": "view1", "role": "viewer", "builtin": False, "must_change": False}, users)
+        self.assertNotIn("password_hash", json.dumps(users))
+        settings = self.get(adm, "/api/admin/settings")[2].decode()
+        self.assertNotIn("password_hash", settings)                     # hashes never reach the browser
+        v = self.browser()
+        self.assertEqual(self.login(v, "view1", "viewer-pass-1")["role"], "viewer")
+        self.assertEqual(self.get(v, "/")[0], 200)
+        self.assertEqual(self.get(v, "/api/live")[0], 200)
+        self.assertEqual(self.get(v, "/admin")[:2], (302, "/"))
+        self.assertEqual(self.post(v, "/api/client/alarms/ack", {"ids": [1]})[0], 403)
+        self.assertEqual(self.post(v, "/api/client/write", {"id": "LT_01_H_DLY", "value": 6})[0], 403)
+        self.assertEqual(self.post(v, "/api/client/scaling", {"id": "LT_01"})[0], 403)
+        self.assertEqual(self.post(v, "/api/admin/users", {"username": "x2", "role": "viewer", "password": "12345678"})[0], 401)
+        self.assertEqual(self.post(adm, "/api/admin/users", {"username": "view1", "delete": True})[0], 200)
+        self.assertEqual(self.get(v, "/api/live")[0], 401)               # deleted user is signed out
 
     def post(self, op, path, body):
         req = urllib.request.Request(f"http://127.0.0.1:{PORT}{path}", data=json.dumps(body).encode(),
@@ -135,11 +163,11 @@ class TestLogin(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return e.code, None
 
-    def test_alarm_popup_ack_is_client_only(self):
+    def test_alarm_ack_needs_operator_or_admin(self):
         self.assertEqual(self.post(self.browser(), "/api/client/alarms/ack", {"ids": [1]})[0], 401)   # anonymous
         adm = self.browser()
         self.login(adm, "admin", "admin123")
-        self.assertEqual(self.post(adm, "/api/client/alarms/ack", {"ids": [1]})[0], 401)           # admin role
+        self.assertEqual(self.post(adm, "/api/client/alarms/ack", {"ids": [999999]})[0], 200)      # admin may acknowledge
         cli = self.browser()
         self.login(cli, "ankur", "ankur123")
         code, body = self.post(cli, "/api/client/alarms/ack", {"ids": [999999]})                    # not an open alarm

@@ -1,0 +1,78 @@
+/* v3-calendar (client review 17-11-2026): date range pop-up like the reference "Date Range Component" -
+   quick choices on the left, two months side by side, start / end boxes, Cancel / Apply. Ankur green. */
+.cal-bg { position: fixed; inset: 0; z-index: 1200; background: rgb(0 0 0 / .28); display: grid; place-items: center; padding: 16px; }
+.cal-bg.anch { background: rgb(0 0 0 / .08); display: block; padding: 0; }
+.cal { display: grid; grid-template-columns: 168px auto; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto;
+  background: #fff; color: var(--fx-ink, #18181b); border: 1px solid #e4e4e7; border-radius: 16px; box-shadow: 0 16px 48px rgb(0 0 0 / .18); font-size: 14px; }
+
+.cal.no-side { grid-template-columns: auto; }
+/* quick choices (only when a page passes presets) */
+.cal-side { display: flex; flex-direction: column; gap: 2px; padding: 12px 8px; border-right: 1px solid #ececef; background: #fafaf8; border-radius: 16px 0 0 16px; }
+.cal-side button { text-align: left; min-height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 14px;
+  color: #3f3f46; cursor: pointer; white-space: nowrap; }
+.cal-side button:hover { background: #f0f2e6; color: #18181b; }
+.cal-side button.active { background: #e8f2d4; color: #2f4f00; font-weight: 700; }
+
+/* months */
+.cal-main { padding: 12px 16px 12px; min-width: 0; }
+.cal-months { position: relative; display: flex; gap: 24px; }
+.cal-m { width: 266px; }
+.cal-mh { height: 36px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+.cal-nav { position: absolute; top: 0; width: 36px; height: 36px; border: 1px solid #e4e4e7; border-radius: 10px; background: #fff; font-size: 20px; line-height: 1;
+  color: #3f3f46; cursor: pointer; }
+.cal-nav.prev { left: 0; } .cal-nav.next { right: 0; }
+.cal-nav:hover:not(:disabled) { background: #f4f4f5; }
+.cal-nav:disabled { opacity: .3; cursor: default; }
+.cal-w, .cal-g { display: grid; grid-template-columns: repeat(7, 38px); }
+.cal-w span { height: 30px; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: #71717a; }
+.cal-d { position: relative; height: 38px; border: 0; background: transparent; font: inherit; font-size: 14px; color: #27272a; cursor: pointer; font-variant-numeric: tabular-nums; }
+.cal-d.out { cursor: default; }
+.cal-d:not(.off):not(.s):not(.e):hover { background: #f0f2e6; border-radius: 10px; }
+.cal-d.in { background: #eef6dd; }
+.cal-d.s, .cal-d.e { background: #3e6b00; color: #fff; font-weight: 700; border-radius: 10px; }
+.cal-d.s:not(.e) { border-radius: 10px 0 0 10px; }
+.cal-d.e:not(.s) { border-radius: 0 10px 10px 0; }
+.cal-d.today:not(.s):not(.e)::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: #3e6b00; }
+.cal-d.off { color: #c4c4c8; cursor: not-allowed; }
+.cal-d:focus-visible, .cal-side button:focus-visible, .cal-nav:focus-visible { outline: 2px solid #3e6b00; outline-offset: 1px; }
+
+/* footer: start / end + buttons */
+.cal-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #ececef; }
+.cal-sel { display: flex; align-items: center; gap: 8px; }
+.cal-box { min-width: 116px; height: 38px; display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; border: 1px solid #d4d4d8; border-radius: 10px;
+  font-weight: 600; font-variant-numeric: tabular-nums; }
+.cal-box.act { border-color: #3e6b00; box-shadow: 0 0 0 1px #3e6b00; }
+.cal-dash { color: #71717a; }
+.cal-btns { display: flex; gap: 8px; }
+.cal-btns .btn { min-height: 38px; min-width: 88px; }
+.cal-hint { margin: 8px 0 0; font-size: 12px; color: #71717a; }
+
+/* the applied range text works as a button that opens the calendar */
+.dr-applied.dr-open { cursor: pointer; border: 1px solid #d4d4d8; border-radius: 10px; padding: 6px 12px; background: #fff; }
+.dr-applied.dr-open:hover { border-color: #3e6b00; }
+.dr-applied.dr-open:focus-visible { outline: 2px solid #3e6b00; outline-offset: 1px; }
+.dr-wrap .dr-pick { display: none !important; }          /* the plain date boxes are replaced by the calendar pop-up */
+/* reports: the start / end box opens the calendar (no typing in the browser's own date boxes) */
+#rpDates { cursor: pointer; }
+#rpDates input[type="date"] { pointer-events: none; }
+#rpDates input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
+#rpDates:hover { border-color: #3e6b00; }
+#rpDates:focus-visible { outline: 2px solid #3e6b00; outline-offset: 1px; }
+
+/* phones / narrow: one month, quick choices as a row above it, sheet at the bottom */
+@media (max-width: 899px) {
+  .cal-bg { place-items: end center; padding: 8px; }
+  .cal { grid-template-columns: 1fr; width: 100%; max-width: 420px; border-radius: 16px; }
+  .cal-side { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid #ececef; border-radius: 16px 16px 0 0; padding: 8px; }
+  .cal-side button { flex: none; border: 1px solid #e4e4e7; background: #fff; border-radius: 999px; min-height: 34px; }
+  .cal-main { padding: 8px 12px 12px; }
+  .cal-months { justify-content: center; }
+  .cal-m { width: 100%; max-width: 322px; }
+  .cal-w, .cal-g { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .cal-d { height: 42px; }
+  .cal-box { min-width: 0; flex: 1 1 0; }
+  .cal-sel { flex: 1 1 100%; }
+  .cal-btns { flex: 1 1 100%; } .cal-btns .btn { flex: 1 1 0; }
+}
+@media (prefers-reduced-motion: no-preference) { .cal { animation: cal-in .12s ease-out; } }
+@keyframes cal-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }

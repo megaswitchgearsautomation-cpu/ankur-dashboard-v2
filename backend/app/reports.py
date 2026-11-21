@@ -5,11 +5,13 @@ Times are the server's local time.  Simulated (demo) data is always labelled.
 """
 from __future__ import annotations
 
+import csv
 import io
 import math
+import re
 import time
 import zipfile
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from xml.sax.saxutils import escape as xml_escape
 
 INTERVALS = {60: "1 minute", 300: "5 minutes", 900: "15 minutes", 1800: "30 minutes", 3600: "1 hour",
@@ -23,6 +25,357 @@ class ReportError(ValueError):
     pass
 
 
+IST = timezone(timedelta(hours=5, minutes=30))     # plant time zone (Asia/Kolkata, no daylight saving)
+CALCULATED_KINDS = ("hi", "hihi", "lo", "lolo", "comm_loss")
+
+
+def alarm_source(a):
+    """'dashboard' = calculated by this dashboard (analog limits, communication loss);
+    'plc' = a digital signal from the PLC / field (trip inputs, PLC alarm bits, safety inputs)."""
+    return "dashboard" if a.get("kind") in CALCULATED_KINDS or a.get("tag") == "_COMM" else "plc"
+COVERAGE_SLOT_S = 60
+
+
+def period_window(kind, date_str, shift_name, shifts):
+    """(label, t_from, t_to) in epoch seconds. Daily = 00:00-24:00 IST; a shift runs from its start to the next
+    shift's start (the last one ends at the first one's start next day)."""
+    try:
+        day = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=IST)
+    except (TypeError, ValueError):
+        raise ReportError("Date must be YYYY-MM-DD")
+    if kind == "daily":
+        return f"Daily report {day:%d-%m-%Y}", day.timestamp(), (day + timedelta(days=1)).timestamp()
+    if kind == "weekly":                                   # Monday to Sunday of the week that contains the date
+        mon = day - timedelta(days=day.weekday())
+        sun = mon + timedelta(days=6)
+        return f"Weekly report {mon:%d-%m-%Y} to {sun:%d-%m-%Y}", mon.timestamp(), (mon + timedelta(days=7)).timestamp()
+    if kind == "monthly":
+        first = day.replace(day=1)
+        nxt = first.replace(year=first.year + (first.month == 12), month=first.month % 12 + 1)
+        return f"Monthly report {first:%B %Y}", first.timestamp(), nxt.timestamp()
+    if kind != "shift":
+        raise ReportError("Report kind must be daily, shift, weekly or monthly")
+    order = sorted(shifts, key=lambda s: s["start"])
+    idx = next((i for i, s in enumerate(order) if s["name"] == shift_name), None)
+    if idx is None:
+        raise ReportError(f"Unknown shift '{shift_name}'")
+    hh, mm = map(int, order[idx]["start"].split(":"))
+    start = day + timedelta(hours=hh, minutes=mm)
+    nh, nm = map(int, order[(idx + 1) % len(order)]["start"].split(":"))
+    end = day + timedelta(hours=nh, minutes=nm)
+    if end <= start:
+        end += timedelta(days=1)
+    return f"Shift {shift_name} report {day:%d-%m-%Y} ({order[idx]['start']}-{order[(idx + 1) % len(order)]['start']})", \
+        start.timestamp(), end.timestamp()
+
+
+def no_hmi_plc(s):
+    """Client wording: 'T-01 ...: PLC alarm' -> 'T-01 ...: alarm' (the dashboard does not name the PLC / HMI)."""
+    if not isinstance(s, str):
+        return s
+    s = s.replace(" - PLC alarm", " - alarm").replace(": PLC alarm", ": alarm").replace("PLC communication", "Plant communication")
+    return re.sub(r"\s*\b(PLC|HMI)\b\s*", " ", s).strip()
+
+
+# log sheet step per report kind: hourly for a day / shift, 6-hourly for a week, daily for a month
+LOG_STEP = {"daily": 3600, "shift": 3600, "weekly": 21600, "monthly": 86400}
+SYSTEM_EQUIPMENT = "OP_M1"        # hot air blower: runs from System Start to System Stop -> "system run hours"
+# v3: performance ceiling for one report window (the real limit is also the history kept: retention_days + 1)
+PERIOD_MAX_DAYS = 62
+RANGE_KINDS = ("daily", "weekly", "monthly", "custom")
+
+
+def _day(s, what):
+    try:
+        return datetime.strptime(str(s or ""), "%Y-%m-%d").replace(tzinfo=IST)
+    except ValueError:
+        raise ReportError(f"{what} must be a date (YYYY-MM-DD)")
+
+
+def ist_day_start(ts):
+    d = datetime.fromtimestamp(ts, IST)
+    return d.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+
+
+def range_window(kind, from_str, to_str):
+    """v3 Reports: start date .. end date (IST days, end date inclusive) -> (title, t_from, t_to).
+    kind (daily / weekly / monthly / custom) only names the report; the window is always the two dates."""
+    if kind not in RANGE_KINDS:
+        raise ReportError("Report type must be daily, weekly, monthly or custom")
+    d0, d1 = _day(from_str, "Start date"), _day(to_str, "End date")
+    if d1 < d0:
+        raise ReportError("The end date must be on or after the start date")
+    days = (d1 - d0).days + 1
+    if days == 1:
+        title = f"Daily report {d0:%d-%m-%Y}"
+    elif kind == "weekly":
+        title = f"Weekly report {d0:%d-%m-%Y} to {d1:%d-%m-%Y}"
+    elif kind == "monthly" and (d0.year, d0.month) == (d1.year, d1.month):
+        title = f"Monthly report {d0:%B %Y}"
+    else:
+        title = f"Report {d0:%d-%m-%Y} to {d1:%d-%m-%Y}"
+    return title, d0.timestamp(), (d1 + timedelta(days=1)).timestamp()
+
+
+def span_step(span_s):
+    """Log sheet step for a window: hourly up to 2 days, 6-hourly up to 14 days, daily beyond."""
+    return 3600 if span_s <= 2 * 86400 + 60 else 21600 if span_s <= 14 * 86400 + 60 else 86400
+
+
+def max_window_days(retention_days=None):
+    if retention_days is None:
+        return PERIOD_MAX_DAYS
+    return max(1, min(PERIOD_MAX_DAYS, int(retention_days) + 1))
+
+
+def limit_to_history(t0, t1, history_start=None, retention_days=None, now=None):
+    """Clamp / refuse a report window against the history actually kept.
+    history_start = oldest usable time (max(now - retention, oldest stored sample)).  A window that ends before it is
+    refused; one that starts before it begins on that day (00:00 IST) with a note.  Returns (t0, note)."""
+    now = time.time() if now is None else now
+    if t1 <= t0:
+        raise ReportError("The end must be after the start")
+    if t0 >= now:
+        raise ReportError("That period has not started yet")
+    note = None
+    keep = f" (history is kept for {int(retention_days)} days)" if retention_days else ""
+    if history_start is not None:
+        first_day = ist_day_start(history_start)
+        if t1 <= history_start:
+            raise ReportError(f"No history is stored for this period. The oldest available date is "
+                              f"{_ist(history_start, '%d-%m-%Y')}{keep}.")
+        if t0 < first_day:
+            t0 = first_day
+            note = f"History is available from {_ist(history_start, '%d-%m-%Y %H:%M')} IST{keep}: earlier days are not in this report."
+    md = max_window_days(retention_days)
+    if t1 - t0 > md * 86400 + 60:
+        raise ReportError(f"The longest report period is {md} days{keep}. Choose a shorter range.")
+    return t0, note
+
+
+def period_report(store, historian, kind, date_str, shift_name=None, live_values=None, window=None,
+                  history_start=None, retention_days=None):
+    """Daily / shift / weekly / monthly report from the stored history only:
+    - summary KPIs (system run hours, machine run hours, alarms, trips, data coverage)
+    - per process value: min / max / average, % of range for levels, current alarm set point and the minutes the
+      value was at / above it, data coverage, and a small trend (log-sheet averages)
+    - a log sheet (hourly / 6-hourly / daily averages)
+    - equipment run hours, starts, trips and utilisation
+    - alarm summary (most frequent) and the full alarm log.
+    live_values: {tag_id: current value} - used only for the current alarm set points.
+    No production / consumption KPIs: there is no source data or definition for them.
+    v3: window=(title, t_from, t_to) from range_window() replaces kind/date; history_start / retention_days limit the
+    window to the history actually kept (see limit_to_history)."""
+    if window:
+        title, t0, t1 = window
+    else:
+        title, t0, t1 = period_window(kind, date_str, shift_name, store.settings.get("shifts") or [])
+    now = time.time()
+    requested_from = t0
+    t0, history_note = limit_to_history(t0, t1, history_start, retention_days, now)
+    t_end = min(t1, now)
+    elapsed = max(1.0, t_end - t0)
+    slots = int(math.ceil(elapsed / COVERAGE_SLOT_S))
+    live_values = live_values or {}
+    step = max(LOG_STEP.get(kind, 0), span_step(t1 - t0))
+    n_steps = int(math.ceil((t1 - t0) / step))
+    tags = reportable_tags(store)
+    buckets = historian.period_buckets([t["id"] for t in tags], t0, t_end, step)
+
+    values = []
+    for t in tags:
+        s = historian.period_stats(t["id"], t0, t_end, COVERAGE_SLOT_S)
+        d = int(t.get("decimals", 1))
+        lo, hi = t.get("eng_min"), t.get("eng_max")
+        sp = live_values.get(f"{t['id']}_ALM_SP")
+        sp = sp if isinstance(sp, (int, float)) and not isinstance(sp, bool) and math.isfinite(sp) else None
+        above = None
+        if sp is not None and t.get("group") in ("Temperature", "Pressure") and s["avg"] is not None:
+            above = historian.minutes_at_or_above(t["id"], t0, t_end, sp)
+        pct = None
+        if t.get("group") == "Level" and lo is not None and hi not in (None, lo) and s["avg"] is not None:
+            pct = {k: round((s[k] - lo) / (hi - lo) * 100, 1) for k in ("min", "max", "avg")}
+        b = buckets.get(t["id"], {})
+        values.append({"id": t["id"], "name": t["name"], "group": t.get("group", ""), "unit": t.get("unit", ""),
+                       "decimals": d, "min": s["min"], "max": s["max"], "avg": s["avg"], "pct": pct,
+                       "eng_min": lo, "eng_max": hi, "set_point": sp, "minutes_above_sp": above,
+                       "coverage_pct": round(100 * s["slots_with_data"] / slots, 1) if slots else 0,
+                       "log": [None if i not in b else round(b[i][0], d + 1) for i in range(n_steps)]})
+
+    alarms = historian.alarm_rows("raised_at >= ? AND raised_at < ?", (t0, t1), 2000)
+    tagmap = store.tag_map()
+    equipment, sys_hours = [], None
+    for e in store.equipment:
+        if e.get("show_on_dashboard") is False or e.get("type", "motor") != "motor" or not e.get("run_tag"):
+            continue
+        sec = historian.on_seconds(e["run_tag"], t0, t_end)
+        trips = sum(1 for a in alarms if e.get("trip_tag") and a["tag"] == e["trip_tag"])
+        equipment.append({"id": e["id"], "tag_no": e.get("tag_no", ""), "name": e["name"], "area": e.get("area", ""),
+                          "kw": e.get("kw"), "run_hours": round(sec / 3600, 2), "starts": historian.rising_edges(e["run_tag"], t0, t_end),
+                          "trips": trips, "utilisation_pct": round(100 * sec / elapsed, 1)})
+        if e["id"] == SYSTEM_EQUIPMENT:
+            sys_hours = round(sec / 3600, 2)
+
+    al = [{"raised_at": a["raised_at"], "cleared_at": a.get("cleared_at"), "acked_at": a.get("acked_at"),
+           "acked_by": a.get("acked_by"), "priority": a["priority"], "source": alarm_source(a), "kind": a.get("kind"),
+           "message": "Data connection to plant lost" if a["tag"] == "_COMM" else no_hmi_plc(a["message"]),
+           "tag_name": no_hmi_plc(tagmap.get(a["tag"], {}).get("name", "Data connection" if a["tag"] == "_COMM" else a["tag"])),
+           "duration_min": round(((a.get("cleared_at") or t_end) - a["raised_at"]) / 60, 1),
+           "simulated": bool(a.get("simulated"))} for a in alarms]
+    top = {}
+    for a in al:
+        g = top.setdefault(a["message"], {"message": a["message"], "priority": a["priority"], "count": 0, "minutes": 0.0, "last": 0})
+        g["count"] += 1
+        g["minutes"] += max(0.0, a["duration_min"])
+        g["last"] = max(g["last"], a["raised_at"])
+        if a["priority"] == "red":
+            g["priority"] = "red"
+    top_alarms = sorted(top.values(), key=lambda g: (-g["count"], -g["minutes"]))[:10]
+    for g in top_alarms:
+        g["minutes"] = round(g["minutes"], 1)
+
+    covs = [v["coverage_pct"] for v in values]
+    summary = {
+        "system_run_hours": sys_hours,
+        "machine_run_hours": round(sum(e["run_hours"] for e in equipment), 2),
+        "machines_run": sum(1 for e in equipment if e["run_hours"] > 0), "machines_total": len(equipment),
+        "starts": sum(e["starts"] for e in equipment), "trips": sum(e["trips"] for e in equipment),
+        "alarms": len(al), "critical": sum(a["priority"] == "red" for a in al),
+        "still_active": sum(1 for a in al if not a.get("cleared_at")),
+        "values_above_sp": sum(1 for v in values if v["minutes_above_sp"]),
+        "data_coverage_pct": round(sum(covs) / len(covs), 1) if covs else 0,
+        "period_hours": round(elapsed / 3600, 2),
+    }
+    site = store.settings.get("site") or {}
+    return {"title": title, "kind": kind, "from": t0, "to": t1, "complete": t1 <= now, "generated": now,
+            "timezone": "Asia/Kolkata", "simulated": store.settings["source"]["mode"] == "simulation",
+            "site": {"name": site.get("name", ""), "panel": site.get("panel", "")},
+            "summary": summary, "values": values, "equipment": equipment, "alarms": al, "top_alarms": top_alarms,
+            "log_step_s": step, "log_times": [t0 + i * step for i in range(n_steps)],
+            "alarm_counts": {"total": len(al), "plc": sum(a["source"] == "plc" for a in al),
+                             "dashboard": sum(a["source"] == "dashboard" for a in al),
+                             "red": sum(a["priority"] == "red" for a in al)},
+            "shifts": store.settings.get("shifts") or [],
+            "requested_from": requested_from, "history_note": history_note,
+            "history_from": history_start, "max_days": max_window_days(retention_days)}
+
+
+def _ist(ts, fmt="%d-%m-%Y %H:%M"):
+    return datetime.fromtimestamp(ts, IST).strftime(fmt)
+
+
+def period_xlsx(rep) -> bytes:
+    """Excel workbook of a period report: Summary, Process values, Log sheet, Equipment, Alarms."""
+    s = rep["summary"]
+    head = [[(f"{rep['title']} - {rep['site']['name']}", S_TITLE)],
+            [("Period (IST)", S_LABEL), (f"{_ist(rep['from'])} to {_ist(rep['to'])}" + ("" if rep["complete"] else " (still running)"), S_TEXT)],
+            [("Generated (IST)", S_LABEL), (_ist(rep["generated"], "%d-%m-%Y %H:%M:%S"), S_TEXT)]]
+    if rep.get("history_note"):
+        head.append([("Note", S_LABEL), (rep["history_note"], S_TEXT)])
+    if rep["simulated"]:
+        head.append([("DEMO DATA - simulated values, not measured plant data.", S_WARN)])
+    kpi = head + [[], [("Item", S_HEAD), ("Value", S_HEAD)]] + [[(k, S_TEXT), (v, S_NUM if isinstance(v, (int, float)) else S_TEXT)] for k, v in (
+        ("System run hours (hot air blower)", s["system_run_hours"] if s["system_run_hours"] is not None else "-"),
+        ("Total machine run hours", s["machine_run_hours"]), ("Machines that ran", f"{s['machines_run']} of {s['machines_total']}"),
+        ("Machine starts", s["starts"]), ("Trips", s["trips"]), ("Alarms", s["alarms"]), ("Critical alarms", s["critical"]),
+        ("Alarms still active", s["still_active"]), ("Values that reached their alarm set point", s["values_above_sp"]),
+        ("Average data coverage %", s["data_coverage_pct"]))]
+    pv = head + [[], [(h, S_HEAD) for h in ("Group", "Value", "Unit", "Min", "Max", "Average", "Alarm set point (now)",
+                                             "Minutes at / above set point", "Data coverage %")]]
+    for v in rep["values"]:
+        pv.append([(v["group"], S_TEXT), (v["name"], S_TEXT), (v["unit"], S_TEXT), (v["min"], S_NUM), (v["max"], S_NUM),
+                   (None if v["avg"] is None else round(v["avg"], v["decimals"] + 1), S_NUM), (v["set_point"], S_NUM),
+                   (v["minutes_above_sp"], S_NUM), (v["coverage_pct"], S_NUM)])
+    fmt = "%d-%m-%Y" if rep["log_step_s"] >= 86400 else "%d-%m %H:%M"
+    lg = head + [[], [("Time (IST)", S_HEAD)] + [(f"{v['name']} ({v['unit']})" if v["unit"] else v["name"], S_HEAD) for v in rep["values"]]]
+    for i, ts in enumerate(rep["log_times"]):
+        lg.append([(_ist(ts, fmt), S_TEXT)] + [(v["log"][i], S_NUM) for v in rep["values"]])
+    eq = head + [[], [(h, S_HEAD) for h in ("Tag", "Equipment", "Area", "kW", "Run hours", "Starts", "Trips", "Utilisation %")]]
+    for e in rep["equipment"]:
+        eq.append([(e["tag_no"], S_TEXT), (e["name"], S_TEXT), (e["area"], S_TEXT), (e["kw"], S_NUM), (e["run_hours"], S_NUM),
+                   (e["starts"], S_NUM), (e["trips"], S_NUM), (e["utilisation_pct"], S_NUM)])
+    alm = head + [[], [(h, S_HEAD) for h in ("Raised (IST)", "Severity", "Source", "Device", "Alarm", "Duration (min)",
+                                             "Acknowledged by", "Cleared (IST)")]]
+    for a in rep["alarms"]:
+        alm.append([(_ist(a["raised_at"], "%d-%m-%Y %H:%M:%S"), S_TEXT), ("Critical" if a["priority"] == "red" else "Warning", S_TEXT),
+                    ("Dashboard" if a["source"] == "dashboard" else "Plant", S_TEXT), (a["tag_name"], S_TEXT), (a["message"], S_TEXT),
+                    (a["duration_min"], S_NUM), (a.get("acked_by") or "", S_TEXT),
+                    (_ist(a["cleared_at"], "%d-%m-%Y %H:%M:%S") if a.get("cleared_at") else "ACTIVE", S_TEXT)])
+    return _xlsx_pack([("Summary", _sheet(kpi, [42, 22])),
+                       ("Process values", _sheet(pv, [13, 46, 8, 11, 11, 11, 14, 14, 12], freeze_row=len(head) + 2)),
+                       ("Log sheet", _sheet(lg, [16] + [14] * len(rep["values"]), freeze_row=len(head) + 2)),
+                       ("Equipment", _sheet(eq, [12, 46, 20, 7, 11, 9, 8, 13], freeze_row=len(head) + 2)),
+                       ("Alarms", _sheet(alm, [19, 10, 11, 34, 50, 13, 16, 19], freeze_row=len(head) + 2))],
+                      rep["title"])
+
+
+def period_filename(rep, ext):
+    return re.sub(r"[^\w-]+", "_", f"{rep['title']}").strip("_") + f".{ext}"
+
+
+def _csv_bytes(rows) -> bytes:
+    """UTF-8 with BOM (Excel opens it with the right characters), CRLF line ends."""
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator="\r\n")
+    for r in rows:
+        w.writerow(["" if c is None else c for c in r])
+    return ("﻿" + buf.getvalue()).encode("utf-8")
+
+
+def _csv_head(rep, period_text):
+    head = [[rep["title"]], ["Site", rep["site"]["name"] if isinstance(rep["site"], dict) else rep["site"]],
+            ["Period (IST)", period_text], ["Generated (IST)", _ist(rep["generated"], "%d-%m-%Y %H:%M:%S")]]
+    if rep.get("history_note"):
+        head.append(["Note", rep["history_note"]])
+    if rep.get("simulated"):
+        head.append(["DEMO DATA - simulated values, not measured plant data"])
+    return head
+
+
+def period_csv(rep) -> bytes:
+    """One CSV with the whole period report: summary, process values, log sheet, equipment, alarms (times in IST)."""
+    s = rep["summary"]
+    rows = _csv_head(rep, f"{_ist(rep['from'])} to {_ist(rep['to'])}" + ("" if rep["complete"] else " (still running)"))
+    rows += [[], ["SUMMARY"], ["Item", "Value"],
+             ["System run hours (hot air blower)", s["system_run_hours"]], ["Total machine run hours", s["machine_run_hours"]],
+             ["Machines that ran", f"{s['machines_run']} of {s['machines_total']}"], ["Machine starts", s["starts"]],
+             ["Trips", s["trips"]], ["Alarms", s["alarms"]], ["Critical alarms", s["critical"]],
+             ["Alarms still active", s["still_active"]], ["Values that reached their alarm set point", s["values_above_sp"]],
+             ["Average data coverage %", s["data_coverage_pct"]], ["Period hours", s["period_hours"]]]
+    rows += [[], ["PROCESS VALUES"], ["Group", "Value", "Unit", "Min", "Max", "Average", "Alarm set point (now)",
+                                       "Minutes at / above set point", "Data coverage %"]]
+    for v in rep["values"]:
+        rows.append([v["group"], v["name"], v["unit"], v["min"], v["max"],
+                     None if v["avg"] is None else round(v["avg"], v["decimals"] + 1), v["set_point"],
+                     v["minutes_above_sp"], v["coverage_pct"]])
+    fmt = "%d-%m-%Y" if rep["log_step_s"] >= 86400 else "%d-%m-%Y %H:%M"
+    rows += [[], [f"LOG SHEET (average per {INTERVALS.get(rep['log_step_s'], str(rep['log_step_s']) + ' s')})"],
+             ["Time (IST)"] + [f"{v['name']} ({v['unit']})" if v["unit"] else v["name"] for v in rep["values"]]]
+    for i, ts in enumerate(rep["log_times"]):
+        if ts < rep["generated"]:
+            rows.append([_ist(ts, fmt)] + [v["log"][i] for v in rep["values"]])
+    rows += [[], ["EQUIPMENT"], ["Tag", "Equipment", "Area", "kW", "Run hours", "Starts", "Trips", "Utilisation %"]]
+    for e in rep["equipment"]:
+        rows.append([e["tag_no"], e["name"], e["area"], e["kw"], e["run_hours"], e["starts"], e["trips"], e["utilisation_pct"]])
+    rows += [[], ["ALARMS"], ["Raised (IST)", "Severity", "Source", "Device", "Alarm", "Duration (min)", "Acknowledged by", "Cleared (IST)"]]
+    for a in rep["alarms"]:
+        rows.append([_ist(a["raised_at"], "%d-%m-%Y %H:%M:%S"), "Critical" if a["priority"] == "red" else "Warning",
+                     "Dashboard" if a["source"] == "dashboard" else "Plant", a["tag_name"], a["message"], a["duration_min"],
+                     a.get("acked_by") or "", _ist(a["cleared_at"], "%d-%m-%Y %H:%M:%S") if a.get("cleared_at") else "ACTIVE"])
+    return _csv_bytes(rows)
+
+
+def to_csv(rep) -> bytes:
+    """Data log CSV: one row per interval, date and time (IST) in separate columns."""
+    cols = rep["columns"]
+    rows = _csv_head(rep, f"{fmt_ts(rep['from'])} to {fmt_ts(rep['to'])}")
+    rows += [["Interval", f"{rep['interval']} (average per interval)"], [],
+             ["Date (IST)", "Time (IST)"] + [f"{c['name']} ({c['unit']})" if c["unit"] else c["name"] for c in cols]]
+    for r in rep["rows"]:
+        rows.append([_ist(r["t"], "%d-%m-%Y"), _ist(r["t"], "%H:%M")] + list(r["values"]))
+    return _csv_bytes(rows)
+
+
 def reportable_tags(store):
     """Tags a client may report on: dashboard-visible analog process values."""
     out = [t for t in store.tags if t.get("show_on_dashboard", True) and t.get("data_type") != "BOOL"
@@ -31,21 +384,32 @@ def reportable_tags(store):
     return sorted(out, key=lambda t: (order.get(t.get("group"), 9), t.get("name", "")))
 
 
-def build(store, historian, tag_ids, t_from, t_to, interval_s):
+IST_OFFSET_S = 19800              # +05:30
+
+
+def build(store, historian, tag_ids, t_from, t_to, interval_s, title=None, history_note=None):
     allowed = {t["id"]: t for t in reportable_tags(store)}
     tags = [allowed[i] for i in tag_ids if i in allowed] or list(allowed.values())
     if interval_s not in INTERVALS:
         raise ReportError("Invalid interval")
     if t_to <= t_from:
         raise ReportError("'To' must be after 'From'")
-    if t_to - t_from > MAX_DAYS * 86400:
+    if t_to - t_from > MAX_DAYS * 86400 + 60:
         raise ReportError(f"Maximum report period is {MAX_DAYS} days")
-    first = math.floor(t_from / interval_s) * interval_s
+    # buckets start on IST clock times (1 h -> 10:00, 11:00 IST, not 10:30)
+    first = math.floor((t_from + IST_OFFSET_S) / interval_s) * interval_s - IST_OFFSET_S
     n_rows = int(math.ceil((t_to - first) / interval_s))
     if n_rows > MAX_ROWS:
         need = next((s for s in sorted(INTERVALS) if math.ceil((t_to - t_from) / s) <= MAX_ROWS), 86400)
         raise ReportError(f"Too many rows ({n_rows}). Choose an interval of {INTERVALS[need]} or longer.")
-    data = historian.report_buckets([t["id"] for t in tags], t_from, t_to, interval_s)
+    ids = [t["id"] for t in tags]
+    if IST_OFFSET_S % interval_s == 0:            # UTC-aligned buckets are IST-aligned too (1, 5, 15, 30 min)
+        data = historian.report_buckets(ids, t_from, t_to, interval_s)
+    else:                                         # 1 h / 6 h / 1 day: buckets counted from the IST-aligned start
+        sim = store.settings["source"]["mode"] == "simulation"
+        raw = historian.period_buckets(ids, first, t_to, interval_s)
+        data = {tid: {float(first + k * interval_s): (c[0], c[1], c[2], c[3], sim) for k, c in b.items()}
+                for tid, b in raw.items()}
 
     rows, any_sim = [], False
     for k in range(n_rows):
@@ -73,7 +437,7 @@ def build(store, historian, tag_ids, t_from, t_to, interval_s):
         })
     site = store.settings["site"]
     return {
-        "title": "Process Data Report",
+        "title": title or "Process Data Report", "history_note": history_note,
         "site": f"{site.get('name', '')} · {site.get('panel', '')}",
         "client": "Ankur Scientific", "provider": "Medge Controls",
         "from": t_from, "to": t_to, "interval_s": interval_s, "interval": INTERVALS[interval_s],
@@ -83,8 +447,8 @@ def build(store, historian, tag_ids, t_from, t_to, interval_s):
     }
 
 
-def fmt_ts(ts, seconds=False):
-    return time.strftime("%d-%m-%Y %H:%M:%S" if seconds else "%d-%m-%Y %H:%M", time.localtime(ts))
+def fmt_ts(ts, seconds=False):                     # plant time (IST), whatever the server's time zone
+    return _ist(ts, "%d-%m-%Y %H:%M:%S" if seconds else "%d-%m-%Y %H:%M")
 
 
 def fmt_num(v, d):
@@ -92,8 +456,9 @@ def fmt_num(v, d):
 
 
 def filename(rep, ext):
-    return f"Process_Report_{time.strftime('%Y%m%d_%H%M', time.localtime(rep['from']))}" \
-           f"_to_{time.strftime('%Y%m%d_%H%M', time.localtime(rep['to']))}.{ext}"
+    base = "Process_Report" if rep.get("title", "Process Data Report") == "Process Data Report" \
+        else re.sub(r"[^\w-]+", "_", rep["title"]).strip("_")
+    return f"{base}_{_ist(rep['from'], '%Y%m%d_%H%M')}_to_{_ist(rep['to'], '%Y%m%d_%H%M')}.{ext}"
 
 
 # =====================================================================================
@@ -108,8 +473,8 @@ def _col(n):
     return s
 
 
-def _xl_date(ts):
-    dt = datetime.fromtimestamp(ts)
+def _xl_date(ts):                                  # Excel serial date in IST
+    dt = datetime.fromtimestamp(ts, IST).replace(tzinfo=None)
     return (dt - datetime(1899, 12, 30)).total_seconds() / 86400.0
 
 
@@ -177,40 +542,52 @@ def to_xlsx(rep) -> bytes:
         [(rep["title"], S_TITLE)],
         [("Site", S_LABEL), (rep["site"], S_TEXT)],
         [("Client", S_LABEL), (rep["client"], S_TEXT)],
-        [("Period", S_LABEL), (f"{fmt_ts(rep['from'])}  to  {fmt_ts(rep['to'])}", S_TEXT)],
+        [("Period (IST)", S_LABEL), (f"{fmt_ts(rep['from'])}  to  {fmt_ts(rep['to'])}", S_TEXT)],
         [("Interval", S_LABEL), (f"{rep['interval']} (average per interval)", S_TEXT)],
-        [("Generated", S_LABEL), (fmt_ts(rep["generated"], True), S_TEXT)],
+        [("Generated (IST)", S_LABEL), (fmt_ts(rep["generated"], True), S_TEXT)],
         [("Powered by", S_LABEL), (rep["provider"], S_TEXT)],
     ]
     if rep["simulated"]:
         meta.append([("DEMO DATA - these values are simulated, not measured plant data.", S_WARN)])
     # one sheet: report details on top, then the data log (header row frozen)
+    if rep.get("history_note"):
+        meta.append([("Note", S_LABEL), (rep["history_note"], S_TEXT)])
     log = meta + [[]] + [[("Date / time", S_HEAD)] + [(f"{c['name']} ({c['unit']})" if c["unit"] else c["name"], S_HEAD) for c in cols]]
     head_row = len(log)
     for r in rep["rows"]:
         log.append([(_xl_date(r["t"]), S_DATE)] + [(v, S_NUM) for v in r["values"]])
     sheet1 = _sheet(log, [18] + [16] * len(cols), freeze_row=head_row)
+    return _xlsx_pack([("Data log", sheet1)], rep["title"])
+
+
+def _xlsx_pack(sheets, title) -> bytes:
+    """sheets: [(name, sheet_xml), ...] -> .xlsx bytes."""
+    n = len(sheets)
     files = {
         "[Content_Types].xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
         '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
-        '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        + "".join(f'<Override PartName="/xl/worksheets/sheet{i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+                  for i in range(n)) +
         '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
         '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>',
         "_rels/.rels": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
         '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
         '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>',
         "docProps/core.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
-        'xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Process Data Report</dc:title><dc:creator>Medge Controls</dc:creator></cp:coreProperties>',
+        f'xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>{xml_escape(title)}</dc:title><dc:creator>Medge Controls</dc:creator></cp:coreProperties>',
         "xl/workbook.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
-        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Data log" sheetId="1" r:id="rId1"/>'
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'
+        + "".join(f'<sheet name="{xml_escape(name[:31])}" sheetId="{i + 1}" r:id="rId{i + 1}"/>' for i, (name, _x) in enumerate(sheets)) +
         '</sheets></workbook>',
         "xl/_rels/workbook.xml.rels": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
-        '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+        + "".join(f'<Relationship Id="rId{i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet{i + 1}.xml"/>'
+                  for i in range(n)) +
+        f'<Relationship Id="rId{n + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
         "xl/styles.xml": STYLES,
-        "xl/worksheets/sheet1.xml": sheet1,
     }
+    for i, (_name, xml) in enumerate(sheets):
+        files[f"xl/worksheets/sheet{i + 1}.xml"] = xml
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for name, content in files.items():
@@ -299,7 +676,7 @@ def to_pdf(rep) -> bytes:
         p.text(MARGIN, PAGE_H - 29, rep["title"], 15, True, (1, 1, 1))
         p.text(PAGE_W - MARGIN, PAGE_H - 22, "Ankur Scientific", 10, True, (1, 1, 1), "right")
         p.text(PAGE_W - MARGIN, PAGE_H - 35, "Powered by Medge Controls", 8, False, (0.9, 0.88, 1), "right")
-        p.text(MARGIN, PAGE_H - 62, f"{rep['site']}   |   {fmt_ts(rep['from'])}  to  {fmt_ts(rep['to'])}   |   "
+        p.text(MARGIN, PAGE_H - 62, f"{rep['site']}   |   {fmt_ts(rep['from'])}  to  {fmt_ts(rep['to'])} IST   |   "
                f"Interval: {rep['interval']} (average)", 8.5, False, MUTED)
         if rep["simulated"]:
             p.rect(MARGIN, PAGE_H - 84, content_w, 15, fill=(0.93, 0.91, 0.99))
@@ -316,7 +693,7 @@ def to_pdf(rep) -> bytes:
         p, y = new_page()
         title = "Data log" + (f" (columns {gi + 1}/{len(groups)})" if len(groups) > 1 else "")
         p.text(MARGIN, y - 4, title, 12, True)
-        p.text(PAGE_W - MARGIN, y - 4, f"{len(rep['rows'])} rows  |  Generated {fmt_ts(rep['generated'], True)} (server local time)",
+        p.text(PAGE_W - MARGIN, y - 4, f"{len(rep['rows'])} rows  |  Generated {fmt_ts(rep['generated'], True)} IST",
                8, False, MUTED, "right")
         y -= 14
 

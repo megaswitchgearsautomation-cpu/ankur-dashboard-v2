@@ -141,7 +141,7 @@ def analog(rows):
             "id": sp_id, "name": f"{disp} - alarm set point", "group": group, "area": "Process",
             "description": f"{inst} alarm set point (HMI)", "plc_tag": "", "device": d.get("O"),
             "data_type": "REAL", "word_order": "default", "invert": False, "scaling": {"mode": "none"},
-            "unit": unit, "decimals": 2 if unit == "pH" else 1, "eng_min": lo, "eng_max": hi, "poll_ms": 5000,
+            "unit": unit, "decimals": 2 if unit == "pH" else 1, "eng_min": lo, "eng_max": hi, "poll_ms": 1000,
             "show_on_dashboard": False, "trend": False, "log": True, "kpi": False, "setpoint_tag": None,
             "alarm": {"enabled": False}, "mapping_verified": False, "source_ref": src,
             "notes": f"ASSUMED REAL (2-word spacing) - verify. Set delay {d.get('P')}, actual delay {d.get('Q')}.",

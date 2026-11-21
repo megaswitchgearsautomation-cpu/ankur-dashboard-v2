@@ -50,13 +50,23 @@ def set_y(word, bit, v):
     HOLD[0xA000 + word] = (w | (1 << bit)) if v else (w & ~(1 << bit))
 
 
+def init_setpoints():
+    """Alarm set points T-01..04, PH-01, PT-01..04 (D13000 + 6n): DWORD x10 like the HMI LT set points.
+    Set once, so values written by the dashboard (FC16) stay."""
+    for i in (0, 1, 2, 3, 8, 9, 10, 11, 12):
+        lo, hi = codec.encode_registers(1500, "UINT32", "low_first")
+        HOLD[13000 + 6 * i], HOLD[13000 + 6 * i + 1] = lo, hi
+
+
+WRITES = []     # (address, [registers]) of every FC16 write - for bench tests
+
+
 def updater():
     while True:
         t = time.time()
         with LOCK:
             for i in range(24):                       # analog finals D11008 + 10*i
                 put_real(11008 + 10 * i, 60 + 25 * math.sin(t / 60 + i) + i)
-                put_real(13000 + 6 * i, 150.0)        # alarm set points
             HOLD[15000] = 0b0000_0000_0000_0010 if int(t / 30) % 2 else 0   # CT-02 alarm bit toggles
             set_x(0, 0, True)                         # E-stop NC healthy
             for k in range(8, 16, 2):                 # run feedbacks
@@ -88,7 +98,26 @@ class Handler(socketserver.BaseRequestHandler):
             if not pdu:
                 return
             fc = pdu[0]
-            if fc not in (1, 2, 3, 4):
+            if fc == 5:                                    # write single coil (M / Y bit)
+                addr, val = struct.unpack(">HH", pdu[1:5])
+                if not any(lo <= addr <= hi for lo, hi in VALID[1]) or val not in (0x0000, 0xFF00):
+                    resp = bytes([0x85, 2 if val in (0x0000, 0xFF00) else 3])
+                else:
+                    with LOCK:
+                        COILS[addr] = val == 0xFF00
+                        WRITES.append((addr, [val]))
+                    resp = struct.pack(">BHH", 5, addr, val)
+            elif fc == 16:                                 # write multiple holding registers (D)
+                addr, cnt, nb = struct.unpack(">HHB", pdu[1:6])
+                if not any(lo <= addr and addr + cnt - 1 <= hi for lo, hi in VALID[3]) or nb != cnt * 2:
+                    resp = bytes([0x90, 2])
+                else:
+                    regs = list(struct.unpack(f">{cnt}H", pdu[6:6 + nb]))
+                    with LOCK:
+                        HOLD[addr:addr + cnt] = regs
+                        WRITES.append((addr, regs))
+                    resp = struct.pack(">BHH", 16, addr, cnt)
+            elif fc not in (1, 2, 3, 4):
                 resp = bytes([fc | 0x80, 1])
             else:
                 addr, cnt = struct.unpack(">HH", pdu[1:5])
@@ -130,6 +159,7 @@ class Server(socketserver.ThreadingTCPServer):
 
 
 def start(port=1502, host="127.0.0.1"):
+    init_setpoints()
     threading.Thread(target=updater, daemon=True).start()
     srv = Server((host, port), Handler)
     threading.Thread(target=srv.serve_forever, daemon=True).start()

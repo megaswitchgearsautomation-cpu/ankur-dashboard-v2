@@ -1,0 +1,101 @@
+/* v3-reports - v3 brief 14-11-2026 (SC07): Reports controls in one row (same height, wraps cleanly), start..end dates,
+   Data log view inside Reports. The printed plant report design itself stays as in fresh.css. */
+
+/* ---------- header: title + Plant report / Data log ---------- */
+.rp-head { gap: 12px 16px; }
+.rp-head h2 { margin-right: 0; }
+
+/* ---------- control row: every control 40px high (scada_design 9.6) ---------- */
+.rp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 4px 0 8px; min-width: 0; }
+/* the toolbar shares the class name with the small utilisation bar in fresh.css (70 x 7 px) - undo that here */
+#rpBar.rp-bar { width: auto; height: auto; border-radius: 0; background: none; overflow: visible; vertical-align: baseline; gap: 8px; }
+#rpBar .spacer { flex: 1 1 0; width: 0; min-width: 0; padding: 0; }
+body.client #rpBar .seg button { padding: 0 12px; }      /* keeps period, dates, Show report and exports on one row at 1366 px */
+.rp-bar .spacer { flex: 1 1 0; min-width: 0; }
+.rp-bar .seg { height: 40px; box-sizing: border-box; align-items: stretch; flex-wrap: nowrap; }
+body.client .rp-bar .seg button { display: inline-flex; align-items: center; padding: 0 16px; font-size: 15px; }
+.rp-bar .dr-pick { height: 40px; box-sizing: border-box; padding: 0 8px 0 12px; border-radius: 8px; flex-wrap: nowrap; }
+.rp-bar .dr-pick input[type="date"] { height: 38px; min-height: 0; padding: 0 4px; font-size: 15px; }
+.rp-bar .dr-pick:focus-within { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 1px; }
+.rp-every { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
+.rp-every select { height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid #71717A; border-radius: 8px; background: #fff; color: inherit; font: inherit; font-weight: 400; font-size: 15px; }
+body.client .rp-bar .btn { height: 40px; min-height: 40px; box-sizing: border-box; padding: 0 16px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: 15px; line-height: 1; white-space: nowrap; }
+.rp-bar .btn[disabled] { opacity: .45; cursor: not-allowed; }
+.rp-exp { display: inline-flex; gap: 8px; }
+
+/* applied / available range lines: calendar icon + range (scada_design 5.5.1 - 5.5.3) */
+.rp-hist, .rp-period, .dl-note { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rp-hist { margin: 0 0 8px; font-size: 14px; color: var(--fx-ink-2, #55554f); font-variant-numeric: tabular-nums; }
+.rp-hist b { color: var(--fx-ink, #151515); font-weight: 600; }
+.rp-hist .v3-cal, .rp-period .v3-cal, .dl-note .v3-cal { width: 18px; height: 18px; flex: none; color: var(--fx-ink-2, #55554f); }
+.rp-period { justify-content: center; }
+.rp-note { margin: 10px 0 0; padding: 8px 12px; border-radius: 8px; background: var(--st-warn-bg, #fdf3e3); color: var(--st-warn, #B45309); font-size: 14px; font-weight: 600; }
+
+/* search bar above the report tables / in the data log header (SC03) */
+.rp-srch { display: flex; margin: 0 0 12px; }
+.rp-srch .v3-search, .dl-srch .v3-search { min-width: min(340px, 100%); }
+.dl-srch { margin-left: auto; }
+@media (max-width: 760px) { .dl-srch { margin-left: 0; flex-basis: 100%; } .dl-srch .v3-search { width: 100%; } }
+
+/* ---------- data log view ---------- */
+.dl-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 8px 0; }
+.dl-note { font-size: 14px; color: var(--fx-ink-2, #55554f); font-variant-numeric: tabular-nums; }
+.dl-scroll { max-height: 70vh; overflow: auto; border: 1px solid var(--fx-line, #ecece8); border-radius: 8px; }
+.rp-dl { width: 100%; border-collapse: collapse; }
+.rp-dl thead th { position: sticky; top: 0; z-index: 1; background: #fff; box-shadow: inset 0 -1px 0 var(--fx-line, #ecece8); white-space: nowrap; vertical-align: bottom; }
+.rp-dl th small { display: block; font-weight: 500; color: #6b7064; font-size: 12px; }
+.rp-dl td { white-space: nowrap; }
+.rp-dl.rp-t td:first-child { min-width: 0; }
+.rp-dl tbody tr:nth-child(even) td { background: #fafaf8; }
+
+/* ---------- small screens: the row wraps; exports go on their own line ---------- */
+@media (max-width: 760px) {
+  .rp-bar .spacer { display: none; }
+  .rp-exp { flex-basis: 100%; }
+  .rp-exp .btn { flex: 1 1 0; }
+}
+@media (max-width: 420px) {
+  body.client .rp-bar .seg button { padding: 0 12px; }
+  .rp-bar .dr-pick { padding: 0 6px 0 8px; gap: 4px; }
+  .rp-bar .dr-pick input[type="date"] { font-size: 14px; width: 128px; }
+}
+
+/* ---------- plant report on screen: one tab per topic + pages for long tables (21-11-2026) ---------- */
+.rp-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 12px; }
+.rp-nav .rp-srch { margin: 0; }
+.rp-tabs { display: inline-flex; flex-wrap: wrap; gap: 2px; }
+.rp-tabs button small { margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: rgba(0,0,0,.07); font-size: 12px; font-weight: 600; color: var(--fx-ink-2, #55554f); }
+.rp-tabs button.active small { background: var(--fx-lime-2, #dff2bf); color: var(--fx-lime-ink, #3e6b00); }
+.rp-doc .rp-sec.rp-off { display: none; }
+.rp-doc tr.pg-off { display: none; }
+.rp-doc.rp-searching .rp-sec { margin-bottom: 8px; }
+.rp-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 12px 0 4px; padding: 10px 12px; border: 1px solid var(--fx-line, #ecece8);
+  border-radius: 12px; background: #fff; font-size: 14px; color: var(--fx-ink-2, #55554f); font-variant-numeric: tabular-nums; }
+.rp-pager[hidden] { display: none; }
+.rp-pager .pg-at { display: inline-flex; align-items: center; gap: 8px; }
+.rp-pager .pg-at input { width: 54px; height: 36px; box-sizing: border-box; padding: 0 8px; border: 1px solid #d4d4d0; border-radius: 8px; text-align: center; font: inherit; color: var(--fx-ink, #151515); }
+.rp-pager .pg-n { padding-left: 12px; border-left: 1px solid var(--fx-line, #ecece8); }
+.rp-pager .pg-btns { display: inline-flex; align-items: center; gap: 6px; margin: 0 auto; }
+.rp-pager .pg-btns button { min-width: 36px; height: 36px; padding: 0 8px; border: 1px solid #d4d4d0; border-radius: 8px; background: #fff; color: var(--fx-ink, #151515);
+  font: inherit; font-weight: 600; cursor: pointer; }
+.rp-pager .pg-btns button:hover:not([disabled]):not(.on) { background: #f4f4f1; }
+.rp-pager .pg-btns button.on { background: var(--fx-lime-ink, #3e6b00); border-color: var(--fx-lime-ink, #3e6b00); color: #fff; }
+.rp-pager .pg-btns button[disabled] { opacity: .4; cursor: default; }
+.rp-pager .pg-btns button:focus-visible, .rp-pager input:focus-visible, .rp-pager select:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 2px; }
+.rp-pager .gap { padding: 0 2px; color: var(--fx-ink-3, #9a9a93); }
+.rp-pager .pg-rows { display: inline-flex; align-items: center; gap: 8px; }
+.rp-pager .pg-rows select { height: 36px; padding: 0 8px; border: 1px solid #d4d4d0; border-radius: 8px; background: #fff; font: inherit; color: var(--fx-ink, #151515); }
+@media (max-width: 760px) {
+  .rp-tabs { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+  .rp-tabs::-webkit-scrollbar { display: none; }
+  .rp-pager .pg-btns { margin: 0; order: 3; flex-basis: 100%; flex-wrap: wrap; }
+}
+
+@media print {
+  body.print-rp .rp-note { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* the PDF is the whole report: every topic and every row, no tabs / pagers */
+  body.print-rp .rp-doc .rp-sec.rp-off { display: block !important; }
+  body.print-rp .rp-doc tr.pg-off { display: table-row !important; }
+  body.print-rp .rp-pager, body.print-rp .rp-nav { display: none !important; }
+}

@@ -20,7 +20,74 @@
   let trendSel = loadSel();
   let lastTrendFetch = 0;
   let lastOvFetch = 0;
-  let ovHist = null;          // end of the past window being viewed (epoch s), null = live
+  let ovMin = 60;             // overview trend: rolling live window (minutes)
+  let ovHist = null;          // overview trend: custom {from, to} (epoch s) from the range picker, null = live
+  let ovZoom = null;          // overview trend: zoomed window [a, b] inside the range, null = full range
+  let ovSeq = 0;              // only the newest overview trend request may draw
+
+  // ---------- v3 (SC06) range pickers: presets + ONE calendar icon (MD.v3.rangePicker) ----------
+  // Own preset keys ("15m", "1h", "3d") are handled here: rolling windows ending now. The picker computes a custom
+  // window for keys it does not know, so for every rolling key the applied text is written here.
+  const ROLL_MIN = { "15m": 15, "1h": 60, "8h": 480, "24h": 1440, "2d": 2880, "3d": 4320, "7d": 10080, "30d": 43200 };
+  const MAX_TREND_S = 31 * 86400;                         // /api/trend limit for a custom range
+  const nowS = () => Date.now() / 1000;
+  function appliedLabel(f, t, suffix = "") { return `${fmtTime(f, true).slice(0, 16)} – ${fmtTime(t, true).slice(0, 16)} IST${suffix}`; }
+  function setApplied(host, f, t, suffix) { const e = host && host.querySelector(".dr-txt"); if (e) e.textContent = appliedLabel(f, t, suffix); }
+  // a preset always spans its full period (only the retention limit applies): "7 days" on a 2-day-old history shows
+  // 7 days, with the time before the first sample drawn as empty, so the range matches what was picked
+  function availMin(min) {
+    const keep = MD.v3 ? Math.floor((nowS() - MD.v3.retentionStart()) / 60) : min;
+    return Math.max(15, Math.min(min, keep));
+  }
+  function syncPickerLimits(host) {
+    if (!host || !MD.v3) return;
+    const lo = MD.istDate(MD.v3.retentionStart()), hi = MD.istDate(nowS());
+    host.querySelectorAll(".dr-from, .dr-to").forEach((i) => { i.min = lo; i.max = hi; });
+  }
+  // onRange({minutes} | {from, to}, key)
+  function makePicker(host, presets, initial, onRange, { trendLimit = true, liveSuffix = " · live" } = {}) {
+    // a rolling preset must not be blocked by half-typed custom dates (the picker validates them for every key)
+    host.addEventListener("click", (e) => {
+      const b = e.target.closest && e.target.closest(".dr-presets button");
+      if (!b || !ROLL_MIN[b.dataset.k]) return;
+      const f = host.querySelector(".dr-from"), t = host.querySelector(".dr-to");
+      if (f && t && (!f.value || !t.value || t.value < f.value)) { t.value = t.max || MD.istDate(nowS()); f.value = t.value; }
+    }, true);
+    const p = MD.v3.rangePicker(host, {
+      presets, initial, fireInitial: false,
+      onApply: (f, t, k) => {
+        if (ROLL_MIN[k] && k !== "custom") {
+          const m = trendLimit ? availMin(ROLL_MIN[k]) : ROLL_MIN[k], n = nowS();
+          setApplied(host, n - m * 60, n, liveSuffix);
+          onRange({ minutes: m }, k);
+          return;
+        }
+        if (trendLimit && t - f > MAX_TREND_S) {
+          f = t - MAX_TREND_S;
+          toast("Charts show at most 31 days - showing the last 31 days of the selected dates");
+          setApplied(host, f, t);
+        }
+        onRange({ from: f, to: t }, k);
+      },
+    });
+    if (ROLL_MIN[initial]) { const m = trendLimit ? availMin(ROLL_MIN[initial]) : ROLL_MIN[initial], n = nowS(); setApplied(host, n - m * 60, n, liveSuffix); }
+    return p;
+  }
+  // trend data for the selected range; when zoomed, finer data for the zoomed window is merged in
+  async function fetchTrend(ids, base, zoom, points = 300) {
+    const enc = encodeURIComponent(ids.join(","));
+    const q = base.from != null ? `from=${Math.floor(base.from)}&to=${Math.ceil(base.to)}&minutes=1` : `minutes=${base.minutes}`;
+    const r = await api(`/api/trend?tags=${enc}&${q}&points=${points}`);
+    if (zoom && zoom[1] - zoom[0] >= 60) {
+      const z = await api(`/api/trend?tags=${enc}&from=${Math.floor(zoom[0])}&to=${Math.ceil(zoom[1])}&minutes=1&points=300`);
+      r.series.forEach((s) => {
+        const zs = z.series.find((x) => x.id === s.id);
+        if (zs) s.points = s.points.filter((p) => p.t < zoom[0] || p.t > zoom[1]).concat(zs.points).sort((a, b) => a.t - b.t);
+      });
+    }
+    return r;
+  }
+  const inWin = (pts, w) => pts.filter((p) => p.avg != null && p.t >= w[0] && p.t <= w[1]);
 
   // ---------- theme ----------
   try { const t = localStorage.getItem("md-theme"); if (t) document.documentElement.dataset.theme = t; } catch (_) {}
@@ -36,11 +103,18 @@
   $("logoutBtn").onclick = MD.logout;
 
   // ---------- routing ----------
-  const TITLES = { overview: "Plant dashboard", levels: "Tank levels", mimic: "Process mimic", instruments: "Instruments & scaling",
-    equipment: "Equipment", trends: "Trends", datalog: "Data log", alarms: "Alarms" };   // Reports page removed on client request; Data log = HMI data log screens
+  // v3 (brief SC01): Tank levels merged into the dashboard cards, Data log moved into Reports - both menus removed
+  const TITLES = { overview: "Plant dashboard", mimic: "Process mimic", instruments: "Instruments",
+    equipment: "Equipment", trends: "Trends", io: "IO list", alarms: "Alarms",
+    reports: "Reports", setpoints: "Set points" };   // Selectors page removed on request (2026-11-14)   // Totalizer page removed on request   // Devices page removed on request   // Data log = HMI data log screens; Reports = daily / shift (rebuild brief)
+  let rpInit = false;
   function route() {
+    const prevView = view;
     view = (location.hash || "#overview").slice(1);
     if (!TITLES[view]) view = "overview";
+    // v3 (SC01 navigation): a newly opened page starts at its top, not at the previous page's scroll position
+    // (a pencil jump to a Set points section scrolls there afterwards - see Plant.gotoSp)
+    if (prevView && prevView !== view) window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     $("pageTitle").textContent = TITLES[view];
     const navIc = document.querySelector(`#segNav a[data-view="${view}"] svg`);
     $("headIcon").innerHTML = navIc ? navIc.outerHTML : "";
@@ -51,20 +125,37 @@
     if (view === "trends") renderTrends(true, true);
     if (view === "alarms") loadHistory();
     if (view === "overview") loadOvTrend(true);
-  }
+    if (view === "reports" && window.ShiftReports && window.MD_META && !rpInit) { rpInit = true; ShiftReports.init(); }  }
   window.addEventListener("hashchange", route);
 
   // ---------- data ----------
   async function loadMeta() {
     const meta = await api("/api/meta");
     $("siteName").textContent = `${meta.site.name} · ${meta.site.panel}`;
+    window.MD_META = meta;
+    ["ovRange", "trRange", "histRange"].forEach((id) => syncPickerLimits($(id)));   // history actually kept
+  }
+  // signed-in user: role decides what is shown (the server enforces the same rules)
+  let me = null;
+  async function loadMe() {
+    me = await api("/api/whoami");
+    window.MD_ME = me;
+    document.body.dataset.role = me.role;
+    const foot = document.querySelector(".rail-foot");
+    if (me.can_configure && foot && !document.getElementById("settingsLink")) {
+      foot.insertAdjacentHTML("afterbegin", `<a class="rail-btn" id="settingsLink" href="/admin" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>`);
+    }
+    const u = document.getElementById("userChip");
+    if (u) u.innerHTML = `<b>${esc(me.username)}</b><span class="role-${esc(me.role)}">${esc(me.role)}</span>`;
   }
   async function poll() {
     try {
       live = await api("/api/live");
       render();
-      if (view === "trends" && Date.now() - lastTrendFetch > 5000) renderTrends(false);
-      if (view === "overview" && !ovHist && Date.now() - lastOvFetch > 5000) loadOvTrend(false);   // a past day is not refreshed
+      // a custom date range or a zoomed chart is not refreshed (the view would move under the user)
+      if (view === "trends" && !trRange && !trZoom && Date.now() - lastTrendFetch > 5000) renderTrends(false);
+      if (view === "overview" && !ovHist && !ovZoom && Date.now() - lastOvFetch > 5000) loadOvTrend(false);
     } catch (e) {
       $("banner").innerHTML = `<div class="banner crit">${ICON.crit}<div><strong>Dashboard temporarily unavailable</strong>Reconnecting…</div></div>`;
     } finally {
@@ -82,7 +173,7 @@
     $("navAlarmCount").classList.toggle("hidden", !n);
     $("segAlarmCount").textContent = n;
     $("segAlarmCount").classList.toggle("hidden", !n);
-    if (view === "overview") renderOverview();
+    if (view === "overview") renderOverview();       // (summary strip removed on request)
     if (view === "equipment") renderEquipment();
     if (view === "alarms") renderActive($("activeTable"));
     if (window.Plant) Plant.render(live, view);      // key points, mimic, instruments (js/plant.js)
@@ -107,6 +198,11 @@
   }
   function renderAlarmPopup() {
     if (acking) return;
+    if (me && !me.can_operate) {           // viewers cannot acknowledge: no blocking pop-up, the bell + Alarms page show it
+      $("alarmPop").classList.add("hidden");
+      $("alarmPopBg").classList.add("hidden");
+      return;
+    }
     const pending = live.alarms.filter((a) => !a.acked_at)
       .sort((a, b) => (a.priority === "red" ? 0 : 1) - (b.priority === "red" ? 0 : 1) || b.raised_at - a.raised_at);
     const ids = pending.map((a) => a.id).join(",");
@@ -182,11 +278,10 @@
     $("connStrip").innerHTML = `${statusPill(s)}
       <span>Updated <b class="num" title="${fmtTime(s.last_update, true)}">${fmtTime(s.last_update)}</b></span>`;
   }
-  // header date + clock (this computer's local time)
+  // header date + clock in plant time (Asia/Kolkata), whatever the viewer's computer zone is
   function tickClock() {
-    const d = new Date();
-    $("headClock").textContent = d.toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "short", year: "numeric" }) + " · " +
-      d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const now = Date.now() / 1000;
+    $("headClock").textContent = `${MD.istLong(now)} · ${fmtTime(now)} IST`;
   }
   tickClock();
   setInterval(tickClock, 1000);
@@ -207,138 +302,10 @@
     $("banner").innerHTML = h;
   }
 
-  // ---------- hero card "Equipment running": count + ring + one block per motor, updated in place ----------
-  const RING_LEN = 2 * Math.PI * 30;
-  function renderHero(eq, motors, running, tripped, stopped, tag) {
-    const box = $("hero");
-    const sig = motors.map((e) => e.id).join(",");
-    const valves = eq.filter((e) => e.type === "valve");
-    if (box._sig !== sig) {
-      box._sig = sig;
-      box.innerHTML = `<div class="hx-top"><span class="lbl">Equipment running</span><span class="tag" id="hxTag" hidden></span></div>
-        <div class="hx-mid">
-          <div><div class="big num"><span id="hxRun">0</span><small> / ${motors.length}</small></div><div class="hx-sub">motors running now</div></div>
-          <svg class="hx-ring" viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="30" class="r-bg"/>
-            <circle cx="38" cy="38" r="30" class="r-val" id="hxRing" style="stroke-dasharray:0 ${RING_LEN}"/>
-            <text x="38" y="42" text-anchor="middle" class="r-txt" id="hxPct">0%</text></svg>
-        </div>
-        <div class="hx-chips">
-          <span class="hx-c t"><i></i><b class="num" id="hxTrip">0</b> Tripped</span>
-          <span class="hx-c s"><i></i><b class="num" id="hxStop">0</b> Stopped</span>
-          <span class="hx-c v"><i></i><b class="num" id="hxValve">0</b><small>/${valves.length}</small> Valves open</span>
-        </div>`;
-    }
-    tweenNum($("hxRun"), running, 0);
-    const pct = motors.length ? Math.round((running / motors.length) * 100) : 0;
-    $("hxRing").style.strokeDasharray = `${(pct / 100) * RING_LEN} ${RING_LEN}`;
-    $("hxPct").textContent = pct + "%";
-    tweenNum($("hxTrip"), tripped, 0);
-    tweenNum($("hxStop"), stopped, 0);
-    tweenNum($("hxValve"), valves.filter((e) => e.status === "OPEN").length, 0);
-    box.classList.toggle("has-trip", tripped > 0);
-    const t = $("hxTag");
-    t.hidden = !tag;
-    t.textContent = tag || "";
-  }
-
-  // ---------- the four small overview cards: built once, then updated in place ----------
-  const GAUGE_LEN = Math.PI * 46;                       // half circle, r = 46
-  function gaugeXY(pct, r) { const a = Math.PI * (1 - pct / 100); return [60 + r * Math.cos(a), 58 - r * Math.sin(a)]; }
-  function renderMini(red, yellow, tripped, ph, pr) {
-    const box = $("miniStats");
-    const sig = `${ph ? ph.id : ""}|${pr ? pr.id : ""}`;
-    if (box._sig !== sig) {
-      box._sig = sig;
-      box.innerHTML = `
-        <div class="mini mk-al" id="mkAl"><div class="lbl">Active alarms</div><span class="ic">${SVG.bell}</span>
-          <div class="val num"><span id="mkAlN">0</span><span class="mk-word" id="mkAlW"></span></div>
-          <div class="mk-pills"><span class="mk-p r"><i></i><b class="num" id="mkAlR">0</b> critical</span><span class="mk-p y"><i></i><b class="num" id="mkAlY">0</b> warning</span></div>
-          <a class="mk-link" href="#alarms">View alarms →</a></div>
-        <div class="mini mk-st" id="mkSt"><div class="lbl">Plant status</div><span class="ic">${SVG.shield}</span>
-          <div class="val" id="mkStV">-</div>
-          <div class="mk-meter"><span data-s="ok">Normal</span><span data-s="warn">Attention</span><span data-s="bad">Alarm</span></div>
-          <div class="d" id="mkStD"></div></div>
-        ${ph ? `<div class="mini mk-ph mk-click" id="mkPh" tabindex="0" role="button" title="Open pH details"><div class="lbl">${esc(ph.name.replace(/ For Process Water/i, ""))}</div><span class="ic">${SVG.drop}</span>
-          <div class="val num"><span id="mkPhV">--</span> <small>pH</small><span class="mk-zone" id="mkPhZ"></span></div>
-          <div class="mk-scale"><b id="mkPhSp" title="Alarm set point"></b><i id="mkPhM"></i></div>
-          <div class="mk-ticks"><span>0 acidic</span><span>7 neutral</span><span>alkaline 14</span></div>
-          <div class="d" id="mkPhD"></div></div>` : ""}
-        ${pr ? `<div class="mini mk-pr mk-click" id="mkPr" tabindex="0" role="button" title="Open pressure details"><div class="lbl">${esc(pr.name.replace(/ Distribution Line/i, ""))}</div><span class="ic">${SVG.gauge}</span>
-          <svg class="mk-gauge" viewBox="0 0 120 66" aria-hidden="true">
-            <path d="M14 58 A46 46 0 0 1 106 58" class="g-bg"/>
-            <path d="M14 58 A46 46 0 0 1 106 58" class="g-val" id="mkPrArc" style="stroke-dasharray:0 ${GAUGE_LEN}"/>
-            <line id="mkPrSp" class="g-sp" x1="0" y1="0" x2="0" y2="0"/>
-            <g id="mkPrN" class="g-needle" style="transform:rotate(-90deg)"><line x1="60" y1="58" x2="60" y2="20"/></g>
-            <circle cx="60" cy="58" r="5" class="g-hub"/>
-            <text x="12" y="66" class="g-t">${pr.eng_min ?? 0}</text><text x="108" y="66" text-anchor="end" class="g-t">${pr.eng_max ?? ""}</text></svg>
-          <div class="val num mk-prv"><span id="mkPrV">--</span> <small>${esc(pr.unit || "")}</small></div>
-          <div class="d" id="mkPrD"></div></div>` : ""}`;
-      if (ph) $("mkPh").onclick = () => openTag(ph.id);
-      if (pr) $("mkPr").onclick = () => openTag(pr.id);
-      box.querySelectorAll(".mk-click").forEach((el) => (el.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.click(); } }));
-    }
-    // alarms
-    const n = live.alarms.length, unacked = live.alarms.some((a) => !a.acked_at);
-    const al = $("mkAl");
-    al.dataset.state = red ? "crit" : yellow ? "warn" : "clear";
-    al.classList.toggle("ringing", unacked);
-    tweenNum($("mkAlN"), n, 0);
-    $("mkAlW").textContent = n ? "" : "All clear";
-    tweenNum($("mkAlR"), red, 0);
-    tweenNum($("mkAlY"), yellow, 0);
-    // plant status
-    const st = red || tripped ? "bad" : yellow ? "warn" : "ok";
-    $("mkSt").dataset.state = st;
-    $("mkStV").textContent = { ok: "Normal", warn: "Attention", bad: "Alarm" }[st];
-    $("mkStD").textContent = st === "ok" ? "All systems normal" : st === "warn" ? `${yellow} warning${yellow > 1 ? "s" : ""} active`
-      : [tripped ? `${tripped} tripped` : "", red ? `${red} critical` : ""].filter(Boolean).join(" · ");
-    $("mkSt").querySelectorAll(".mk-meter span").forEach((s) => s.classList.toggle("on", s.dataset.s === st));
-    // pH on a 0-14 scale
-    if (ph && $("mkPh")) {
-      const v = typeof ph.value === "number" ? ph.value : null;
-      if (v != null) tweenNum($("mkPhV"), v, ph.decimals ?? 2); else $("mkPhV").textContent = "--";
-      $("mkPhM").style.left = `${Math.max(0, Math.min(100, ((v ?? 7) / 14) * 100))}%`;
-      $("mkPhM").hidden = v == null;
-      const sp = ph.setpoint_value;
-      $("mkPhSp").hidden = sp == null;
-      if (sp != null) $("mkPhSp").style.left = `${Math.max(0, Math.min(100, (sp / 14) * 100))}%`;
-      const zone = v == null ? "" : v < 6.5 ? "Acidic" : v > 8.5 ? "Alkaline" : "Neutral";
-      $("mkPhZ").textContent = zone;
-      $("mkPhZ").className = `mk-zone z-${zone.toLowerCase()}`;
-      $("mkPh").classList.toggle("high", v != null && sp != null && v >= sp);
-      $("mkPhD").textContent = sp != null ? `Alarm SP ${Number(sp).toFixed(ph.decimals ?? 2)} pH` : "";
-    }
-    // pressure gauge
-    if (pr && $("mkPr")) {
-      const v = typeof pr.value === "number" ? pr.value : null;
-      const pct = pctOf(pr, v) ?? 0, spp = pctOf(pr, pr.setpoint_value);
-      if (v != null) tweenNum($("mkPrV"), v, pr.decimals ?? 1); else $("mkPrV").textContent = "--";
-      $("mkPrN").style.transform = `rotate(${-90 + pct * 1.8}deg)`;
-      $("mkPrArc").style.strokeDasharray = `${(pct / 100) * GAUGE_LEN} ${GAUGE_LEN}`;
-      const sl = $("mkPrSp");
-      if (spp != null) {
-        const [x1, y1] = gaugeXY(spp, 38), [x2, y2] = gaugeXY(spp, 54);
-        sl.setAttribute("x1", x1); sl.setAttribute("y1", y1); sl.setAttribute("x2", x2); sl.setAttribute("y2", y2);
-      }
-      sl.style.display = spp == null ? "none" : "";
-      $("mkPr").classList.toggle("high", v != null && pr.setpoint_value != null && v >= pr.setpoint_value);
-      $("mkPrD").textContent = pr.setpoint_value != null ? `Alarm SP ${Number(pr.setpoint_value).toFixed(pr.decimals ?? 1)} ${pr.unit || ""}` : "";
-    }
-  }
   const tagById = (id) => live.tags.find((t) => t.id === id);
 
   function renderOverview() {
-    const eq = live.equipment;
-    const motors = eq.filter((e) => e.type === "motor");
-    const running = motors.filter((e) => e.status === "RUNNING").length;
-    const tripped = eq.filter((e) => ["TRIP", "FAULT"].includes(e.status)).length;
-    const stopped = motors.filter((e) => e.status === "STOPPED").length;
-    const red = live.alarms.filter((a) => a.priority === "red").length;
-    const yellow = live.alarms.length - red;
-    const tag = srcTag();
-
-    if ($("hero")) renderHero(eq, motors, running, tripped, stopped, tag);   // "Equipment running" card removed from the overview on request
-    // (availability, tank-level and pH / pressure mini cards removed: the key-points band above shows them once)
+    // ("Equipment running" hero, availability, tank-level and pH / pressure mini cards removed: the key-point cards show them)
 
     // trend segment
     const groups = PROCESS_GROUPS.filter((g) => live.tags.some((t) => t.group === g && t.trend));
@@ -372,10 +339,6 @@
     return "";
   }
   // ---------- run hours: rows are kept and updated in place so bars / numbers animate between polls ----------
-  let rhShow = 8;
-  const rhRows = new Map();
-  const RH_STATE = { RUNNING: ["run", "Running"], STARTING: ["run", "Starting"], TRIP: ["trip", "Tripped"], FAULT: ["trip", "Fault"],
-    "NO FEEDBACK": ["warn", "No feedback"], STOPPED: ["stop", "Stopped"] };
   const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   function tweenNum(el, to, digits, suffix = "") {
     const from = el._v ?? 0;
@@ -390,100 +353,9 @@
     };
     el._raf = requestAnimationFrame(step);
   }
-  document.querySelectorAll("#rhSeg button").forEach((b) => (b.onclick = () => {
-    rhShow = b.dataset.n === "all" ? Infinity : +b.dataset.n;
-    document.querySelectorAll("#rhSeg button").forEach((x) => x.classList.toggle("active", x === b));
-    renderRunHours(live.equipment.filter((e) => e.type === "motor"));
-  }));
-  function renderRunHours(motors) {
-    const sorted = motors.slice().sort((a, b) => b.run_hours - a.run_hours);
-    const shown = sorted.slice(0, rhShow);
-    const maxH = Math.max(0.01, ...sorted.map((e) => e.run_hours));
-    const total = motors.reduce((s, e) => s + (e.run_hours || 0), 0);
-    const runningNow = motors.filter((e) => e.status === "RUNNING").length;
-    const starts = motors.reduce((s, e) => s + (e.starts || 0), 0);
-    // summary strip (built once, numbers tween)
-    if (!$("rhTotal")) {
-      $("rhSum").innerHTML = `<div class="rh-k"><span class="rh-l">Total run hours</span><b class="num" id="rhTotal">0</b></div>
-        <div class="rh-k"><span class="rh-l">Running now</span><b class="num"><span id="rhRun">0</span><small id="rhOf"></small></b></div>
-        <div class="rh-k"><span class="rh-l">Total starts</span><b class="num" id="rhStarts">0</b></div>`;
-    }
-    tweenNum($("rhTotal"), total, 1, " h");
-    tweenNum($("rhRun"), runningNow, 0);
-    $("rhOf").textContent = ` / ${motors.length}`;
-    tweenNum($("rhStarts"), starts, 0);
-    $("rhNote").textContent = motors.some((e) => e.simulated) ? "Simulated hours · bar = share of the highest" : "Since commissioning · bar = share of the highest";
-    // rows
-    const box = $("runBars");
-    const keep = new Set(shown.map((e) => e.id));
-    for (const [id, el] of rhRows) if (!keep.has(id)) { el.remove(); rhRows.delete(id); }
-    shown.forEach((e, i) => {
-      let el = rhRows.get(e.id);
-      const fresh = !el;
-      if (fresh) {
-        el = document.createElement("div");
-        el.className = "rh-row";
-        el.innerHTML = `<span class="rh-rank"></span><span class="rh-dot"></span>
-          <span class="rh-nm"><b class="rh-tag"></b><span class="rh-name"></span></span>
-          <span class="rh-v num"></span>
-          <span class="rh-tr"><i></i></span><span class="rh-sub muted"></span>`;
-        el.style.animationDelay = `${i * 45}ms`;
-        rhRows.set(e.id, el);
-      }
-      const [cls, label] = RH_STATE[e.status] || ["stop", e.status || "-"];
-      el.dataset.state = cls;
-      el.title = `${e.name} - ${label}`;
-      el.querySelector(".rh-rank").textContent = i + 1;
-      el.querySelector(".rh-tag").textContent = e.tag_no ? e.tag_no + " " : "";
-      el.querySelector(".rh-name").textContent = e.name;
-      el.querySelector(".rh-sub").textContent = `${label} · ${e.starts ?? 0} starts`;
-      tweenNum(el.querySelector(".rh-v"), e.run_hours || 0, 1, " h");
-      const bar = el.querySelector(".rh-tr i");
-      const w = `${Math.max(1.5, (e.run_hours / maxH) * 100)}%`;
-      if (fresh && !reduceMotion) { bar.style.width = "0%"; requestAnimationFrame(() => requestAnimationFrame(() => (bar.style.width = w))); }
-      else bar.style.width = w;
-      if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);   // keep rank order
-    });
-  }
-
-  // pie / donut charts (circle r=15.915 -> circumference 100, so dash lengths are percentages)
-  const PIE_R = 15.915;
-  function pieSVG(segs, total, big, small) {
-    let at = 0, arcs = "";
-    const live = segs.filter((s) => s[1] > 0);
-    for (const [label, n, color] of live) {
-      const p = total ? (n / total) * 100 : 0;
-      const gap = live.length > 1 ? 0.8 : 0;
-      arcs += `<circle cx="21" cy="21" r="${PIE_R}" fill="none" stroke="${color}" stroke-width="7"
-        stroke-dasharray="${Math.max(0, p - gap)} ${100 - Math.max(0, p - gap)}" stroke-dashoffset="${-at}"><title>${esc(label)}: ${n}</title></circle>`;
-      at += p;
-    }
-    return `<svg class="pie" viewBox="0 0 42 42" role="img" aria-label="${esc(small)} ${esc(big)}">
-      <g transform="rotate(-90 21 21)"><circle cx="21" cy="21" r="${PIE_R}" fill="none" stroke="#ececea" stroke-width="7"/>${arcs}</g>
-      <text x="21" y="21.5" text-anchor="middle" class="pie-big">${esc(big)}</text>
-      <text x="21" y="26.6" text-anchor="middle" class="pie-small">${esc(small)}</text></svg>`;
-  }
-  function levelSVG(pct, sp, high) {
-    const p = pct ?? 0;
-    let tick = "";
-    if (sp != null) {
-      const a = (sp / 100) * 2 * Math.PI - Math.PI / 2;
-      const xy = (r) => `${(21 + r * Math.cos(a)).toFixed(2)} ${(21 + r * Math.sin(a)).toFixed(2)}`;
-      tick = `<path d="M${xy(11.4)} L${xy(20.4)}" stroke="#e5484d" stroke-width="1.1" stroke-linecap="round"><title>Alarm set point ${Math.round(sp)}%</title></path>`;
-    }
-    return `<svg class="pie" viewBox="0 0 42 42" role="img" aria-label="Level ${Math.round(p)}%">
-      <defs><linearGradient id="lvlg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c6e48b"/><stop offset=".6" stop-color="#77c000"/><stop offset="1" stop-color="#4d7a00"/></linearGradient></defs>
-      <g transform="rotate(-90 21 21)"><circle cx="21" cy="21" r="${PIE_R}" fill="none" stroke="#ececea" stroke-width="7"/>
-      <circle cx="21" cy="21" r="${PIE_R}" fill="none" stroke="${high ? "#e5484d" : "url(#lvlg)"}" stroke-width="7" stroke-dasharray="${p} ${100 - p}"/></g>${tick}
-      <text x="21" y="21.5" text-anchor="middle" class="pie-big">${pct == null ? "--" : Math.round(p) + "%"}</text>
-      <text x="21" y="26.6" text-anchor="middle" class="pie-small">full</text></svg>`;
-  }
   function pctOf(t, v) {
     if (typeof v !== "number" || t.eng_min == null || t.eng_max == null || t.eng_max <= t.eng_min) return null;
     return Math.max(0, Math.min(100, ((v - t.eng_min) / (t.eng_max - t.eng_min)) * 100));
-  }
-  function spLine(t) {
-    return t.setpoint_value != null ? `Alarm SP ${Number(t.setpoint_value).toFixed(t.decimals ?? 1)} ${esc(t.unit)}` : `Range ${t.eng_min ?? "-"}…${t.eng_max ?? "-"} ${esc(t.unit)}`;
   }
 
   // ---------- panel & safety: built once, then updated in place (lamps / waves keep animating) ----------
@@ -515,7 +387,7 @@
       box.innerHTML = `
         <div class="ps-sum" id="psSum"><svg viewBox="0 0 64 64" class="shield"><path d="M32 4 L54 12 V30 C54 45 44 55 32 60 C20 55 10 45 10 30 V12 Z" class="sh"/>
           <path d="M21 32 L29 40 L44 24" class="ok-mark"/><path d="M32 18 V36 M32 44 V46" class="bad-mark"/></svg>
-          <div class="ps-sum-txt"><div class="ps-k"><span>Panel &amp; safety</span> · <span class="ps-s" id="psSub"></span></div><div class="ps-t" id="psTitle"></div></div></div>
+          <div class="ps-sum-txt"><div class="ps-k">Panel &amp; safety</div><div class="ps-t" id="psTitle"></div><span class="ps-s" id="psSub"></span></div></div>
         <div class="ps-dev">${safety.map((t) => `<div class="psd" data-id="${esc(t.id)}">${safetyIcon(t)}<div class="psd-txt"><span class="psd-n" title="${esc(t.name)}">${esc(psShort(t.name))}</span>
           <b class="psd-v"></b></div><span class="psd-mark"></span></div>`).join("")}</div>
         <div class="ps-panel">
@@ -561,12 +433,14 @@
     const tw = box.querySelector(".ps-tower .ps-cap");
     if (tw) {
       const lit = [["r", "Red"], ["y", "Yellow"], ["g", "Green"]].filter(([k]) => box.querySelector(`.lamp.${k}.on`)).map(([, n]) => n);
-      tw.textContent = lit.length ? lit.join(" + ") : "Off";
+      const lampNoData = panel.length && panel.every((t) => noData(t));
+      tw.textContent = lampNoData ? "No data" : lit.length ? lit.join(" + ") : "Off";
     }
     const sum = $("psSum");
-    const state = bad.length ? "trip" : nod === safety.length && safety.length ? "nodata" : "ok";
+    // "ALL SAFE" only when every safety device reported healthy; any missing reading = no / incomplete data (grey)
+    const state = bad.length ? "trip" : nod ? "nodata" : "ok";
     sum.dataset.state = state;
-    $("psTitle").textContent = state === "trip" ? "SAFETY TRIP" : state === "nodata" ? "NO SAFETY DATA" : "ALL SAFE";
+    $("psTitle").textContent = state === "trip" ? "SAFETY TRIP" : state === "nodata" ? (nod === safety.length ? "NO SAFETY DATA" : "SAFETY DATA INCOMPLETE") : "ALL SAFE";
     $("psSub").textContent = state === "trip" ? bad.map((t) => `${psShort(t.name)} ${fmtValue(t)}`).join(" · ")
       : `${safety.length - nod}/${safety.length} healthy${nod ? ` · ${nod} no data` : ""}`;
     $("psChip").className = `ps-chip ${state}`;
@@ -587,6 +461,7 @@
     if (/blower/.test(n)) return "blower";
     if (/\bfan\b/.test(n)) return "fan";
     if (/dosing/.test(n)) return "dosing";
+    if (/progressive|cavity/.test(n)) return "pcp";
     return "pump";
   }
   function eqIcon(kind) {
@@ -602,6 +477,15 @@
       case "dosing": return `<svg viewBox="0 0 64 64" class="ico"><rect x="14" y="26" width="28" height="22" rx="4" class="ln"/><path d="M42 37 H56 V52" class="ln"/>
         <g class="piston"><rect x="24" y="8" width="8" height="16" rx="2" class="fl"/></g><rect x="8" y="54" width="44" height="5" rx="2" class="fl"/>
         <path class="drop" d="M56 54 q-3 4 0 6 q3 -2 0 -6Z"/></svg>`;
+      // progressive cavity pump (client 20-11-2026, its own look - not a screw conveyor): end flange, dark stator with
+      // the rotor wave (travels while running), tie rods, suction housing with the inlet on top, motor, base
+      case "pcp": return `<svg viewBox="0 0 64 64" class="ico"><defs><clipPath id="eqPcpClip"><rect x="9" y="27" width="28" height="14" rx="7"/></clipPath></defs>
+        <rect x="4" y="54" width="56" height="5" rx="2" class="fl"/><path d="M8 22.5 H38 M8 45.5 H38" class="ln" style="stroke-width:1.6"/>
+        <rect x="3" y="20" width="5" height="28" rx="1.5" class="fl"/>
+        <rect x="8" y="25.5" width="30" height="17" rx="8.5" style="fill:#3f454d;stroke:#262a30;stroke-width:1.4"/>
+        <g clip-path="url(#eqPcpClip)"><path class="flt" d="M-3 34${" q3 -4.5 6 0 q3 4.5 6 0".repeat(6)}" style="fill:none;stroke:#e4e7ea;stroke-width:2.6;stroke-linecap:round"/></g>
+        <rect x="38" y="21" width="10" height="26" rx="2" class="ln"/><rect x="39.5" y="14" width="7" height="7" rx="1" class="fl"/>
+        <rect x="49" y="24" width="12" height="20" rx="3" class="fl"/><path d="M14 47 V54 M55 44 V54" class="ln"/></svg>`;
       case "valve": return `<svg viewBox="0 0 64 64" class="ico"><path d="M4 30 H14 M50 30 H60" class="ln"/><path d="M14 18 L32 30 L14 42 Z M50 18 L32 30 L50 42 Z" class="body"/>
         <path d="M32 30 V12" class="ln"/><path d="M22 10 H42" class="ln stem"/><g class="flow"><circle cx="8" cy="30" r="2"/><circle cx="56" cy="30" r="2"/></g>
         <path d="M27 24 L37 36" class="ln x"/></svg>`;
@@ -610,31 +494,46 @@
         <g class="rot">${blades(5, "M28 34 C 31 29, 31 23, 27 19", 28, 34)}<circle cx="28" cy="34" r="3.5" class="hub"/></g></svg>`;
     }
   }
+  // tag = plain text (client 20-11-2026: no grey box); the WHOLE card / list row opens the machine on the Mimic
+  function eqTagHTML(e) {
+    return `<span class="eqc-tag eq-tag-txt${e.tag_no ? "" : " none"}"${e.tag_no ? "" : ' title="No tag number on the P&amp;ID"'}>${esc(e.tag_no || "–")}</span>`;
+  }
+  const eqToMimic = (el) => {
+    if (!window.Plant || !Plant.showOnMimic) return;
+    if (!Plant.showOnMimic(el.dataset.mm)) toast("This item is not drawn on the mimic");
+  };
+  document.addEventListener("click", (ev) => {
+    const el = ev.target.closest && ev.target.closest(".eqc[data-mm], .eql[data-mm]");
+    if (el && !ev.target.closest("button, a, input, select")) eqToMimic(el);
+  });
+  document.addEventListener("keydown", (ev) => {
+    const el = (ev.key === "Enter" || ev.key === " ") && ev.target.matches && ev.target.matches(".eqc[data-mm], .eql[data-mm]") ? ev.target : null;
+    if (el) { ev.preventDefault(); eqToMimic(el); }
+  });
   function eqCardHTML(e) {
     const kind = eqKind(e);
     const spec = [e.kw != null ? `${e.kw} kW` : "", KIND_LABEL[kind]].filter(Boolean).join(" · ");
     const motor = e.type === "motor";
-    return `<div class="eqc" data-id="${esc(e.id)}" data-kind="${kind}" tabindex="0">
+    return `<div class="eqc" data-id="${esc(e.id)}" data-kind="${kind}" data-mm="${esc(e.id)}" tabindex="0" role="button" title="Show ${esc(e.tag_no || e.name)} on the Mimic">
       <div class="eqc-ic">${eqIcon(kind)}</div>
       <div class="eqc-main">
-        <div class="eqc-top">${e.tag_no ? `<span class="eqc-tag">${esc(e.tag_no)}</span>` : ""}<span class="eqc-pill"><span class="dot"></span><b class="st"></b></span></div>
+        <div class="eqc-top">${eqTagHTML(e)}<span class="eqc-pill"><span class="dot"></span><b class="st"></b></span></div>
         <div class="eqc-name" title="${esc(e.name)}">${esc(e.name)}</div>
         <div class="eqc-meta">${esc(e.area || "")}${spec ? " · " + esc(spec) : ""}${e.simulated ? ' · <span class="q SIMULATED">DEMO</span>' : ""}</div>
       </div>
       <div class="eqc-stats">
         ${motor ? `<div><span>Run hours</span><b class="num rh">-</b></div>` : `<div><span>Position</span><b class="pos">-</b></div>`}
-        <div><span>Mode (HMI)</span><b class="mode">-</b></div>
+        <div><span>Mode</span><b class="mode">-</b></div>
       </div>
-      <div class="eqc-io" title="Field signals from the PLC (lit = ON)">${(motor ? [["cmd", "CMD"], ["run", "RUN"], ["trip", "TRIP"]]
+      <div class="eqc-io" title="Field signals (lit = ON)">${(motor ? [["cmd", "CMD"], ["run", "RUN"], ["trip", "TRIP"]]
         : [["open_cmd", "OPEN CMD"], ["close_cmd", "CLOSE CMD"], ["open", "OPEN"], ["close", "CLOSED"]])
         .filter(([k]) => e.io && k in e.io).map(([k, l]) => `<span class="sig" data-io="${k}"><i></i>${l}</span>`).join("")}</div>
-      ${motor ? '<div class="eqc-bar" title="Run hours compared with the most-used motor"><i></i></div>' : ""}
-    </div>`;
+    </div>`;   // (run-hours comparison bar removed 16-11-2026: there is no fixed maximum, so the bar had no meaning)
   }
   function eqRowHTML(e) {
     const kind = eqKind(e);
-    return `<div class="eql" data-id="${esc(e.id)}" data-kind="${kind}"><span class="eqc-ic sm">${eqIcon(kind)}</span>
-      <span class="eqc-tag">${esc(e.tag_no || "-")}</span><span class="eql-name" title="${esc(e.name)}">${esc(e.name)}</span>
+    return `<div class="eql" data-id="${esc(e.id)}" data-kind="${kind}" data-mm="${esc(e.id)}" tabindex="0" role="button" title="Show ${esc(e.tag_no || e.name)} on the Mimic"><span class="eqc-ic sm">${eqIcon(kind)}</span>
+      ${eqTagHTML(e)}<span class="eql-name" title="${esc(e.name)}">${esc(e.name)}</span>
       <span class="muted eql-area">${esc(e.area || "")}</span><span class="eqc-pill"><span class="dot"></span><b class="st"></b></span>
       <b class="mode">-</b><b class="num rh">${e.type === "motor" ? "-" : ""}</b><b class="num starts">${e.type === "motor" ? "-" : ""}</b></div>`;
   }
@@ -651,7 +550,7 @@
     if (e.pair && e.standby_selected != null) s += e.standby_selected ? " · Standby sel." : " · Main sel.";
     return s;
   }
-  function fillEq(el, e, maxH) {
+  function fillEq(el, e) {
     const st = eqState(e);
     if (el.dataset.state !== st) el.dataset.state = st;
     const q = (s) => el.querySelector(s);
@@ -667,18 +566,15 @@
         q(".rh").classList.toggle("counting", e.status === "RUNNING");
       }
       if (q(".starts")) q(".starts").textContent = e.starts ?? 0;
-      const bar = q(".eqc-bar i");
-      if (bar) bar.style.width = `${Math.max(2, ((e.run_hours || 0) / maxH) * 100)}%`;
     } else if (q(".pos")) q(".pos").textContent = EQ_TXT[e.status] || "-";
   }
-  function renderEqInto(box, list, { view = "cards", group = false } = {}) {
-    const maxH = Math.max(0.01, ...live.equipment.filter((m) => m.type === "motor").map((m) => m.run_hours || 0));
-    const sig = `${view}|${group}|${list.map((e) => e.id).join(",")}`;
+  function renderEqInto(box, list, { view = "cards", group = false, empty = "No equipment matches" } = {}) {
+    const sig =`${view}|${group}|${list.map((e) => e.id).join(",")}|${list.length ? "" : empty}`;
     if (box._sig !== sig) {
       box._sig = sig;
-      if (!list.length) box.innerHTML = '<div class="empty">No equipment matches</div>';
+      if (!list.length) box.innerHTML = `<div class="empty">${esc(empty)}</div>`;
       else if (view === "list") {
-        box.innerHTML = `<div class="eql eql-h"><span></span><span>Tag</span><span>Equipment</span><span>Area</span><span>Status</span><span>Mode (HMI)</span><span>Run hours</span><span>Starts</span></div>` +
+        box.innerHTML = `<div class="eql eql-h"><span></span><span>Tag</span><span>Equipment</span><span>Area</span><span>Status</span><span>Mode</span><span>Run hours</span><span>Starts</span></div>` +
           list.map(eqRowHTML).join("");
       } else if (group) {
         const areas = [...new Set(list.map((e) => e.area || "Other"))];
@@ -689,7 +585,7 @@
       box.classList.add("eq-anim");
       setTimeout(() => box.classList.remove("eq-anim"), 1400);
     }
-    list.forEach((e) => { const el = box.querySelector(`[data-id="${CSS.escape(e.id)}"]`); if (el) fillEq(el, e, maxH); });
+    list.forEach((e) => { const el = box.querySelector(`[data-id="${CSS.escape(e.id)}"]`); if (el) fillEq(el, e); });
     box.querySelectorAll(".eq-area").forEach((sec) => {
       const inA = list.filter((e) => (e.area || "Other") === sec.dataset.area);
       const run = inA.filter((e) => ["run", "open"].includes(eqState(e))).length, bad = inA.filter((e) => eqState(e) === "trip").length;
@@ -797,10 +693,12 @@
     const tags = live.tags.filter((t) => t.group === ovGroup && t.trend).slice(0, 4);
     if (!tags.length) return;
     $("trendUnit").textContent = tags[0].unit ? `· ${tags[0].unit}` : "";
+    const seq = ++ovSeq;
     try {
-      const r = await api(`/api/trend?tags=${encodeURIComponent(tags.map((t) => t.id).join(","))}&minutes=${$("ovRange").value}&points=${ovHist ? 288 : 160}`
-        + (ovHist ? `&to=${ovHist}` : ""));
+      const r = await fetchTrend(tags.map((t) => t.id), ovHist || { minutes: ovMin }, ovZoom, ovHist ? 300 : 200);
+      if (seq !== ovSeq) return;                         // a newer request (zoom / range change) is on its way
       ovLast = { r, tags };
+      if (!ovHist) setApplied($("ovRange"), r.from, r.to, " · live");
       drawOvTrend(!!force);
     } catch (e) { if (force) toast(e.message, true); }
   }
@@ -818,11 +716,13 @@
     const { r, tags } = ovLast;
     const d0 = tags[0].decimals ?? 1, unit = tags[0].unit || "";
     const fmt = (v) => (v == null ? "-" : Number(v).toLocaleString(undefined, { minimumFractionDigits: d0, maximumFractionDigits: d0 }));
+    const win = ovZoom || [r.from, r.to];
+    const past = !!(ovHist || ovZoom);
     const info = r.series.map((s, i) => {
-      const pts = s.points.filter((p) => p.avg != null);
+      const pts = inWin(s.points, win);
       const t = tagById(s.id) || {};
-      // past day: the chip shows the last value of that window, not today's live value
-      return { s, i, color: SERIES[i], now: ovHist ? (pts.at(-1) || {}).avg : t.value ?? (pts.at(-1) || {}).avg, first: (pts[0] || {}).avg,
+      // custom range / zoom: the chip shows the last value of the window shown, not today's live value
+      return { s, i, color: SERIES[i], now: past ? (pts.at(-1) || {}).avg : t.value ?? (pts.at(-1) || {}).avg, first: (pts[0] || {}).avg,
         sp: t.setpoint_value, hidden: ovHidden.has(s.id) };
     });
     const sim = r.series.some((s) => s.points.some((p) => p.sim));
@@ -842,18 +742,20 @@
     // alarm set point line(s) - one per distinct set point of the shown values
     const sps = [...new Set(info.filter((x) => !x.hidden && x.sp != null).map((x) => x.sp))];
     const limits = sps.length === 1 ? [{ v: sps[0], label: `Alarm SP ${fmt(sps[0])} ${unit}` }] : [];
-    // fill the whole trend box: shrink to the minimum first so the box height is set by the row, then measure
-    const box = $("ovChart");
+    // fixed height (the card is alone on its row); in full screen the chart takes the screen height left under the
+    // header and chips; the zoom toolbar sits above the plot inside the box
+    const box = $("ovChart"), card = $("ovTrendCard");
     box.style.height = "";
-    const svg = box.querySelector("svg");
-    if (svg) svg.style.height = "230px";
-    const h = Math.max(230, Math.floor(box.clientHeight) - 4);
-    MDChart.renderMulti(box, { unit, decimals: d0, from: r.from, to: r.to, height: h, animate, area: true, limits, ...sharedAxis(tags),
+    const full = document.fullscreenElement === card;
+    const height = full ? Math.max(280, card.clientHeight - box.offsetTop - $("ovFoot").offsetHeight - 110) : 280;
+    MDChart.renderMulti(box, { unit, decimals: d0, from: r.from, to: r.to, height, animate, area: true, limits, ...sharedAxis(tags),
+      zoomGroup: "ov",
+      onView: (a, b, { reset }) => { ovZoom = reset ? null : [a, b]; ovBadge(); loadOvTrend(false); },
       series: info.map((x) => ({ name: x.s.name, color: x.color, points: x.s.points, hidden: x.hidden })) });
     const shown = info.filter((x) => !x.hidden && x.now != null);
     const hiX = shown.reduce((a, x) => (!a || x.now > a.now ? x : a), null), loX = shown.reduce((a, x) => (!a || x.now < a.now ? x : a), null);
     const short = (n) => esc(n.split(" ")[0]);
-    const when = ovHist ? "at end of day" : "now";
+    const when = past ? "at end of the range shown" : "now";
     $("ovFoot").innerHTML = (hiX ? `<span><em>Highest ${when}</em> <i style="background:${hiX.color}"></i>${short(hiX.s.name)} <b class="num">${fmt(hiX.now)} ${esc(unit)}</b></span>` : "") +
       (loX && loX !== hiX ? `<span><em>Lowest ${when}</em> <i style="background:${loX.color}"></i>${short(loX.s.name)} <b class="num">${fmt(loX.now)} ${esc(unit)}</b></span>` : "") +
       (sps.length > 1 ? `<span><em>Alarm set points</em> ${sps.map(fmt).join(" / ")} ${esc(unit)}</span>` : "") +
@@ -872,60 +774,66 @@
       : `No data ${gaps.slice(0, 2).map(([a, b]) => `${t(a)} - ${t(b)}`).join(", ")}${gaps.length > 2 ? " and more" : ""}`;
     return `<span class="ov-gap" title="History is saved by the dashboard server. While it is not running nothing is recorded.">⚠ ${txt}: the dashboard server was not running.</span>`;
   }
-  // live ranges (30m ... 7d) and history (a whole past day picked in the calendar)
-  function setOvLive(minutes) {
-    ovHist = null;
-    $("ovDate").value = "";
-    $("ovLiveBtn").classList.add("hidden");
-    $("ovLiveBadge").innerHTML = '<span class="dot"></span>Live';
-    $("ovLiveBadge").classList.remove("hist");
-    $("ovRangeSeg").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x.dataset.m === String(minutes)));
-    $("ovRange").value = minutes;
-    loadOvTrend(true);
+  // range picker: rolling presets (live, refreshed every 5 s) or a custom start / end date (history, not refreshed)
+  function ovBadge() {
+    const b = $("ovLiveBadge");
+    const live = !ovHist && !ovZoom;
+    b.classList.toggle("hist", !live);
+    b.innerHTML = live ? '<span class="dot"></span>Live' : ovHist ? "History" : "Zoomed · paused";
+    b.title = live ? "Updates automatically" : ovHist ? "Custom date range - not updated automatically" : "Zoomed in - press Full range to return to the live trend";
   }
-  $("ovRangeSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => setOvLive(b.dataset.m)));
-  (() => {
-    const p = (n) => String(n).padStart(2, "0"), d = new Date(), iso = (x) => `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}`;
-    $("ovDate").max = iso(d);
-    $("ovDate").min = iso(new Date(d.getTime() - 400 * 86400000));
-  })();
-  $("ovDate").onchange = () => {
-    const v = $("ovDate").value;
-    if (!v) return setOvLive(60);
-    const [y, m, dd] = v.split("-").map(Number);
-    const start = new Date(y, m - 1, dd).getTime() / 1000;            // local midnight of the chosen day
-    ovHist = Math.min(start + 86400, Date.now() / 1000);
-    $("ovRange").value = String(Math.round((ovHist - start) / 60));
-    $("ovRangeSeg").querySelectorAll("button").forEach((x) => x.classList.remove("active"));
-    $("ovLiveBtn").classList.remove("hidden");
-    $("ovLiveBadge").textContent = `History · ${new Date(start * 1000).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })}`;
-    $("ovLiveBadge").classList.add("hist");
+  // process trend in full screen (Esc or the button closes it); the chart is drawn again at the new size, keeping the zoom
+  if ($("ovFsBtn")) {
+    $("ovFsBtn").onclick = () => {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      else $("ovTrendCard").requestFullscreen().catch(() => toast("Full screen is not allowed here", true));
+    };
+    document.addEventListener("fullscreenchange", () => {
+      const on = document.fullscreenElement === $("ovTrendCard"), b = $("ovFsBtn");
+      b.setAttribute("aria-pressed", String(on));
+      b.querySelector("span").textContent = on ? "Exit full screen" : "Full screen";
+      requestAnimationFrame(() => drawOvTrend(false));
+    });
+  }
+  const OV_PRESETS = [["1 hour", "1h"], ["8 hours", "8h"], ["24 hours", "24h"], ["2 days", "2d"], ["7 days", "7d"], ["Custom", "custom"]];
+  makePicker($("ovRange"), OV_PRESETS, "1h", (w) => {
+    if (w.minutes) { ovHist = null; ovMin = w.minutes; } else ovHist = { from: w.from, to: w.to };
+    ovZoom = null;
+    MDChart.resetZoom("ov");
+    ovBadge();
     loadOvTrend(true);
-  };
-  $("ovLiveBtn").onclick = () => setOvLive(60);
+  });
 
+  // Equipment filters (brief SC05): the status filter (KPI tiles) and the area tab COMBINE -
+  // Running + an area = running items of that area only; Tripped + All areas = every tripped item.
+  // The KPI numbers count inside the selected area; the area tabs count the items that pass the status filter.
   let eqStatusF = "all";
   let eqView = (() => { try { return localStorage.getItem("md-eq-view") || "cards"; } catch (_) { return "cards"; } })();
+  const areaOf = (e) => e.area || "Other";
   const EQ_FILTERS = [
     ["all", "All equipment", () => true, ""],
     ["run", "Running", (e) => eqState(e) === "run" || eqState(e) === "start", "g"],
     ["stop", "Stopped / ready", (e) => e.type === "motor" && eqState(e) === "stop", "n"],
     ["trip", "Tripped", (e) => eqState(e) === "trip" || eqState(e) === "warn", "r"],
-    ["valve", "Valves open", (e) => e.type === "valve", "b"],
+    ["valve", "Valves open", (e) => e.type === "valve", "b"],          // shows every valve (open first count / total)
   ];
-  function renderEqKpis(eq) {
+  const EQ_WORD = { all: "", run: "running ", stop: "stopped ", trip: "tripped ", valve: "valve " };
+  function renderEqKpis(eq) {                // eq = equipment of the selected area
     const box = $("eqKpis");
     const motors = eq.filter((e) => e.type === "motor");
     const avail = motors.length ? Math.round((motors.filter((e) => eqState(e) !== "trip").length / motors.length) * 100) : 0;
     if (!box.children.length) {
-      box.innerHTML = EQ_FILTERS.map(([k, label, , c]) => `<button class="eq-kpi k-${c || "a"}" data-f="${k}"><span class="l">${label}</span>
+      box.innerHTML = EQ_FILTERS.map(([k, label, , c]) => `<button type="button" class="eq-kpi k-${c || "a"}" data-f="${k}" aria-pressed="false"><span class="l">${label}</span>
         <b class="num"><span class="v">0</span><small class="of"></small></b></button>`).join("") +
         `<div class="eq-kpi k-av"><span class="l">Availability</span><b class="num"><span class="v">0</span><small>%</small></b><span class="av-bar"><i></i></span></div>`;
       box.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => { eqStatusF = eqStatusF === b.dataset.f ? "all" : b.dataset.f; renderEquipment(); }));
     }
-    EQ_FILTERS.forEach(([k, , fn]) => {
+    const where = eqArea === "All" ? "all areas" : eqArea;
+    EQ_FILTERS.forEach(([k, label, fn]) => {
       const b = box.querySelector(`[data-f="${k}"]`);
       b.classList.toggle("active", eqStatusF === k);
+      b.setAttribute("aria-pressed", String(eqStatusF === k));
+      b.title = `${label} - ${where}`;
       const n = k === "valve" ? eq.filter((e) => e.type === "valve" && eqState(e) === "open").length : eq.filter(fn).length;
       tweenNum(b.querySelector(".v"), n, 0);
       b.querySelector(".of").textContent = k === "valve" ? ` / ${eq.filter((e) => e.type === "valve").length}` : k === "run" ? ` / ${motors.length}` : "";
@@ -937,19 +845,40 @@
   }
   function renderEquipment() {
     const eq = live.equipment;
-    renderEqKpis(eq);
-    const areas = ["All", ...new Set(eq.map((e) => e.area))];
-    const tabs = areas.map((a) => `<button class="${a === eqArea ? "active" : ""}" data-area="${esc(a)}">${esc(a)}<span class="muted">${a === "All" ? eq.length : eq.filter((e) => e.area === a).length}</span></button>`).join("");
+    const areas = ["All", ...new Set(eq.map(areaOf))];
+    if (!areas.includes(eqArea)) eqArea = "All";
+    const inArea = eq.filter((e) => eqArea === "All" || areaOf(e) === eqArea);
+    renderEqKpis(inArea);
+    const fx = EQ_FILTERS.find((x) => x[0] === eqStatusF) || EQ_FILTERS[0];
+    const f = fx[2];
+    const tabs = areas.map((a) => `<button type="button" class="${a === eqArea ? "active" : ""}" data-area="${esc(a)}" aria-pressed="${a === eqArea}">${esc(a === "All" ? "All areas" : a)}<span class="muted">${
+      eq.filter((e) => (a === "All" || areaOf(e) === a) && f(e)).length}</span></button>`).join("");
     if ($("eqTabs")._h !== tabs) {
       $("eqTabs")._h = tabs;
       $("eqTabs").innerHTML = tabs;
       $("eqTabs").querySelectorAll("button").forEach((b) => (b.onclick = () => { eqArea = b.dataset.area; renderEquipment(); }));
     }
     const q = $("eqSearch").value.toLowerCase().trim();
-    const f = (EQ_FILTERS.find((x) => x[0] === eqStatusF) || EQ_FILTERS[0])[2];
-    const list = eq.filter((e) => (eqArea === "All" || e.area === eqArea) && f(e) &&
+    const list = inArea.filter((e) => f(e) &&
       (!q || e.name.toLowerCase().includes(q) || String(e.tag_no || "").toLowerCase().includes(q)));
-    renderEqInto($("eqGrid"), list, { view: eqView, group: eqArea === "All" });
+    // what is shown: status filter + area (+ search), with a one-click way back to everything
+    let note = $("eqShowing");
+    if (!note) {
+      note = document.createElement("div");
+      note.id = "eqShowing"; note.className = "eq-showing"; note.setAttribute("aria-live", "polite");
+      $("eqGrid").before(note);
+    }
+    const where = eqArea === "All" ? "all areas" : eqArea;
+    const txt = `Showing ${list.length} ${EQ_WORD[fx[0]]}item${list.length === 1 ? "" : "s"} · ${where}${q ? ` · search “${$("eqSearch").value.trim()}”` : ""}`;
+    const filtered = fx[0] !== "all" || eqArea !== "All";
+    const h = `<span>${esc(txt)}</span>${filtered ? '<button type="button" class="link-btn" id="eqShowAll">Show all equipment</button>' : ""}`;
+    if (note._h !== h) {
+      note._h = h; note.innerHTML = h;
+      const all = $("eqShowAll");
+      if (all) all.onclick = () => { eqStatusF = "all"; eqArea = "All"; renderEquipment(); };
+    }
+    renderEqInto($("eqGrid"), list, { view: eqView, group: eqArea === "All",
+      empty: `No ${EQ_WORD[fx[0]]}equipment in ${where}${q ? " matching the search" : ""}` });
   }
   $("eqSearch").oninput = () => live && renderEquipment();
   $("eqViewSeg").querySelectorAll("button").forEach((b) => {
@@ -965,17 +894,22 @@
   // ---------- alarms (simple: active alarms with Acknowledge + history list) ----------
   const realNote = (a) => (a.note && a.note !== "Acknowledged from alarm pop-up" && a.note !== "Acknowledged from alarms page" ? a.note : "");
   const PRIO_TXT = { red: "Critical", yellow: "Warning" };
+  // where an alarm comes from: a PLC / field signal, or calculated by this dashboard (analog limits, comm loss)
+  const srcBadge = (a) => (a.source === "dashboard"
+    ? '<span class="al-src-b dash" title="Calculated by the dashboard from an analog limit or communication loss - not a plant alarm">DASHBOARD</span>'
+    : '<span class="al-src-b plc" title="Alarm from the plant / field (trip input, alarm bit, safety input)">PLANT</span>');
   let histRows = [];
   function renderActive(box) {
     const rows = live.alarms.slice().sort((a, b) => (a.acked_at ? 1 : 0) - (b.acked_at ? 1 : 0) || b.raised_at - a.raised_at);
     $("alarmCount2").textContent = rows.length ? `${rows.length}` : "";
     box.innerHTML = rows.length ? rows.map((a) => `<div class="al-row p-${esc(a.priority)} ${a.acked_at ? "acked" : "unacked"}">
         <div class="al-main"><div class="al-msg">${esc(a.message)}</div>
-          <div class="al-meta"><span class="al-pr">${PRIO_TXT[a.priority] || a.priority}</span> Raised ${fmtTime(a.raised_at, true)} · active for ${dur(Date.now() / 1000 - a.raised_at)}
+          <div class="al-meta"><span class="al-pr">${PRIO_TXT[a.priority] || a.priority}</span>${srcBadge(a)} <b>${esc(a.tag_name || "")}</b> · Raised ${fmtTime(a.raised_at, true)} IST · active for ${dur(Date.now() / 1000 - a.raised_at)}
           ${a.simulated ? ' · <span class="q SIMULATED">DEMO</span>' : ""}</div>
           ${realNote(a) ? `<div class="al-note">“${esc(realNote(a))}”</div>` : ""}</div>
         <div class="al-ack">${a.acked_at
           ? `<span class="al-badge ok">✓ Acknowledged</span><span class="muted small">${a.acked_by ? esc(a.acked_by) + " · " : ""}${fmtTime(a.acked_at)}</span>`
+          : me && !me.can_operate ? '<span class="al-badge">Not acknowledged</span><span class="muted small">view-only account</span>'
           : `<button class="btn primary al-ackbtn" data-ack="${a.id}">Acknowledge</button>`}</div></div>`).join("")
       : `<div class="al-clear"><span class="al-ok">✓</span><div><b>No active alarms</b></div></div>`;
     box.querySelectorAll("[data-ack]").forEach((b) => (b.onclick = () => ackFromPage(+b.dataset.ack, b)));
@@ -991,29 +925,51 @@
       loadHistory();
     } catch (e) { toast(e.message, true); btn.disabled = false; }
   }
+  // alarm history: range picker (presets + one calendar icon), search box, CSV / PDF of the rows shown
+  let histWin = { minutes: 72 * 60 };
   function renderHistory() {
     const rows = histRows;
-    $("histTable").innerHTML = `<thead><tr><th>Priority</th><th>Alarm</th><th>Raised</th><th>Cleared</th><th>Acknowledged</th><th>Note</th></tr></thead><tbody>` +
+    const cal = MD.v3.CAL;
+    // acknowledged and cleared are separate: an alarm can be cleared and never acknowledged, or acknowledged and still active
+    $("histTable").innerHTML = `<thead><tr><th>Severity</th><th>Source</th><th>Device</th><th>Alarm</th><th>${cal}Raised (IST)</th><th>${cal}Cleared (IST)</th><th>Acknowledged</th><th>Note</th></tr></thead><tbody>` +
       (rows.length ? rows.map((a) => `<tr class="${a.cleared_at ? "" : "is-active"}"><td><span class="al-pill p-${esc(a.priority)}">${PRIO_TXT[a.priority] || a.priority}</span>${a.simulated ? ' <span class="q SIMULATED">DEMO</span>' : ""}</td>
+        <td>${srcBadge(a)}</td><td>${esc(a.tag_name || "")}</td>
         <td class="al-m">${esc(a.message)}</td><td class="num">${fmtTime(a.raised_at, true)}</td>
-        <td class="num">${a.cleared_at ? fmtTime(a.cleared_at, true) : '<span class="al-pill act">ACTIVE</span>'}</td>
-        <td>${a.acked_at ? `<span class="al-ackd">✓ ${esc(a.acked_by || "Yes")}</span><div class="muted small">${fmtTime(a.acked_at)}</div>` : '<span class="muted">-</span>'}</td>
+        <td class="num" data-export="${a.cleared_at ? fmtTime(a.cleared_at, true) : "Active"}">${a.cleared_at ? fmtTime(a.cleared_at, true) : '<span class="al-pill act">ACTIVE</span>'}</td>
+        <td data-export="${a.acked_at ? esc(`${a.acked_by || "Yes"} ${fmtTime(a.acked_at, true)}`) : "-"}">${a.acked_at ? `<span class="al-ackd">✓ ${esc(a.acked_by || "Yes")}</span><div class="muted small num">${fmtTime(a.acked_at, true)}</div>` : '<span class="muted">-</span>'}</td>
         <td class="al-n">${realNote(a) ? esc(realNote(a)) : '<span class="muted">-</span>'}</td></tr>`).join("")
-        : `<tr><td colspan="6" class="empty">No alarms in this period</td></tr>`) + "</tbody>";
+        : `<tr class="al-none"><td colspan="8" class="empty">No alarms in this period</td></tr>`) + "</tbody>";
+    histSearch.run();
+    histCountTxt();
+  }
+  function histCountTxt() {
+    const shown = [...$("histTable").querySelectorAll("tbody tr:not(.al-none)")].filter((tr) => !tr.hidden).length;
+    $("histCount").textContent = histRows.length ? (shown === histRows.length ? `${shown}` : `${shown} of ${histRows.length}`) : "";
   }
   async function loadHistory() {
     try {
-      const r = await api(`/api/alarms?state=history&hours=${$("histRange").value}&limit=500`);
-      histRows = r.alarms;
+      const n = nowS();
+      const custom = histWin.from != null;
+      const hours = custom ? Math.max(1, Math.ceil((n - histWin.from) / 3600)) : histWin.minutes / 60;
+      const r = await api(`/api/alarms?state=history&hours=${hours}&limit=1000`);
+      histRows = custom ? r.alarms.filter((a) => a.raised_at >= histWin.from && a.raised_at <= histWin.to) : r.alarms;
+      if (!custom) setApplied($("histRange"), n - histWin.minutes * 60, n);
       renderHistory();
     } catch (e) { toast(e.message, true); }
   }
-  $("histRange").onchange = loadHistory;
-  $("histRangeSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => {
-    $("histRangeSeg").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
-    $("histRange").value = b.dataset.h;
+  const histSearch = MD.v3.tableSearch($("histSearch"), $("histTable"), { placeholder: "Search alarm, device or note…", onSearch: () => histCountTxt() });
+  makePicker($("histRange"), [["24 hours", "24h"], ["3 days", "3d"], ["7 days", "7d"], ["30 days", "30d"], ["Custom", "custom"]], "3d", (w) => {
+    histWin = w;
     loadHistory();
-  }));
+  }, { trendLimit: false, liveSuffix: "" });
+  $("histCsv").onclick = () => {
+    if (!histRows.length) { toast("No alarms in this period"); return; }
+    MD.v3.exportCsv(`alarm-history_${MD.istDate(nowS())}.csv`, MD.v3.tableRows($("histTable")));
+  };
+  $("histPdf").onclick = () => {
+    const txt = ($("histRange").querySelector(".dr-txt") || {}).textContent || "";
+    MD.v3.printPdf($("histTable").closest(".card"), `Alarm history · ${txt}`);
+  };
 
   // ---------- trends ----------
   function loadSel() { try { return JSON.parse(localStorage.getItem("md-trend") || "null") || []; } catch (_) { return []; } }
@@ -1024,18 +980,23 @@
   const GROUP_ORDER = ["Temperature", "Pressure", "Level", "Analysis"];
   let trendView = (() => { try { return localStorage.getItem("md-trend-view") || "grid"; } catch (_) { return "grid"; } })();
   let lastTrend = null;
+  let trMin = 60;              // rolling live window (minutes) from a preset
+  let trRange = null;          // custom {from, to} epoch s from the range picker; null = live rolling window
+  let trZoom = null;           // zoomed window [a, b] inside the range (chart zoom / pan); null = full range
+  let trSeq = 0;               // only the newest fetch may draw (a slow live refresh never overwrites a zoom)
   const colorOf = (id) => TREND_COLORS[Math.max(0, trendSel.indexOf(id)) % TREND_COLORS.length];
   const fmtN = (v, d) => (v == null || isNaN(v) ? "-" : Number(v).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }));
 
+  // value pills: equal-width grid per measurement group (Temperature / Pressure / Level / Analysis), client order + names
   function trendPicker(cands) {
     const groups = [...new Set(cands.map((t) => t.group || "Other"))]
       .sort((a, b) => (GROUP_ORDER.indexOf(a) + 1 || 99) - (GROUP_ORDER.indexOf(b) + 1 || 99));
-    $("tagPicker").innerHTML = groups.map((g) => `<div class="tp-group g-${esc(g.toLowerCase())}"><span class="tp-h">${esc(g)}</span>
-      ${cands.filter((t) => (t.group || "Other") === g).map((t) => {
+    $("tagPicker").innerHTML = groups.map((g) => `<div class="tp-group g-${esc(g.toLowerCase())}" role="group" aria-label="${esc(g)}"><span class="tp-h">${esc(g)}</span>
+      <div class="tp-grid">${cands.filter((t) => (t.group || "Other") === g).map((t) => {
         const on = trendSel.includes(t.id);
-        return `<button class="tp-chip ${on ? "on" : ""}" data-id="${esc(t.id)}" style="--c:${on ? colorOf(t.id) : "transparent"}" aria-pressed="${on}">
-          <i></i>${esc(t.name)}</button>`;
-      }).join("")}</div>`).join("");
+        return `<button type="button" class="tp-chip ${on ? "on" : ""}" data-id="${esc(t.id)}" style="--c:${on ? colorOf(t.id) : "transparent"}" aria-pressed="${on}" title="${esc(t.name)}">
+          <i aria-hidden="true"></i><span class="tp-n">${esc(t.name)}</span></button>`;
+      }).join("")}</div></div>`).join("");
     $("tagPicker").querySelectorAll(".tp-chip").forEach((b) => (b.onclick = () => {
       const id = b.dataset.id;
       if (trendSel.includes(id)) trendSel = trendSel.filter((x) => x !== id);
@@ -1047,14 +1008,28 @@
     trCountTxt();
   }
   function trCountTxt() {
-    $("trCount").innerHTML = `${trendSel.length} of 6 selected · ${esc($("trRangeSeg").querySelector(".active").textContent)}` +
-      (trendSel.length ? ` · <button class="link-btn" id="tpClear">Clear all</button>` : "");
+    $("trCount").innerHTML = `${trendSel.length} of 6 selected` +
+      (trendSel.length ? ` · <button type="button" class="link-btn" id="tpClear">Clear all</button>` : "");
     const c = $("tpClear");
     if (c) c.onclick = () => { trendSel = []; saveSel(); renderTrends(true, true); };
   }
+  function trLiveBadge() { $("trLive").classList.toggle("hidden", !!(trRange || trZoom)); }
+  // the range the charts show, right above them (calendar icon + start – end, IST)
+  function trStrip(r, win) {
+    const live = !trRange && !trZoom;
+    return `<div class="tr-applied">${MD.v3.CAL}<span>${trZoom
+      ? `<b>Zoomed</b> ${esc(appliedLabel(win[0], win[1]))} <span class="muted">· selected ${esc(appliedLabel(r.from, r.to))}</span>`
+      : esc(appliedLabel(r.from, r.to, live ? " · live" : ""))}</span>
+      ${trZoom ? '<button type="button" class="btn sm" id="trFull">Full range</button>' : ""}</div>`;
+  }
+  function trOnView(a, b, { reset }) {
+    trZoom = reset ? null : [a, b];
+    trLiveBadge();
+    renderTrends(false, false);                       // finer data for the zoomed window
+  }
 
-  function trendStats(s) {
-    const pts = s.points.filter((p) => p.avg != null);
+  function trendStats(s, win) {
+    const pts = inWin(s.points, win);
     if (!pts.length) return null;
     const mins = pts.map((p) => p.min ?? p.avg), maxs = pts.map((p) => p.max ?? p.avg);
     return { min: Math.min(...mins), max: Math.max(...maxs), avg: pts.reduce((a, p) => a + p.avg, 0) / pts.length,
@@ -1071,48 +1046,63 @@
     lastTrendFetch = Date.now();
     const box = $("charts");
     box.classList.toggle("combined", trendView === "combined");
+    const seq = ++trSeq;
     if (!trendSel.length) { box.innerHTML = '<div class="card empty tr-empty">Pick one or more values above to see their trend</div>'; lastTrend = null; return; }
     try {
-      const r = await api(`/api/trend?tags=${encodeURIComponent(trendSel.join(","))}&minutes=${$("trendRange").value}&points=240`);
+      const r = await fetchTrend(trendSel, trRange || { minutes: trMin }, trZoom, 300);
+      if (seq !== trSeq) return;
       lastTrend = r;
+      if (!trRange) setApplied($("trRange"), r.from, r.to, " · live");
+      const win = trZoom || [r.from, r.to];
+      const past = !!(trRange || trZoom);              // custom / zoomed: numbers come from the window, never live
+      // the zoom window itself lives in the chart group "trends" (survives these re-renders); trZoom mirrors it here
+      const zopts = { zoomGroup: "trends", onView: trOnView };
       const sim = r.series.some((s) => s.points.some((p) => p.sim));
+      const bindFull = () => { const b = $("trFull"); if (b) b.onclick = () => MDChart.zoom("trends", "reset"); };
       if (trendView === "combined") {
+        // grouped by unit (= measurement type, e.g. all temperatures in °C) - one chart per unit, never a dual axis
         const units = [...new Set(r.series.map((s) => s.unit || ""))];
-        box.innerHTML = units.map((u, ui) => {
+        box.innerHTML = trStrip(r, win) + units.map((u, ui) => {
           const ss = r.series.filter((s) => (s.unit || "") === u);
           return `<div class="card chart tr-card tr-combo ${animate ? "anim" : ""}" data-u="${ui}">
             <div class="tr-head"><div><span class="t">${esc(ss.map((s) => (tagById(s.id) || {}).group || "").filter((v, i, a) => v && a.indexOf(v) === i).join(" / ") || "Values")}</span>
               <div class="s">${esc(u || "no unit")} · ${ss.length} value${ss.length > 1 ? "s" : ""}${sim ? ' · <span class="q SIMULATED">DEMO DATA</span>' : ""}</div></div></div>
-            <div class="tr-legend">${ss.map((s) => { const t = tagById(s.id) || {}; return `<span><i style="background:${colorOf(s.id)}"></i>${esc(s.name)} <b class="num">${fmtN(t.value, s.decimals ?? 1)}</b></span>`; }).join("")}</div>
+            <div class="tr-legend">${ss.map((s) => {
+              const t = tagById(s.id) || {}, st = trendStats(s, win);
+              const v = past ? (st ? st.last : null) : (t.value ?? (st && st.last));
+              return `<span><i style="background:${colorOf(s.id)}"></i>${esc(s.name)} <b class="num">${fmtN(v, s.decimals ?? 1)}</b></span>`;
+            }).join("")}</div>
             <div class="plot"></div></div>`;
         }).join("");
+        bindFull();
         units.forEach((u, ui) => {
           const ss = r.series.filter((s) => (s.unit || "") === u);
           MDChart.renderMulti(box.querySelector(`[data-u="${ui}"] .plot`), { unit: u, decimals: ss[0].decimals, from: r.from, to: r.to, height: 300,
-            ...sharedAxis(ss.map((s) => tagById(s.id) || {})),
+            ...sharedAxis(ss.map((s) => tagById(s.id) || {})), ...zopts,
             area: true, animate, series: ss.map((s) => ({ name: s.name, color: colorOf(s.id), points: s.points })) });
         });
         return;
       }
-      box.innerHTML = r.series.map((s) => {
+      box.innerHTML = trStrip(r, win) + r.series.map((s) => {
         const t = tagById(s.id) || {};
-        const st = trendStats(s);
+        const st = trendStats(s, win);
         const d = s.decimals ?? 1;
         const isBool = s.data_type === "BOOL";
-        const now = t.value ?? (st && st.last);
+        // custom / zoomed window: the big number is the window's last value (never the live one)
+        const now = past ? (st ? st.last : null) : (t.value ?? (st && st.last));
         const sp = t.setpoint_value;
         const high = !isBool && sp != null && now != null && now >= sp;
         let delta = "";
         if (st && !isBool) {
           const dv = st.last - st.first, pc = st.first ? (dv / Math.abs(st.first)) * 100 : 0;
           const dir = Math.abs(dv) < Math.pow(10, -d) ? "flat" : dv > 0 ? "up" : "down";
-          delta = `<span class="tr-delta ${dir}" title="Change over the selected period">${dir === "up" ? "▲" : dir === "down" ? "▼" : "▬"} ${fmtN(Math.abs(dv), d)}${st.first ? ` (${Math.abs(pc).toFixed(1)}%)` : ""}</span>`;
+          delta = `<span class="tr-delta ${dir}" title="Change over the range shown">${dir === "up" ? "▲" : dir === "down" ? "▼" : "▬"} ${fmtN(Math.abs(dv), d)}${st.first ? ` (${Math.abs(pc).toFixed(1)}%)` : ""}</span>`;
         }
         return `<div class="card chart tr-card ${high ? "is-high" : ""} ${animate ? "anim" : ""}" data-id="${esc(s.id)}" style="--c:${colorOf(s.id)};animation-delay:${r.series.indexOf(s) * 70}ms">
           <div class="tr-head">
             <div class="tr-title"><span class="sw"></span><div><span class="t">${esc(s.name)}</span>
               <div class="s">${esc(t.group || "")}${s.unit ? " · " + esc(s.unit) : ""}${s.points.some((p) => p.sim) ? ' · <span class="q SIMULATED">DEMO DATA</span>' : ""}</div></div></div>
-            <div class="tr-now"><b class="num">${isBool ? (now >= 0.5 ? esc((t.states || {}).true || "ON") : esc((t.states || {}).false || "OFF")) : fmtN(now, d)}</b>
+            <div class="tr-now"><b class="num">${now == null ? "--" : isBool ? (now >= 0.5 ? esc((t.states || {}).true || "ON") : esc((t.states || {}).false || "OFF")) : fmtN(now, d)}</b>
               ${isBool ? "" : `<span class="u">${esc(s.unit || "")}</span>`}${delta}</div>
           </div>
           <div class="plot"></div>
@@ -1122,9 +1112,11 @@
             <div><span>Average</span><b class="num">${st ? fmtN(st.avg, d) : "-"}</b></div>
             <div><span>Max</span><b class="num">${st ? fmtN(st.max, d) : "-"}</b></div>`}
             ${sp != null ? `<div><span>Alarm set point</span><b class="num sp">${fmtN(sp, d)}</b></div>` : ""}
-            <div class="tr-state"><span class="pill ${high ? "crit" : "good"}"><span class="dot"></span>${high ? "ABOVE SET POINT" : "NORMAL"}</span></div>
+            <div class="tr-state">${st ? `<span class="pill ${high ? "crit" : "good"}"><span class="dot"></span>${high ? "ABOVE SET POINT" : "NORMAL"}</span>`
+              : '<span class="pill"><span class="dot"></span>NO DATA</span>'}</div>
           </div></div>`;
       }).join("");
+      bindFull();
       r.series.forEach((s) => {
         const t = tagById(s.id) || {};
         const limits = [];
@@ -1132,17 +1124,19 @@
         ["hihi", "hi", "lo", "lolo"].forEach((k) => { if (t.alarm && t.alarm[k] != null && t.alarm[k] !== "") limits.push({ v: +t.alarm[k], label: k.toUpperCase() }); });
         MDChart.render(box.querySelector(`[data-id="${CSS.escape(s.id)}"] .plot`), {
           name: s.name, unit: s.unit, decimals: s.decimals, color: colorOf(s.id), points: s.points, height: 230,
-          from: r.from, to: r.to, isBool: s.data_type === "BOOL", limits, animate, yMin: t.trend_min, yMax: t.trend_max,
+          from: r.from, to: r.to, isBool: s.data_type === "BOOL", limits, animate, yMin: t.trend_min, yMax: t.trend_max, ...zopts,
         });
       });
     } catch (e) { toast(e.message, true); }
   }
-  $("trRangeSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => {
-    $("trRangeSeg").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
-    $("trendRange").value = b.dataset.m;
-    trCountTxt();
+  // ONE range control: presets (rolling, live) + one calendar icon with a start / end date (history kept only)
+  makePicker($("trRange"), [["15 min", "15m"], ["1 hour", "1h"], ["8 hours", "8h"], ["24 hours", "24h"], ["7 days", "7d"], ["Custom", "custom"]], "1h", (w) => {
+    if (w.minutes) { trRange = null; trMin = w.minutes; } else trRange = { from: Math.round(w.from), to: Math.round(w.to) };
+    trZoom = null;
+    MDChart.resetZoom("trends");
+    trLiveBadge();
     renderTrends(false, true);
-  }));
+  });
   $("trViewSeg").querySelectorAll("button").forEach((b) => {
     b.classList.toggle("active", b.dataset.v === trendView);
     b.onclick = () => {
@@ -1152,21 +1146,23 @@
       renderTrends(false, true);
     };
   });
+  // CSV of the values for the range shown (the zoomed window when zoomed), times in IST
   $("trCsv").onclick = () => {
     if (!lastTrend || !lastTrend.series.length) { toast("Select values first"); return; }
-    const ser = lastTrend.series;
-    const times = [...new Set(ser.flatMap((s) => s.points.filter((p) => p.avg != null).map((p) => p.t)))].sort((a, b) => a - b);
+    const ser = lastTrend.series, win = trZoom || [lastTrend.from, lastTrend.to];
+    const times = [...new Set(ser.flatMap((s) => inWin(s.points, win).map((p) => p.t)))].sort((a, b) => a - b);
     const maps = ser.map((s) => new Map(s.points.map((p) => [p.t, p.avg])));
-    const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
     const p2 = (n) => String(n).padStart(2, "0");
-    const ts = (t) => { const d = new Date(t * 1000); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`; };
-    const lines = [["Time", ...ser.map((s) => `${s.name}${s.unit ? " (" + s.unit + ")" : ""}`)].map(q).join(",")];
-    times.forEach((t) => lines.push([ts(t), ...maps.map((m, i) => (m.has(t) && m.get(t) != null ? Number(m.get(t)).toFixed(ser[i].decimals ?? 2) : ""))].join(",")));
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv" }));
-    a.download = `trend_${ts(Date.now() / 1000).replace(/[: ]/g, "-").slice(0, 16)}.csv`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    const ts = (t) => { const d = MD.istParts(t); return `${d.y}-${p2(d.mo)}-${p2(d.d)} ${p2(d.h)}:${p2(d.mi)}:${p2(d.s)}`; };
+    const rows = [["Time (IST, Asia/Kolkata)", ...ser.map((s) => `${s.name}${s.unit ? " (" + s.unit + ")" : ""}`)]];
+    times.forEach((t) => rows.push([ts(t), ...maps.map((m, i) => (m.has(t) && m.get(t) != null ? Number(m.get(t)).toFixed(ser[i].decimals ?? 2) : ""))]));
+    const fn = (t) => ts(t).slice(0, 16).replace(/[: ]/g, "-");
+    MD.v3.exportCsv(`trend_${fn(win[0])}_to_${fn(win[1])}.csv`, rows);
+  };
+  $("trPdf").onclick = () => {
+    if (!lastTrend || !lastTrend.series.length) { toast("Select values first"); return; }
+    const a = $("charts").querySelector(".tr-applied");
+    MD.v3.printPdf($("charts"), `Trends · ${a ? a.textContent.replace(/\s+/g, " ").replace("Full range", "").trim() : ""}`);
   };
   let rz;
   window.addEventListener("resize", () => {
@@ -1184,28 +1180,81 @@
       <p>${qBadge(t)} <span class="muted">updated ${fmtTime(t.ts, true)} (${ago(t.ts)})</span></p>
       <dl class="kv"><dt>Type</dt><dd>${esc(t.group)}</dd><dt>Range</dt><dd>${t.eng_min ?? "-"} … ${t.eng_max ?? "-"} ${esc(t.unit)}</dd>
       ${t.setpoint_value != null ? `<dt>Alarm set point</dt><dd>${t.setpoint_value.toFixed(t.decimals ?? 1)} ${esc(t.unit)}</dd>` : ""}</dl>
-      <h3 style="font-size:14px;margin:18px 0 6px">Last 1 hour</h3><div class="chart" id="dChart"></div>`;
+      <div class="dc-trend" id="dTrend" style="margin-top:18px"><div class="dc-trend-h"><h4>Trend</h4><div class="dc-rp" id="dRp"></div>
+        <button class="dc-fs" id="dFs" type="button" aria-pressed="false" title="Show the trend on the whole screen (Esc to close)">${D_FS_IC}<span>Full screen</span></button></div>
+        <div class="chart dc-chart" id="dChart"></div></div>`;
     $("drawer").classList.remove("hidden");
     $("drawerBg").classList.remove("hidden");
     $("dClose").onclick = closeDrawer;
     $("dClose").focus();
-    try {
-      const r = await api(`/api/trend?tags=${encodeURIComponent(id)}&minutes=60&points=240`);
-      const s = r.series[0];
-      if (s) MDChart.render($("dChart"), { name: s.name, unit: s.unit, decimals: s.decimals, color: SERIES[0], points: s.points,
-        from: r.from, to: r.to, isBool: s.data_type === "BOOL", limits: t.setpoint_value != null ? [{ v: t.setpoint_value, label: "SP" }] : [],
-        yMin: t.trend_min, yMax: t.trend_max });
-    } catch (e) { $("dChart").textContent = e.message; }
+    // same trend as inside a card: 8 hours / 2 days / 7 days / custom, full screen, zoom with finer data, Alarm / Min lines
+    const st = { id, range: null, key: undefined, fs: false };
+    dTrend = st;
+    const load = async (f, tt, view, reset) => {
+      if (dTrend !== st) return;                        // another tag opened meanwhile
+      st.range = [f, tt];
+      const [qf, qt] = view || [f, tt], box = $("dChart");
+      try {
+        const r = await api(`/api/trend?tags=${encodeURIComponent(id)}&from=${Math.floor(qf)}&to=${Math.ceil(qt)}&points=300`);
+        if (dTrend !== st) return;
+        const s = r.series[0];
+        if (!s) { box.innerHTML = '<p class="muted">No trend is recorded for this value.</p>'; return; }
+        const tg = tagById(id) || t;
+        MDChart.render(box, { name: s.name, unit: s.unit, decimals: s.decimals, color: "var(--s3)", points: s.points, from: f, to: tt,
+          isBool: s.data_type === "BOOL", limits: MD.trendLimits ? MD.trendLimits(id) : [],
+          yMin: tg.eng_min ?? undefined, yMax: tg.eng_max ?? undefined,
+          height: st.fs ? Math.max(240, $("dTrend").clientHeight - box.offsetTop - 64) : 240,
+          zoomGroup: `tag-${id}`, resetZoom: !!reset, ...(view ? { view } : {}),
+          onView: (a, b, o) => { const [hf, ht] = st.range; load(hf, ht, o && o.reset ? null : [a, b]); } });
+      } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+    };
+    // a fresh pop-up starts unzoomed; a new range also resets the zoom
+    MD.v3.rangePicker($("dRp"), { presets: [["8 hours", "8h"], ["2 days", "2d"], ["7 days", "7d"], ["Custom", "custom"]], initial: "8h",
+      onApply: (f, tt, k) => { const reset = st.key === undefined || st.key !== k || k === "custom"; st.key = k; load(f, tt, null, reset); } });
+    st.reload = () => { if (st.range) { const v = MDChart.getView && MDChart.getView(`tag-${id}`); load(st.range[0], st.range[1], v || null); } };
+    $("dFs").onclick = () => {
+      const tr = $("dTrend");
+      if (document.fullscreenElement === tr || tr.classList.contains("fs")) {
+        if (document.fullscreenElement) document.exitFullscreen(); else dTrendFs(false);
+      } else if (tr.requestFullscreen) tr.requestFullscreen().catch(() => dTrendFs(true));
+      else dTrendFs(true);                                // no Fullscreen API: fill the window instead
+    };
   }
-  function closeDrawer() { $("drawer").classList.add("hidden"); $("drawerBg").classList.add("hidden"); }
+  const D_FS_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>';
+  let dTrend = null;                                    // the open pop-up's trend state
+  function dTrendFs(on) {
+    const tr = $("dTrend"), b = $("dFs");
+    if (!tr || !dTrend) return;
+    tr.classList.toggle("fs", on && document.fullscreenElement !== tr);
+    dTrend.fs = on;
+    b.setAttribute("aria-pressed", String(on));
+    b.querySelector("span").textContent = on ? "Exit full screen" : "Full screen";
+    requestAnimationFrame(() => dTrend && dTrend.reload());
+  }
+  document.addEventListener("fullscreenchange", () => {
+    const tr = $("dTrend");
+    if (!tr || !dTrend) return;
+    const on = document.fullscreenElement === tr;
+    if (on !== dTrend.fs) dTrendFs(on);
+  });
+  function closeDrawer() {
+    if (document.fullscreenElement && document.fullscreenElement.id === "dTrend") document.exitFullscreen();
+    dTrend = null;
+    $("drawer").classList.add("hidden"); $("drawerBg").classList.add("hidden");
+  }
   $("drawerBg").onclick = closeDrawer;
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeDrawer();
+    if (e.key === "Escape") {
+      const tr = $("dTrend");
+      if (tr && tr.classList.contains("fs")) { dTrendFs(false); return; }   // Esc leaves the window-filling view first
+      closeDrawer();
+    }
     if (e.key === "Enter" && e.target.classList && e.target.classList.contains("pv")) openTag(e.target.dataset.tag);
   });
 
   MD.openTag = openTag;                               // used by js/plant.js
-  loadMeta().catch(() => {});
+  loadMeta().then(() => { if (view === "reports") route(); }).catch(() => {});   // these pages need the meta (shifts, RTD group)
+  loadMe().catch(() => {});
   route();
   poll();
 })();

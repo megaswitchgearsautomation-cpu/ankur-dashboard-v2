@@ -1,0 +1,33 @@
+{
+  "_EXAMPLE_ONLY": "Shape of one entry in backend/config/tags.json. The values below are the project's T-01 tag (Delta AH500 D11008, REAL, from our IO list) - mapping_verified is false: it has not been checked against the live PLC. Edit tags on the Settings > Tags page, not by hand.",
+  "tag": {
+    "id": "T_01",
+    "name": "T-01 Dryer to Radiator Temp",
+    "group": "Temperature",
+    "area": "Process",
+    "description": "T-01 · AI channel AI 0.0 · 0-200 °C 4-20 mA",
+    "plc_tag": "AI_Dryer_To_Radiator_01",
+    "source_id": "",
+    "device": "D11008",
+    "data_type": "REAL",
+    "word_order": "default",
+    "scaling": { "mode": "none" },
+    "unit": "°C",
+    "decimals": 1,
+    "eng_min": 0,
+    "eng_max": 200,
+    "poll_ms": 1000,
+    "show_on_dashboard": true,
+    "trend": true,
+    "log": true,
+    "alarm": { "enabled": false, "hi": null, "lo": null, "hihi": null, "lolo": null, "deadband": 0, "priority": "yellow", "delay_s": 5 },
+    "mapping_verified": false,
+    "source_ref": "Our IO list 16_03_2026 / Analog input row 4"
+  },
+  "_field_notes": {
+    "device": "Modbus mode only: Delta device address; the Modbus address is calculated (AH500 manual App. B.1) or overridden on the Tags page.",
+    "source_id": "Gateway API mode only: the reading id in the gateway reply. Blank = plc_tag, then id.",
+    "alarm": "Dashboard-calculated limits (labelled DASHBOARD on the Alarms page). PLC alarms come from PLC bits and are labelled PLC.",
+    "mapping_verified": "Tick only after comparing the value with the HMI / ISPSoft monitor on site."
+  }
+}

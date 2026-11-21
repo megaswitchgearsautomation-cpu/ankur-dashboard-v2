@@ -1,0 +1,106 @@
+/* v3 (brief 14-11-2026) - shared readability rules + shared components. Loaded after fresh.css.
+   Ankur brand look is kept (user decision); status colours follow scada_design.md 1.2 (warning = amber). */
+:root {
+  --st-on: #15803D;        /* running / ON / open */
+  --st-off: #71717A;       /* stopped / OFF / closed */
+  --st-warn: #B45309;      /* warning / near limit ("yellow" in the brief) */
+  --st-alarm: #B91C1C;     /* alarm / at or past limit */
+  --st-unknown: #71717A;   /* no confirmation / no data (dashed + ?) */
+  --st-warn-bg: color-mix(in srgb, var(--st-warn) 12%, white);
+  --st-alarm-bg: color-mix(in srgb, var(--st-alarm) 10%, white);
+  --st-on-bg: color-mix(in srgb, var(--st-on) 10%, white);
+  --v3-sep: #e4e4e7;
+}
+
+/* ---------- SC01 readability: larger, consistent type ---------- */
+body.client { font-size: 16px; line-height: 1.5; }
+body.client .muted.small, body.client .small { font-size: 14px; }
+body.client .seg.sm button, body.client .btn.sm { font-size: 14px; }
+body.client .btn.sm { min-height: 36px; padding: 6px 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+body.client th { font-size: 13px; letter-spacing: .03em; }
+body.client td { font-size: 15px; }
+body.client .card-head h2 { font-size: 20px; font-weight: 600; }
+body.client .card-head h2 .muted, body.client .card-head h2 .small { font-size: 14px; font-weight: 400; }
+body.client input, body.client select { font-size: 16px; }
+body.client svg text { font-size: max(12px, 1em); }
+/* nothing on screen below 12 px (scada_design 1.3.2): small badges / tags / captions */
+body.client .q, body.client .badge, body.client .pv-sp, body.client .pv-tr { font-size: 12px !important; }
+/* Instruments / Equipment (approved layouts kept) - only the small labels raised to the readable minimum */
+body.client .inst .in-g, body.client .inst .in-p, body.client .inst .in-ends span { font-size: 12px; }
+body.client .eqc-top .eqc-tag, body.client .eqc-stats > div > span { font-size: 12px; }
+body.client .eqc-top .eqc-pill .st { font-size: 13px; }
+
+/* SC01: tables - one alignment (left) for every header and cell */
+body.client table th, body.client table td { text-align: left !important; }
+body.client table td.num, body.client table .num { font-variant-numeric: tabular-nums; }
+
+/* ---------- date range picker (one calendar icon) ---------- */
+.dr-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+.dr-pick { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px 4px 12px; border: 1px solid #71717A; border-radius: 12px; background: #fff; }
+.dr-pick[hidden] { display: none; }
+.dr-pick input[type="date"] { border: 0; background: transparent; font: inherit; font-size: 15px; min-height: 36px; padding: 0 4px; color: var(--fx-ink, #151515); }
+.dr-pick input[type="date"]::-webkit-calendar-picker-indicator { opacity: .55; cursor: pointer; }
+.dr-pick .v3-cal, .dr-applied .v3-cal { width: 18px; height: 18px; flex: none; color: var(--fx-ink-2, #55554f); }
+.dr-dash { color: var(--fx-ink-2, #55554f); }
+.dr-applied { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--fx-ink-2, #55554f); font-variant-numeric: tabular-nums; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- info icon (right of a heading) + tooltip ---------- */
+.v3-info { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; min-width: 28px; padding: 0;
+  margin-left: auto; border: 0; border-radius: 999px; background: transparent; color: var(--fx-ink-2, #55554f); cursor: pointer; }
+.v3-info svg { width: 20px; height: 20px; }
+.v3-info:hover, .v3-info:focus-visible { background: #f1f1ec; color: var(--fx-ink, #151515); }
+.v3-info:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 2px; }
+.v3-tip { position: absolute; z-index: 400; max-width: 320px; padding: 12px 16px; border-radius: 8px; background: #18181b; color: #fff;
+  font-size: 14px; line-height: 1.45; box-shadow: 0 4px 12px rgb(0 0 0 / .18); }
+
+/* ---------- small centred pop-up (Save / Cancel) ---------- */
+.v3-pop-bg { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgb(0 0 0 / .32); }
+.v3-pop { width: min(440px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgb(0 0 0 / .18); }
+.v3-pop-h { display: flex; align-items: center; gap: 12px; padding: 16px 24px 8px; }
+.v3-pop-h h3 { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.3; flex: 1; min-width: 0; }
+.v3-x { width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; font-size: 24px; line-height: 1; cursor: pointer; color: #52525b; }
+.v3-x:hover { background: #f4f4f5; }
+.v3-pop-b { padding: 8px 24px 8px; font-size: 16px; }
+.v3-pop-b label { display: block; font-weight: 500; margin: 8px 0 4px; }
+.v3-pop-b input[type="number"], .v3-pop-b input[type="text"], .v3-pop-b select { width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid #71717A; border-radius: 4px; font-size: 16px; }
+.v3-pop-b .v3-hint { font-size: 14px; color: #52525b; margin-top: 4px; }
+.v3-pop-b .v3-long { margin: 0; line-height: 1.55; max-width: 70ch; }
+.v3-pop-msg { padding: 0 24px; color: var(--st-alarm); font-size: 14px; min-height: 0; }
+.v3-pop-msg:empty { display: none; }
+.v3-pop-f { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px 24px; }
+.v3-pop-f .btn { min-height: 44px; padding: 8px 20px; }
+
+/* ---------- table search box ---------- */
+.v3-search { display: inline-flex; align-items: center; gap: 8px; min-width: min(280px, 100%); padding: 0 12px; border: 1px solid #71717A; border-radius: 8px; background: #fff; }
+.v3-search svg { width: 18px; height: 18px; flex: none; color: #52525b; }
+.v3-search input { border: 0; outline: 0; background: transparent; min-height: 40px; font-size: 16px; width: 100%; min-width: 0; }
+.v3-search:focus-within { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 1px; }
+
+/* ---------- edit (pencil) icon button right beside a value ---------- */
+.v3-pen { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; margin-left: 8px; vertical-align: middle;
+  border: 1px solid #d4d4d8; border-radius: 8px; background: #fff; color: #3f3f46; cursor: pointer; }
+.v3-pen svg { width: 16px; height: 16px; }
+.v3-pen:hover { border-color: #71717A; background: #f4f4f5; }
+.v3-pen:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 2px; }
+.v3-pen[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* ---------- live value state vs alarm set point ---------- */
+.lv-warn { color: var(--st-warn) !important; font-weight: 700; }
+.lv-alarm { color: var(--st-alarm) !important; font-weight: 700; }
+.lv-warn::after { content: " ⚠"; font-size: .85em; }
+.lv-alarm::after { content: " ✕"; font-size: .85em; }
+
+/* ---------- print one element (Save as PDF) ---------- */
+.v3-print-title { display: none; }
+@media print {
+  body.v3-printing * { visibility: hidden !important; }
+  body.v3-printing .v3-print-me, body.v3-printing .v3-print-me * { visibility: visible !important; }
+  body.v3-printing .v3-print-me { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: 0 !important; }
+  body.v3-printing .v3-print-title { display: block; font-size: 14pt; font-weight: 600; margin: 0 0 8pt; }
+  body.v3-printing .no-print, body.v3-printing .v3-search, body.v3-printing button { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-tip, .v3-pop { transition: none !important; animation: none !important; }
+}
