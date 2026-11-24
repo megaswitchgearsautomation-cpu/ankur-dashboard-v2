@@ -9,7 +9,15 @@ backend/config/settings*.json
 
 # local backups
 backend/config/*.before-*.json
+*.before-*
+*.v2-original
 design-backup/
+
+# secrets written by the admin page (API key / WhatsApp token) - never in git, wherever they end up
+ai_config.json
+whatsapp.json
+user_prefs.json
+*.sqlite3*
 
 # local tool config
 .claude/

@@ -85,6 +85,20 @@ class TestReports(unittest.TestCase):
         self.assertIn(b"Date / time", sheet)
         self.assertNotIn(b"Minimum", sheet)
 
+    def test_csv_and_ist_hour_buckets(self):
+        r = self.rep(interval=3600, ids=["T_01"])
+        # hourly buckets start on the IST hour (minute 00 in IST), not on the UTC hour (= HH:30 IST)
+        self.assertTrue(all(reports._ist(x["t"], "%M") == "00" for x in r["rows"]))
+        rr = reports.build(self.store, self.hist, ["T_01"], self.t0, self.t1, 900, title="Data log - Temperature")
+        data = reports.to_csv(rr)
+        import csv
+        rows = list(csv.reader(io.StringIO(data.decode("utf-8-sig"))))
+        self.assertEqual(rows[0], ["Data log - Temperature"])
+        hdr = next(i for i, x in enumerate(rows) if x[:2] == ["Date (IST)", "Time (IST)"])
+        self.assertEqual(len(rows) - hdr - 1, len(rr["rows"]))
+        self.assertEqual(len(rows[hdr]), 3)                                # date, time, T-01
+        self.assertTrue(reports.filename(rr, "csv").startswith("Data_log_-_Temperature_"))
+
     def test_pdf(self):
         data = reports.to_pdf(self.rep(interval=300))
         self.assertTrue(data.startswith(b"%PDF-1.4"))

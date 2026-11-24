@@ -2,15 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Plant Monitoring Dashboard</title>
   <link rel="icon" href="img/ankur-mark.png">
   <link rel="stylesheet" href="css/app.css">
   <!-- v2: same layout as v1, re-skinned with the Ankur SCADA design (colours, frame, tiles, buttons) -->
-  <link rel="stylesheet" href="css/ankur-theme.css?v=20261102d">
-  <link rel="stylesheet" href="css/plant.css?v=20261103c">
+  <link rel="stylesheet" href="css/ankur-theme.css?v=20261114h">
+  <link rel="stylesheet" href="css/plant.css?v=20261114e">
   <!-- v3 look (client reference: clean light dashboard) - skin only -->
-  <link rel="stylesheet" href="css/fresh.css?v=20261104d">
+  <link rel="stylesheet" href="css/fresh.css?v=20261114u">
+  <!-- v3 (client review brief 14-11-2026): shared rules first, then one file per area -->
+  <link rel="stylesheet" href="css/v3-base.css?v=20261124b">
+  <link rel="stylesheet" href="css/v3-dash.css?v=20261124c">
+  <link rel="stylesheet" href="css/v3-setpoints.css?v=20261118a">
+  <link rel="stylesheet" href="css/v3-mimic.css?v=20261124a">
+  <link rel="stylesheet" href="css/v3-trends.css?v=20261116a">
+  <link rel="stylesheet" href="css/v3-reports.css?v=20261124b">
+  <link rel="stylesheet" href="css/v3-calendar.css?v=20261118a">
+  <!-- every screen size: phone / tablet / laptop / monitor (17-11-2026) - loaded last -->
+  <link rel="stylesheet" href="css/v3-plant3d.css?v=20261121o3">
+  <link rel="stylesheet" href="css/v3-responsive.css?v=20261118b">
 </head>
 <body class="client ankur">
 <div class="shell">
@@ -19,12 +30,13 @@
     <a class="rail-logo" href="#overview" title="Ankur Scientific"><img src="img/ankur-mark.png" alt="Ankur Scientific"></a>
     <nav class="rail-nav" id="nav">
       <a href="#overview" data-view="overview" title="Dashboard" aria-label="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg></a>
-      <a href="#levels" data-view="levels" title="Tank levels" aria-label="Tank levels"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M5 13h14"/><path d="M8 7h3M8 10h2" stroke-width="1.6"/></svg></a>
       <a href="#mimic" data-view="mimic" title="Mimic" aria-label="Mimic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="9" width="6" height="11" rx="1.5"/><rect x="16" y="4" width="6" height="16" rx="1.5"/><path d="M8 14h3v-4h5"/><circle cx="11.5" cy="17.5" r="2"/></svg></a>
+      <a href="#setpoints" data-view="setpoints" title="Set points" aria-label="Set points"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></a>
       <a href="#instruments" data-view="instruments" title="Instruments" aria-label="Instruments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17a8 8 0 1 1 16 0"/><path d="m12 13 3.5-4"/><path d="M8 21h8"/></svg></a>
       <a href="#equipment" data-view="equipment" title="Equipment" aria-label="Equipment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></a>
       <a href="#trends" data-view="trends" title="Trends" aria-label="Trends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg></a>
-      <a href="#datalog" data-view="datalog" title="Data log" aria-label="Data log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11M3 14.5h18"/></svg></a>
+      <a href="#io" data-view="io" title="IO list" aria-label="IO list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg></a>
+      <a href="#reports" data-view="reports" title="Reports" aria-label="Reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></a>
       <a href="#alarms" data-view="alarms" title="Alarms" aria-label="Alarms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span id="navAlarmCount" class="rail-badge hidden"></span></a>
     </nav>
     <div class="rail-foot">
@@ -40,19 +52,21 @@
       <div class="head-title">
         <h1 id="pageTitle">Plant dashboard</h1>
         <div class="sub"><svg class="pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span id="siteName">FSTP-200 Muttathara, Trivandrum</span>
-          <span class="dot-sep">·</span><span class="clock num" id="headClock"></span></div>
+          </div>
       </div>
       <nav class="head-nav" id="segNav" role="tablist" aria-label="Pages">
         <a href="#overview" data-view="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>Overview</a>
-        <a href="#levels" data-view="levels"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M5 13h14"/><path d="M8 7h3M8 10h2" stroke-width="1.6"/></svg>Tank levels</a>
         <a href="#mimic" data-view="mimic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="9" width="6" height="11" rx="1.5"/><rect x="16" y="4" width="6" height="16" rx="1.5"/><path d="M8 14h3v-4h5"/><circle cx="11.5" cy="17.5" r="2"/></svg>Mimic</a>
+        <a href="#setpoints" data-view="setpoints"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Set points</a>
         <a href="#instruments" data-view="instruments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17a8 8 0 1 1 16 0"/><path d="m12 13 3.5-4"/><path d="M8 21h8"/></svg>Instruments</a>
         <a href="#equipment" data-view="equipment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Equipment</a>
         <a href="#trends" data-view="trends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg>Trends</a>
-        <a href="#datalog" data-view="datalog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11M3 14.5h18"/></svg>Data log</a>
+        <a href="#io" data-view="io"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>IO list</a>
+        <a href="#reports" data-view="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Reports</a>
         <a href="#alarms" data-view="alarms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>Alarms<span class="nav-badge hidden" id="segAlarmCount"></span></a>
       </nav>
       <div class="head-right">
+        <span class="clock num head-clock" id="headClock"></span><!-- date / time on one line with help + data status (16-11-2026) -->
         <button class="help-btn" id="helpBtn" type="button" title="How to read this dashboard" aria-label="Help: how to read this dashboard">?</button>
         <div class="conn" id="connStrip"></div>
         <div class="brand-pair" title="Client: Ankur Scientific · Automation &amp; IoT: Medge Controls">
@@ -72,25 +86,21 @@
         <div class="ps" id="panelStatus"></div>
         <span class="ps-chip" id="psChip" hidden></span>
       </div>
-      <div id="kpAreas"></div>
+      <!-- v3: Plant areas tiles ("19 of 23 running") removed (brief SC01) -->
+      <div id="kpAreas" hidden></div>
+      <h3 class="ov-sec">Process areas <span>drag a card by its handle (or use the arrows) to change the order · Show more for details and trend</span></h3>
       <div class="kp" id="keyPoints"></div>
+      <h3 class="ov-sec">Trends &amp; other values</h3>
       <!-- one dashboard: key points above; equipment running + process trend; process values + alarms + equipment
            (availability, tank-level, pH/pressure mini cards and the run-hours list were duplicates and are removed) -->
       <div class="ov-grid ov-one ov-trend-only">
-        <div class="card chart-card">
+        <div class="card chart-card" id="ovTrendCard">
           <div class="card-head ov-th">
             <h2>Process trend <span class="muted" id="trendUnit"></span> <span class="tr-live sm" id="ovLiveBadge" title="Updates automatically"><span class="dot"></span>Live</span></h2>
             <div class="seg sm" id="ovTrendSeg"></div>
-            <div class="seg sm ov-rng" id="ovRangeSeg" role="group" aria-label="Time range">
-              <button data-m="30">30m</button><button data-m="60" class="active">1h</button><button data-m="480">8h</button><button data-m="1440">24h</button><button data-m="2880">2d</button><button data-m="10080">7d</button>
-            </div>
-            <!-- history: pick a past day (e.g. two days ago) - the trend shows that whole day and stops auto-updating -->
-            <label class="ov-date" title="Show a past day"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-              <input type="date" id="ovDate" aria-label="Show a past day"></label>
-            <button class="btn sm ov-back hidden" id="ovLiveBtn" type="button" title="Back to the live trend">● Back to live</button>
-            <select id="ovRange" hidden aria-hidden="true">
-              <option value="30">30</option><option value="60" selected>60</option><option value="480">480</option><option value="1440">1440</option><option value="2880">2880</option><option value="10080">10080</option>
-            </select>
+            <!-- v3 (SC06): presets + ONE calendar icon with a start / end date (MD.v3.rangePicker, filled by dashboard.js) -->
+            <div class="ov-rng tr-rangehost" id="ovRange" aria-label="Time range"></div>
+            <button class="dc-fs" id="ovFsBtn" type="button" aria-pressed="false" title="Show the process trend on the whole screen (Esc to close)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg><span>Full screen</span></button>
           </div>
           <div class="ov-chips" id="ovLegend"></div>
           <div class="chart" id="ovChart"></div>
@@ -109,21 +119,62 @@
       </div>
     </section>
 
-    <!-- TANK LEVELS: actual level against the settable HH / H / L / LL set points -->
-    <section data-section="levels" class="hidden">
-      <div class="lv-grid" id="lvCards"></div>
-      <div class="card" style="margin-top:16px">
-        <div class="card-head"><h2>Float-switch tanks <span class="muted small">level switches (ON = water has reached that switch)</span></h2></div>
-        <div class="lsw-grid" id="lvSwitches"></div>
+    <!-- REPORTS (v3 SC07): plant report + data log for a start..end date range, from the stored history -->
+    <section data-section="reports" class="hidden">
+      <div class="card">
+        <div class="card-head rp-head">
+          <h2>Reports</h2>
+          <div class="seg sm rp-view" id="rpView" role="group" aria-label="Report view"><button type="button" data-v="report" class="active" aria-pressed="true">Plant report</button><button type="button" data-v="log" aria-pressed="false">Data log</button></div>
+        </div>
+        <div class="rp-bar" id="rpBar">
+          <div class="seg sm rp-kind" id="rpKind" role="group" aria-label="Report period"><button type="button" data-k="daily" class="active">Daily</button><button type="button" data-k="weekly">Weekly</button><button type="button" data-k="monthly">Monthly</button><button type="button" data-k="custom">Custom</button></div>
+          <div class="dr-pick rp-dates" id="rpDates"><span id="rpCal"></span><label class="sr" for="rpFrom">Start date (IST)</label><input type="date" id="rpFrom"><span class="dr-dash">–</span><label class="sr" for="rpTo">End date (IST)</label><input type="date" id="rpTo"></div>
+          <label class="rp-every hidden" id="rpEveryL"><span>Every</span><select id="rpEvery" aria-label="Reading interval"><option value="60">1 min</option><option value="300">5 min</option><option value="900" selected>15 min</option><option value="3600">1 hour</option></select></label>
+          <button class="btn primary rp-run" id="rpRun" type="button">Show report</button>
+          <span class="spacer"></span>
+          <div class="rp-exp" role="group" aria-label="Export">
+            <button class="btn" id="rpXlsx" type="button" disabled>Excel</button>
+            <button class="btn" id="rpCsv" type="button" disabled>CSV</button>
+            <button class="btn" id="rpPdf" type="button" disabled>PDF</button>
+          </div>
+        </div>
+        <p class="rp-hist" id="rpHist"></p>
+        <div id="rpBody"><p class="dv-empty">Pick the period (start and end date), then press <b>Show report</b>.</p></div>
+        <div id="dlBody" class="hidden"><p class="dv-empty">Pick the period and the reading interval, then press <b>Show report</b>.</p></div>
       </div>
     </section>
 
+    <!-- (v3 brief SC02: the Tank levels page is merged into the dashboard process cards) -->
+
+    <!-- SET POINTS: alarm set points, tank level HH/H/L/LL, process set values (read-only) -->
+    <section data-section="setpoints" class="hidden"><div id="spBody"><p class="muted">Loading…</p></div></section>
+
+    <!-- SELECTORS: Auto / Manual and Main / Standby (HMI soft selector M bits), panel-style switches -->
+
     <!-- MIMIC -->
     <section data-section="mimic" class="hidden">
-      <div class="card">
+      <!-- v3 (SC04): 2D / 3D switch beside the heading (no 3D tab), alert strip + zoom toolbar above the drawing, full screen on this card -->
+      <div class="card mm-card" id="mimicCard">
         <div class="mm-tabs" id="mimicTabs" role="tablist" aria-label="Plant areas"></div>
-        <div class="mm-head"><h2 id="mimicTitle"></h2><span class="muted" id="mimicNote"></span></div>
-        <div class="mm-wrap" id="mimicHost"><div id="mimicSvg"></div><div class="mm-pop hidden" id="mimicPop"></div></div>
+        <div class="mm-head">
+          <div class="mm-ht"><h2 id="mimicTitle"></h2><span class="muted" id="mimicNote"></span></div>
+          <div class="seg sm mm-dim" id="mimicDim" role="group" aria-label="2D or 3D view">
+            <button type="button" data-d="2d" class="active" aria-pressed="true" title="2D process drawing">2D</button>
+            <button type="button" data-d="3d" aria-pressed="false" title="3D view of the whole plant">3D</button>
+          </div>
+        </div>
+        <div class="mm-bar">
+          <div class="mm-alerts" id="mimicAlerts" role="status" aria-live="polite"></div>
+          <div class="mm-tools" id="mimicTools" role="toolbar" aria-label="Mimic view">
+            <button type="button" class="mm-tb mm-z" id="mmZoomOut" title="Zoom out  (Ctrl + scroll down, or − key)" aria-label="Zoom out" aria-keyshortcuts="Control+Minus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14"/></svg></button>
+            <span class="mm-pct mm-z num" id="mmZoomPct" aria-live="polite" title="Zoom (100 % = whole drawing)">100 %</span>
+            <button type="button" class="mm-tb mm-z" id="mmZoomIn" title="Zoom in  (Ctrl + scroll up, or + key) · when zoomed in: scroll, drag or arrow keys to move" aria-label="Zoom in" aria-keyshortcuts="Control+Plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5v14"/></svg></button>
+            <button type="button" class="mm-tb mm-z" id="mmBoxBtn" aria-pressed="false" title="Zoom to an area: click, then drag a box over the part you want  (or Shift + drag)" aria-label="Zoom to an area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="13" height="11" rx="1" stroke-dasharray="3 2"/><circle cx="16" cy="16" r="4"/><path d="M19 19l3 3"/></svg></button>
+            <button type="button" class="mm-tb mm-z" id="mmFitBtn" title="Fit to screen / reset view  (0 key)" aria-label="Fit to screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+            <button type="button" class="mm-tb" id="mmFsBtn" title="Full screen" aria-label="Full screen" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/><path d="M4 4l6 6M20 4l-6 6M4 20l6-6M20 20l-6-6"/></svg><span class="mm-fs-txt">Full screen</span></button>
+          </div>
+        </div>
+        <div class="mm-wrap" id="mimicHost" tabindex="0" aria-label="Process mimic: drag to move, Ctrl + scroll or plus / minus to zoom, arrow keys to move, 0 to fit"><div id="mimicSvg"></div><div class="mm-pop hidden" id="mimicPop"></div></div>
         <div id="mimicLegend"></div>
       </div>
     </section>
@@ -131,29 +182,14 @@
     <!-- INSTRUMENTS (range, scaling, 4-20 mA signal) -->
     <section data-section="instruments" class="hidden">
       <div class="card">
-        <div class="card-head"><h2>Instruments &amp; scaling</h2></div>
+        <div class="card-head"><h2>Instruments</h2></div>
         <p class="inst-note" id="instNote"></p>
         <div class="inst-grid" id="instGrid"></div>
       </div>
     </section>
 
-    <!-- DATA LOG (HMI data log screens: temperature / pressure / others) -->
-    <section data-section="datalog" class="hidden">
-      <div class="card">
-        <div class="card-head dl-head">
-          <div class="seg sm" id="dlGroup" role="group" aria-label="Values"></div>
-          <div class="dl-tools">
-            <label>Period <select id="dlRange"><option value="1">Last 1 hour</option><option value="8">Last 8 hours</option>
-              <option value="24" selected>Last 24 hours</option><option value="168">Last 7 days</option></select></label>
-            <label>Every <select id="dlInt"><option value="60">1 min</option><option value="300">5 min</option>
-              <option value="900" selected>15 min</option><option value="3600">1 hour</option></select></label>
-            <a class="btn sm" id="dlXlsx" href="#" download>⭳ Excel</a>
-          </div>
-        </div>
-        <p class="inst-note" id="dlNote"></p>
-        <div class="table-wrap dl-wrap"><table class="dl-table" id="dlTable"></table></div>
-      </div>
-    </section>
+    <!-- (v3 SC07: the separate Data log page is removed - its readings are the "Data log" view of Reports;
+         the history keeps logging exactly as before) -->
 
     <!-- EQUIPMENT -->
     <section data-section="equipment" class="hidden">
@@ -167,7 +203,7 @@
         <span><i class="run"></i><b>Open</b> valve open limit switch ON</span>
         <span><i class="stop"></i><b>Closed</b> valve not open</span>
         <span class="muted">Run hours count up while a motor is running · Starts = number of times it started</span>
-        <span class="muted">Signals: <b>CMD</b> = PLC start command · <b>RUN</b> = run feedback · <b>TRIP</b> = trip input (lit = ON)</span>
+        <span class="muted">Signals: <b>CMD</b> = start command · <b>RUN</b> = run feedback · <b>TRIP</b> = trip input (lit = ON)</span>
       </div>
       <div class="card">
         <div class="card-head eq-head">
@@ -193,22 +229,36 @@
           </div>
           <div class="tr-tools">
             <span class="tr-live" id="trLive" title="Charts refresh automatically"><span class="dot"></span>Live</span>
-            <div class="seg sm" id="trRangeSeg" role="group" aria-label="Time range">
-              <button data-m="15">15 min</button><button data-m="60" class="active">1 hour</button><button data-m="480">8 hours</button>
-              <button data-m="1440">24 hours</button><button data-m="10080">7 days</button>
-            </div>
             <div class="seg sm" id="trViewSeg" role="group" aria-label="Layout">
               <button data-v="grid" class="active" title="One chart per value">Separate</button><button data-v="combined" title="Values with the same unit on one chart">Combined</button>
             </div>
-            <button class="btn sm" id="trCsv" title="Download the selected values for this time range">⭳ CSV</button>
-            <select id="trendRange" hidden aria-hidden="true">
-              <option value="15">15</option><option value="60" selected>60</option><option value="480">480</option><option value="1440">1440</option><option value="10080">10080</option>
-            </select>
+            <button class="btn tr-exp" id="trCsv" type="button" title="Download the selected values for the range shown">Export CSV</button>
+            <button class="btn tr-exp" id="trPdf" type="button" title="Print the charts or save them as PDF">Export PDF</button>
           </div>
         </div>
+        <!-- v3 (SC06): ONE range control - presets + one calendar icon with start / end date; applied range shown -->
+        <div class="tr-range tr-rangehost" id="trRange" aria-label="Time range"></div>
+        <p class="tr-hint">Zoom: drag across a chart, or use <b>−</b> / <b>+</b> above each chart · <b>‹ ›</b> move earlier / later · <b>Full range</b> returns to the selected range. Gaps in a line = no data recorded.</p>
         <div class="tr-picker" id="tagPicker"></div>
       </div>
       <div class="charts" id="charts"></div>
+    </section>
+
+    <!-- IO LIST: every PLC input / output, like the HMI screens IO DI 0-6, IO DO 0-3, IO AI -->
+    <section data-section="io" class="hidden">
+      <div class="card io-card" id="ioCard">
+        <!-- v3 (brief SC05): this bar (tabs, search, export) stays at the top while the list scrolls; the list is read-only -->
+        <div class="card-head io-head">
+          <h2>IO list <span class="muted">every input and output of the panel, live</span></h2>
+          <div class="io-bar">
+            <div class="seg sm" id="ioTabs" role="tablist" aria-label="Signal type"></div>
+            <input class="io-search no-print" id="ioSearch" type="search" placeholder="Search name or address (e.g. X2.3, sludge)" aria-label="Search signals">
+            <span class="io-exp no-print"><button class="btn sm" id="ioCsv" type="button" title="Download the signals shown as a CSV file">⭳ CSV</button><button class="btn sm" id="ioPdf" type="button" title="Print or save the signals shown as PDF">PDF</button></span>
+          </div>
+          <div class="io-sum" id="ioSum"></div>
+        </div>
+        <div id="ioBody"><p class="muted">Loading…</p></div>
+      </div>
     </section>
 
     <!-- ALARMS -->
@@ -219,12 +269,12 @@
       </div>
       <div class="card" style="margin-top:16px">
         <div class="card-head al-hhead">
-          <h2>Alarm history</h2>
-          <div class="seg sm" id="histRangeSeg" role="group" aria-label="History range">
-            <button data-h="24">24 hours</button><button data-h="72" class="active">3 days</button><button data-h="168">7 days</button><button data-h="720">30 days</button>
-          </div>
-          <select id="histRange" hidden aria-hidden="true"><option value="24">24</option><option value="72" selected>72</option><option value="168">168</option><option value="720">720</option></select>
+          <h2>Alarm history <span class="count" id="histCount"></span></h2>
+          <div class="tr-rangehost al-hrange" id="histRange" aria-label="History range"></div>
         </div>
+        <div class="al-htools"><span id="histSearch"></span><span class="spacer"></span>
+          <button class="btn tr-exp" id="histCsv" type="button" title="Download the rows shown">Export CSV</button>
+          <button class="btn tr-exp" id="histPdf" type="button" title="Print the rows shown or save them as PDF">Export PDF</button></div>
         <div class="table-wrap"><table id="histTable" class="al-table"></table></div>
       </div>
     </section>
@@ -250,10 +300,16 @@
 <div id="drawerBg" class="drawer-bg hidden"></div>
 <aside id="drawer" class="drawer hidden" aria-modal="true" role="dialog"></aside>
 
-<script src="js/common.js"></script>
-<script src="js/chart.js?v=20261104a"></script>
-<script src="js/plant.js?v=20261104d"></script>
-<script src="js/dashboard.js?v=20261104a"></script>
-<script src="js/ai.js?v=20261103b"></script>
+<script src="js/common.js?v=20261105a"></script>
+<script src="js/v3-common.js?v=20261124b"></script>
+<script src="js/chart.js?v=20261116a"></script>
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/" } }</script>
+<script type="module" src="js/plant3d.mjs?v=20261121o3"></script>
+<script src="js/plant.js?v=20261124a"></script>
+<script src="js/shiftreports.js?v=20261124b"></script>
+<script src="js/dashboard.js?v=20261124b"></script>
+<script src="js/v3-info.js?v=20261120a"></script>
+<script src="js/v3-responsive.js?v=20261120c"></script>
+<!-- v3: Plant Assistant owl button + chat pop-up removed (brief SC01). js/ai.js and the backend are kept, unused. -->
 </body>
 </html>

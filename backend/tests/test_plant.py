@@ -41,6 +41,17 @@ class TestScalingTags(unittest.TestCase):
             self.assertEqual(self.by_id[aid + "_RMAX"]["device"], f"D{base + 2}")
             self.assertEqual(self.by_id[aid + "_MA"]["device"], f"D{base + 4}")
 
+    def test_spares_have_scaling_block(self):
+        # spare analog inputs can be scaled before they are used: same PLC block rule as the instruments
+        spares = [t for t in self.tags if t.get("group") == "Spare" and t["id"].startswith("AI_SPARE_") and t["id"].count("_") == 3]
+        self.assertTrue(spares)
+        for t in spares:
+            base = int(t["device"][1:]) - 8
+            for suffix, off in (("_RMIN", 0), ("_RMAX", 2), ("_MA", 4)):
+                c = self.by_id.get(t["id"] + suffix)
+                self.assertIsNotNone(c, t["id"] + suffix)
+                self.assertEqual((c["device"], c["scale_of"], c["group"]), (f"D{base + off}", t["id"], "Scaling"))
+
     def test_aux_groups(self):
         self.assertIn("Scaling", CLIENT_AUX_GROUPS)
         self.assertIn("Level switches", CLIENT_AUX_GROUPS)
@@ -57,9 +68,11 @@ class TestScalingTags(unittest.TestCase):
     def test_selectors_linked(self):
         with open(os.path.join(os.path.dirname(TAGS), "equipment.json"), encoding="utf-8") as f:
             eq = {e["id"]: e for e in json.load(f)}
-        # verified on the HMI: sludge pair M6000/M7000, filtrate pair M6006/M7006, sludge feed valve M6029
+        # verified on the HMI: sludge pair A/M M6000, filtrate pair M6006, sludge feed valve M6029.
+        # No Main/Standby selector in the PLC logic (main / standby run by push buttons in Auto): no ms_tag, no SEL_MS_*.
         self.assertEqual(self.by_id[eq["OP_P1B"]["am_tag"]]["device"], "M6000")
-        self.assertEqual(self.by_id[eq["OP_P5A"]["ms_tag"]]["device"], "M7006")
+        self.assertFalse(any(e.get("ms_tag") for e in eq.values()))
+        self.assertFalse(any(t.startswith("SEL_MS_") for t in self.by_id))
         self.assertEqual(self.by_id[eq["MV_01"]["am_tag"]]["device"], "M6029")
         self.assertTrue(all(e.get("am_tag") in self.by_id for e in eq.values()))
 

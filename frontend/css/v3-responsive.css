@@ -1,0 +1,161 @@
+/* v3-responsive (17-11-2026): one layout for every screen - phone, tablet, laptop, PC monitor.
+   Loaded last, so these rules win. Breakpoints:
+     <= 760 px   phone   : top bar with a Menu button, tables become cards, one column
+     761-1100 px tablet  : icon-only side bar (names on hover), header wraps, 2-3 columns
+     > 1100 px  laptop / monitor : unchanged (labelled side bar) */
+
+/* ---------- header never wider than the screen (it caused a sideways scroll on tablets) ---------- */
+.ankur .head { min-width: 0; }
+.ankur .head-right { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; min-width: 0; max-width: 100%; }
+.ankur .head-right .conn { min-width: 0; }
+@media (max-width: 1100px) { .ankur .head-right .brand-pair { display: none; } }
+
+/* ---------- menu button: only on phones ---------- */
+.rail-menu { display: none; }
+
+/* =========================================================================================
+   TABLET 761-1100: narrow icon side bar, so the page gets the width
+   ========================================================================================= */
+@media (min-width: 761px) and (max-width: 1100px) {
+  .ankur .shell { grid-template-columns: 72px minmax(0, 1fr); margin: 10px; }
+  .ankur .rail { top: 10px; height: calc(100vh - 20px); padding: 16px 10px; align-items: center; }
+  .ankur .rail-logo { padding: 0 0 12px; justify-content: center; }
+  .ankur .rail-logo::after, .ankur .rail-nav a::after, .ankur .rail-btn::after { display: none; }
+  .ankur .rail-nav { align-items: center; }
+  .ankur .rail-nav a, .ankur .rail-btn { width: 46px; height: 46px; padding: 0; justify-content: center; position: relative; }
+  .ankur .rail-badge { position: absolute; top: 2px; right: 0; margin: 0; }
+  .ankur .rail-foot { align-items: center; }
+  .ankur .content { padding: 16px 18px 24px; }
+  /* panel & safety: summary on its own row, devices fill the row (no squashed 1-letter names) */
+  [data-section="overview"] #panelStatus.ps { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important; }
+  [data-section="overview"] #panelStatus .ps-sum { grid-column: 1 / -1; grid-row: auto; }
+  [data-section="overview"] #panelStatus .ps-sum .ps-k { min-height: 0; }
+  .eq-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+
+/* =========================================================================================
+   PHONE <= 760
+   ========================================================================================= */
+@media (max-width: 760px) {
+  /* --- top bar: logo + name on the left, settings / sign out on the right --- */
+  .ankur .rail { position: sticky; top: 0; z-index: 60; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 8px;
+    padding: 6px 12px; overflow: visible; box-shadow: 0 1px 0 var(--fx-line, #e4e4e7); }
+  .ankur .rail-logo { display: flex; align-items: center; gap: 8px; margin-right: auto; }
+  .ankur .rail-logo img { width: 30px; height: 30px; }
+  .ankur .rail-logo::after { display: block; content: "Ankur FSTP-200"; font-size: 15px; }
+  .rail-menu { display: none !important; }                 /* phone pages are the icon bar at the bottom (user 18-11-2026) */
+  .ankur .rail-foot { display: flex; flex-direction: row; gap: 4px; margin: 0; padding: 0; border: 0; }
+  .ankur .rail-foot .rail-btn { width: 40px; height: 40px; padding: 0; justify-content: center; }
+  .ankur .rail-foot .rail-btn::after { display: none; }
+
+  /* --- page icons: fixed bar at the bottom of the screen, like the tablet icon bar --- */
+  .ankur .rail .rail-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; display: flex; flex-direction: row; justify-content: space-around;
+    align-items: center; gap: 0; margin: 0; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); background: #fff;
+    border-top: 1px solid var(--fx-line, #e4e4e7); box-shadow: 0 -2px 10px rgb(0 0 0 / .06); overflow-x: auto; scrollbar-width: none; }
+  .ankur .rail .rail-nav::-webkit-scrollbar { display: none; }
+  .ankur .rail .rail-nav a { position: relative; flex: 1 0 40px; max-width: 64px; height: 44px; padding: 0; justify-content: center; border-radius: 12px; }
+  .ankur .rail .rail-nav a::after { display: none; }
+  .ankur .rail .rail-nav a svg { width: 22px; height: 22px; }
+  .ankur .rail .rail-nav a.active { background: #eef3e2; }
+  .ankur .rail .rail-badge { position: absolute; top: 2px; right: 4px; margin: 0; }
+  body.ankur { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }   /* page content never hidden behind the bar */
+
+  /* --- page header: compact --- */
+  .ankur .content { padding: 12px 12px 24px; }
+  .ankur .head { gap: 8px; padding-bottom: 4px; }
+  .ankur .head-ic { display: none; }
+  .ankur .head-title { min-width: 0; flex: 1 1 100%; }
+  .ankur .head-title h1 { font-size: 22px; }
+  .ankur .head-right { width: 100%; justify-content: flex-start; }
+  #banner { font-size: 13px; }
+
+  /* --- panel & safety: one row per device, name left, state right --- */
+  [data-section="overview"] #panelStatus.ps { grid-template-columns: 1fr !important; }
+  [data-section="overview"] .psd, [data-section="overview"] .psx, [data-section="overview"] .ps-tower { min-height: 0; align-items: center; padding: 8px 12px; }
+  [data-section="overview"] .psd-txt { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+  [data-section="overview"] .psd-n { min-height: 0; -webkit-line-clamp: 2; }
+  [data-section="overview"] .psd-v { text-align: right; flex: none; max-width: 50%; }
+  [data-section="overview"] .ps-sum .ps-k { min-height: 0; }
+
+  /* --- summary tiles two per row --- */
+  .eq-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+  .eq-kpis > :first-child { grid-column: 1 / -1; }
+  .al-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+  /* --- buttons and bars wrap instead of overflowing --- */
+  .sp-bar .v3-search, .sp-bar .v3-search input { width: 100%; }
+  .seg { flex-wrap: wrap; }
+}
+
+/* =========================================================================================
+   PHONE + TABLET PORTRAIT <= 900: tables become cards (no sideways scrolling)
+   one card per table row, each value with its column name (labels set by v3-responsive.js)
+   ========================================================================================= */
+@media (max-width: 900px) {
+  .ankur :is(table.sp-t, table.io-t, table.al-table) { min-width: 0 !important; width: 100%; border: 0; }
+  .ankur :is(table.sp-t, table.io-t, table.al-table) thead { display: none; }
+  .ankur :is(table.sp-t, table.io-t, table.al-table), .ankur :is(table.sp-t, table.io-t, table.al-table) tbody { display: block; }
+  .ankur :is(table.sp-t, table.io-t, table.al-table) tr { display: block; margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--fx-line, #e4e4e7); border-radius: 12px; background: #fff; }
+  .ankur :is(table.sp-t, table.io-t, table.al-table) td { display: block; min-width: 0 !important; width: auto !important; min-height: 36px; line-height: 24px;
+    padding: 6px 0 !important; border: 0 !important; border-top: 1px solid #f0f0f2 !important; white-space: normal !important; text-align: right !important; }
+  .ankur :is(table.sp-t, table.io-t, table.al-table) td::after { content: ""; display: block; clear: both; }
+  .ankur :is(table.sp-t, table.io-t, table.al-table) td:first-child { border-top: 0 !important; text-align: left !important; font-size: 16px; }
+  .ankur :is(table.sp-t, table.io-t, table.al-table) td[data-label]:not(:first-child)::before { content: attr(data-label); float: left; max-width: 45%; margin-right: 12px; text-align: left;
+    font-size: 13px; font-weight: 600; color: #52525b; }
+  .ankur :is(table.sp-t, table.io-t, table.al-table) td .v3-pen, .ankur :is(table.sp-t, table.io-t, table.al-table) td .sp-lock { vertical-align: middle; }
+  .ankur :is(table.sp-t, table.io-t, table.al-table) td > .sp-val:has(+ .v3-pen, + .sp-lock) { line-height: 24px; }
+  .ankur :is(table.sp-t, table.io-t, table.al-table) td:empty { display: none; }
+  .ankur :is(table.sp-t, table.io-t, table.al-table) td > .sp-val + .v3-pen, .ankur :is(table.sp-t, table.io-t, table.al-table) td > .sp-val + .sp-lock { float: none; margin-left: 8px; }
+  .ankur .table-wrap:has(> :is(table.sp-t, table.io-t, table.al-table)) { overflow: visible; border: 0; }
+}
+/* tablet landscape / small laptop: tables stay tables but tighter, so every column fits without sideways scrolling */
+@media (min-width: 901px) and (max-width: 1400px) {
+  .ankur .sp-t th { white-space: normal; }
+  .ankur .sp-t th, .ankur .sp-t td { padding: 10px 8px; }
+  .ankur .sp-t td:first-child { min-width: 150px; }
+  /* value and pencil on one line (a floated pencil dropped below the value in narrow columns); values get a fixed
+     width, so the pencils still line up down the column */
+  .ankur .sp-t td > .sp-val + .v3-pen, .ankur .sp-t td > .sp-val + .sp-lock { float: none; margin-left: 6px; vertical-align: middle; }
+  .ankur .sp-t td > .sp-val:has(+ .v3-pen, + .sp-lock) { display: inline-block; min-width: 4.6em; vertical-align: middle; }
+  .ankur .sp-t td:has(> .v3-pen) { white-space: nowrap !important; }
+  .ankur .sp-t .sp-oor { display: block; width: max-content; margin: 2px 0 0; }
+}
+/* alarm list: long texts wrap, so all columns fit on laptops */
+@media (min-width: 901px) and (max-width: 1500px) {
+  .ankur table.al-table th, .ankur table.al-table td { white-space: normal !important; padding-left: 8px; padding-right: 8px; }
+  .ankur table.al-table { min-width: 0 !important; }
+}
+/* tablets: two cards side by side */
+@media (min-width: 600px) and (max-width: 900px) {
+  .ankur :is(table.sp-t, table.io-t, table.al-table) tbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ankur :is(table.sp-t, table.io-t, table.al-table) tr { margin: 0; }
+}
+
+/* =========================================================================================
+   MIMIC on phones / small landscape screens: sheet tabs in one sideways-scrolling row,
+   in full screen the description is hidden so the drawing gets the screen
+   ========================================================================================= */
+@media (max-width: 760px), (max-height: 560px) {
+  #mimicCard .mm-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+  #mimicCard .mm-tabs > button { flex: none; white-space: nowrap; }
+  #mimicCard.mm-fs { padding: 8px; }
+  #mimicCard.mm-fs #mimicNote { display: none; }
+  #mimicCard.mm-fs .mm-ht { flex: 1 1 auto; min-width: 0; }
+  #mimicCard.mm-fs .mm-ht h2 { font-size: 16px; line-height: 1.25; margin: 0; }
+  #mimicCard.mm-fs .mm-head { display: flex !important; flex-direction: row !important; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0 !important; }
+  #mimicCard.mm-fs .mm-dim { flex: none; }
+  #mimicCard.mm-fs .mm-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 6px; }
+  #mimicCard.mm-fs .mm-alerts { flex: 1 1 auto; min-width: 0; }
+}
+
+/* very small phones */
+@media (max-width: 380px) {
+  .ankur .rail-logo::after { display: none; }
+}
+
+/* =========================================================================================
+   BIG MONITORS: keep line lengths readable, cards do not stretch forever
+   ========================================================================================= */
+@media (min-width: 2200px) {
+  .ankur .content { padding-left: 32px; padding-right: 32px; }
+}

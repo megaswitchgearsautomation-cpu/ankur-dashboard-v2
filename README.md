@@ -1,5 +1,8 @@
 # Medge Controls - Plant Monitoring Dashboard (Phase 1, read-only)
 
+> **Rebuild (Nov 2026):** see [docs/REBUILD_SETUP.md](docs/REBUILD_SETUP.md) for the current pages, roles
+> (admin / operator / viewer), gateway API mode, data-honesty rules and the list of information still needed.
+
 FSTP-200 Muttathara (Trivandrum) Op Panel for Ankur Scientific.
 **Delta AHCPU521-EN → Phoenix switch → Teltonika RUT200 (4G/VPN) → Backend → Web dashboard.**
 

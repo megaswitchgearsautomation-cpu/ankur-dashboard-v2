@@ -18,6 +18,9 @@ import time
 from datetime import datetime, timedelta, timezone
 
 DEFAULT_MODEL = "claude-opus-5-5"
+MODELS = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"]   # best / balanced / cheapest
+EFFORTS = ["low", "medium", "high"]
+NO_FALLBACK = {"claude-haiku-5-5"}       # server-side refusal fallback not offered for Haiku
 MAX_QUESTION = 1000          # characters
 MAX_HISTORY = 8              # previous turns (user + assistant messages) sent back for follow-up questions
 RATE_LIMIT = (10, 60)        # questions per session per window (seconds)
@@ -31,11 +34,14 @@ How to answer:
 - Use the plant knowledge below (P&ID, control philosophy, alarm list, troubleshooting) to explain causes and what to check. Give practical, ordered checks an operator can do. Say when something must be done by an electrician or the Ankur / Medge engineer, and remind about lock-out / tag-out before touching motors.
 - If the snapshot says the data is DEMO / simulated, say the values are simulated (not the real plant).
 - A float switch ON means liquid has reached it. For a tank with only HL / LL switches: HL ON = full/high, LL OFF = low/empty, between = normal. Level transmitter tanks (LT-01, LT-02) have a value in mm and HH/H/L/LL set points.
-- You cannot start, stop, open, close or change anything - the dashboard is read-only. If asked, explain how it is done on the HMI / panel instead.
+- The snapshot contains everything the dashboard shows: analog values with ranges, alarm set points and alarm delays, tank level set points, process set values, every machine with state, Auto/Manual mode, run hours and starts, float / pressure / flow switches, valve feedback, interlocks, active alarms and the recent alarm / event history. Use all of it - for "full status", "run hours", "which are in manual", "what changed" and similar questions, go through the relevant sections and list every item that matters.
+- You yourself cannot start, stop, open, close or change anything. Operators / admins change set points on the dashboard's **Set points** page; Auto / Manual is switched on the panel (the dashboard only shows it), and machines are started / stopped from the panel. Explain this when asked.
 - If the snapshot does not contain what is needed, say what is missing instead of guessing.
-- Answer in the user's language (English, Hindi or Hinglish as they write).
-- Be BRIEF: a one-line answer first, then at most 5 short bullet points (the most likely cause and the top checks first). No introductions, no repeating the question, no long background. Give more detail only when the user asks for it.
-- Use **bold** for tag numbers and states that matter. No tables.
+- You may also answer general questions (process engineering, pumps, motors, VFDs, instruments, water / sludge treatment, maintenance, safety, units and calculations) from your own knowledge, like a senior plant engineer - relate the answer to this plant when it helps.
+- Answer in the user's language (English, Hindi or Hinglish as they write; Devanagari if they write Devanagari).
+- Fit the length to the question: a direct one-line answer first. Simple questions get a short answer; "why", "how", troubleshooting, "full details" or "explain" questions get a complete, well-ordered answer with every relevant value and check. No introductions and no repeating the question.
+- Use **bold** for tag numbers, values and states that matter. Short markdown tables are fine for lists of many values (e.g. all run hours, all set points).
+- On this client dashboard say "plant" / "panel" / "control system" - do not use the words "PLC" or "HMI" in answers.
 """
 
 
@@ -54,6 +60,32 @@ def _fmt(v, dec=1):
     return str(v)
 
 
+def _levels_mm(t, aux):
+    """HH/H/L/LL set points of a level transmitter as {key: (value_in_tank_units, text)}.
+    The HMI set points are in % of the range (client philosophy: '% settable') when their unit is '%'."""
+    lo, hi = t.get("eng_min") or 0, t.get("eng_max")
+    out = {}
+    for k in ("HH", "H", "L", "LL"):
+        a = aux.get(f"{t['id']}_{k}_SP") or {}
+        v = a.get("value")
+        if v is None:
+            return {}
+        if a.get("unit") == "%" and hi not in (None, lo):
+            mm = lo + v / 100 * (hi - lo)
+            out[k] = (mm, f"{v:g}% ({mm:.0f} {t.get('unit') or ''})".strip())
+        else:
+            out[k] = (v, f"{v:g}")
+    return out
+
+
+def _alarm_txt(a):
+    """A tag's 'alarm' field: a dict of limit flags {'hi': ..., 'lo': ...} or a text; None when nothing is active."""
+    if isinstance(a, dict):
+        on = [k.upper() for k, v in a.items() if v]
+        return ", ".join(on) or None
+    return str(a) if a else None
+
+
 def _on(v):
     return v is True or v == 1 or (isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0.5)
 
@@ -63,8 +95,8 @@ def _on(v):
 # ---------------------------------------------------------------------------------------------
 def snapshot_text(live: dict) -> str:
     st = live.get("status") or {}
-    mode = {"demo": "DEMO - values are SIMULATED, not the real plant", "live": "LIVE from the PLC",
-            "offline": "OFFLINE - connection to the PLC lost, values may be old"}.get(st.get("state"), st.get("state") or "unknown")
+    mode = {"demo": "DEMO - values are SIMULATED, not the real plant", "live": "LIVE from the plant",
+            "offline": "OFFLINE - connection to the plant lost, values may be old"}.get(st.get("state"), st.get("state") or "unknown")
     lines = [f"LIVE SNAPSHOT at {_now_txt(live.get('server_time'))}", f"Data: {mode}"
              + (f" (last update {_now_txt(st['last_update'])})" if st.get("last_update") else "")]
     aux = live.get("aux") or {}
@@ -83,27 +115,38 @@ def snapshot_text(live: dict) -> str:
         s = sp(t["id"])
         if s is not None:
             extra.append(f"alarm SP {_fmt(s, t.get('decimals', 1))}")
-        lv = {k: (aux.get(f"{t['id']}_{k}_SP") or {}).get("value") for k in ("HH", "H", "L", "LL")}
-        if all(v is not None for v in lv.values()):
-            extra.append("HMI levels " + " ".join(f"{k} {v:g}" for k, v in lv.items()))
+        dly, act = aux.get(f"{t['id']}_ALM_DLY") or {}, aux.get(f"{t['id']}_ALM_ACT") or {}
+        if dly.get("value") is not None:
+            extra.append(f"alarm delay {_fmt(dly['value'], 0)} s (running {_fmt(act.get('value'), 0)} s)")
+        lv = _levels_mm(t, aux)
+        if lv:
+            extra.append("Level set points " + " ".join(f"{k} {txt}" for k, (_mm, txt) in lv.items()))
         elif t.get("levels"):
             extra.append("levels " + " ".join(f"{k.upper()} {v:g}" for k, v in t["levels"].items()))
         pct = ""
         if isinstance(t.get("value"), (int, float)) and t.get("eng_max") not in (None, t.get("eng_min")):
             pct = f" ({(t['value'] - (t.get('eng_min') or 0)) / (t['eng_max'] - (t.get('eng_min') or 0)) * 100:.0f}% of range)"
         q = "" if t.get("quality") in ("GOOD", "SIMULATED") else f" quality {t.get('quality')}"
-        al = f" ALARM {t['alarm']}" if t.get("alarm") else ""
+        al = f" ALARM {_alarm_txt(t.get('alarm'))}" if _alarm_txt(t.get("alarm")) else ""
         lines.append(f"- {t['id']} {t.get('name')} = {_fmt(t.get('value'), t.get('decimals', 1))} {t.get('unit') or ''}{pct}"
                      f" [{', '.join(extra)}]{q}{al}")
 
-    lines.append("\nEQUIPMENT (id | P&ID / tag | name | state | mode | run hours | starts)")
-    for e in live.get("equipment") or []:
+    eql = live.get("equipment") or []
+    n_run = sum(1 for e in eql if e.get("status") in ("RUNNING", "OPEN"))
+    n_trip = sum(1 for e in eql if e.get("status") in ("TRIP", "FAULT"))
+    n_man = sum(1 for e in eql if e.get("auto") is False)
+    lines.append(f"\nEQUIPMENT ({len(eql)} items: {n_run} running/open, {n_trip} tripped, {n_man} in Manual)"
+                 " (id | P&ID / tag | name | kW | state | mode | run hours | starts)")
+    for e in eql:
         mode_txt = "-" if e.get("auto") is None else ("Auto" if e["auto"] else "Manual")
         if e.get("pair") and e.get("standby_selected") is not None:
             mode_txt += ", standby selected" if e["standby_selected"] else ", main selected"
         io = e.get("io") or {}
         io_txt = " ".join(f"{k}={'1' if _on(v) else '0'}" for k, v in io.items() if v is not None)
-        lines.append(f"- {e['id']} | {e.get('tag_no')} | {e.get('name')} | {e.get('status')} | {mode_txt} | "
+        pid = EQUIP.get(e["id"], (None,))[0]
+        tag_txt = f"{pid} / {e.get('tag_no')}" if pid else e.get("tag_no")
+        kw = f"{e['kw']:g} kW" if isinstance(e.get("kw"), (int, float)) else "-"
+        lines.append(f"- {e['id']} | {tag_txt} | {e.get('name')} | {kw} | {e.get('status')} | {mode_txt} | "
                      f"{_fmt(e.get('run_hours'))} h | {e.get('starts', '-')}" + (f" | signals {io_txt}" if io_txt else ""))
 
     groups = {}
@@ -111,16 +154,30 @@ def snapshot_text(live: dict) -> str:
         if k.endswith("_ALM_SP") or k.endswith("_HH_SP") or k.endswith("_H_SP") or k.endswith("_L_SP") or k.endswith("_LL_SP"):
             continue
         groups.setdefault(a.get("group") or "Other", []).append((k, a))
-    for g in ("Level switches", "Safety", "Interlocks", "Set values", "Panel controls", "Panel indication", "PLC alarms", "Valve feedback"):
+    titles = {"PLC alarms": "PANEL ALARM SIGNALS", "Selectors": "AUTO / MANUAL SELECTORS (ON = Auto)"}
+    for g in ("Level switches", "Safety", "Interlocks", "Set values", "Selectors", "Panel controls", "Panel indication",
+              "PLC alarms", "Valve feedback"):
         items = groups.get(g)
         if not items:
             continue
-        lines.append(f"\n{g.upper()}")
+        lines.append(f"\n{titles.get(g, g.upper())}")
         for k, a in sorted(items, key=lambda x: x[1].get("name") or x[0]):
             v = a.get("value")
-            val = "no data" if v is None or a.get("quality") == "NODATA" else (
-                ("ON" if _on(v) else "OFF") if isinstance(v, bool) or g != "Set values" else f"{_fmt(v, a.get('decimals', 1))} {a.get('unit') or ''}")
-            lines.append(f"- {a.get('name') or k} = {val}")
+            if v is None or a.get("quality") == "NODATA":
+                val = "no data"
+            elif g == "Selectors":
+                val = "AUTO" if _on(v) else "MANUAL"
+            elif isinstance(v, bool) or g != "Set values":
+                val = "ON" if _on(v) else "OFF"
+            else:
+                val = f"{_fmt(v, a.get('decimals', 1))} {a.get('unit') or ''}".strip()
+                if a.get("unit") == "%":                       # level set points in % of the sludge tank range
+                    lt = _tag(live, "LT_01")
+                    if lt and lt.get("eng_max") not in (None, lt.get("eng_min")):
+                        lo = lt.get("eng_min") or 0
+                        val += f" ({lo + v / 100 * (lt['eng_max'] - lo):.0f} {lt.get('unit') or ''} of LT-01)"
+            name = (a.get("name") or k).replace(" - Auto/Manual selector", "")
+            lines.append(f"- {name} = {val}")
 
     al = live.get("alarms") or []
     lines.append(f"\nACTIVE ALARMS ({len(al)})")
@@ -133,6 +190,20 @@ def snapshot_text(live: dict) -> str:
                      + (f"; earlier fixes noted: {prev}" if prev else ""))
     if not al:
         lines.append("- none")
+
+    ra = live.get("recent_alarms")
+    if ra is not None:
+        lines.append(f"\nALARM HISTORY - LAST 24 H ({len(ra)}, newest first)")
+        for a in ra[:40]:
+            end = f"cleared {_now_txt(a['cleared_at'])}" if a.get("cleared_at") else "still active"
+            lines.append(f"- {_now_txt(a.get('raised_at'))}: [{a.get('priority')}] {a.get('message')} - {end}"
+                         + (f", acknowledged by {a['acked_by']}" if a.get("acked_by") else ""))
+        if not ra:
+            lines.append("- none")
+    rc = live.get("recent_changes")
+    if rc:
+        lines.append("\nRECENT SET POINT / SELECTOR CHANGES MADE ON THE DASHBOARD (newest first)")
+        lines += [f"- {_now_txt(c.get('ts'))}: {c.get('detail')}" for c in rc[:20]]
     return "\n".join(lines)
 
 
@@ -164,9 +235,9 @@ EQUIP = {
               [("tag", "LT_01"), ("sp", "SP_SLUDGE_VALVE_OPEN", "open level"), ("sp", "SP_SLUDGE_VALVE_CLOSE", "close level"), ("sw", "AIR", "instrument air")]),
     "OP_P5A": ("01-P-103", "filtrate pump main", "Starts at filtrate tank NL, stops at VLL.", [("tag", "LT_02")]),
     "OP_P5B": ("01-P-104", "filtrate pump standby", "Standby of 01-P-103: NL start, VLL stop.", [("tag", "LT_02")]),
-    "OP_P6A": ("03-P-301", "borewell ground water underground submersible pump main", "Starts at raw water tank LL, stops at HL.",
+    "OP_P6A": ("03-P-301", "ground water pump (underground submersible) main", "Starts at raw water tank LL, stops at HL.",
                [("sw", "RAW_LL", "raw water tank LL"), ("sw", "RAW_HL", "raw water tank HL"), ("sw", "FLOW", "flow switch 03-FS-301")]),
-    "OP_P6B": ("03-P-302", "borewell ground water underground submersible pump standby", "Standby of 03-P-301: LL start, HL stop.",
+    "OP_P6B": ("03-P-302", "ground water standby pump (underground submersible)", "Standby of 03-P-301: LL start, HL stop.",
                [("sw", "RAW_LL", "raw water tank LL"), ("sw", "RAW_HL", "raw water tank HL"), ("sw", "FLOW", "flow switch 03-FS-301")]),
     "OP_P14": ("03-P-303", "make-up makeup transfer supply pump main vfd", "Runs above raw water tank LL, stops at LL; VFD holds header >= 3 kg/cm2 from PT-301.",
                [("sw", "RAW_LL", "raw water tank LL"), ("tag", "PT_01")]),
@@ -197,7 +268,7 @@ TANKS = [
     ("Sludge storage tank (01-LT-101)", "sludge storage", ("lt", "LT_01"), "Feed valve 01-MV-101 opens at LL / closes at HH; sludge pumps 01-P-101/102 start at NL, stop at VLL.",
      ["MV_01", "OP_P1A", "OP_P1B", "AGIT"]),
     ("Filtrate tank (01-LT-102)", "filtrate", ("lt", "LT_02"), "Filtrate pumps 01-P-103/104 start at NL, stop at VLL.", ["OP_P5A", "OP_P5B"]),
-    ("Raw water storage tank (03-LS-301)", "raw storage", ("sw", ["RAW_HL", "RAW_LL"]), "Borewell pumps start at LL, stop at HL; make-up pumps stop at LL.",
+    ("Raw water storage tank (03-LS-301)", "raw storage", ("sw", ["RAW_HL", "RAW_LL"]), "Ground water pumps start at LL, stop at HL; make-up pumps stop at LL.",
      ["OP_P6A", "OP_P6B", "OP_P14", "OP_P15"]),
     ("Cooling tower-1 basin (06-LS-601)", "cooling 1 ct1 ct-1", ("sw", ["CT1_HL", "CT1_LL"]), "CT-1 pumps stop at LL; fan only with a pump.", ["OP_P7", "OP_P3", "OP_P11", "OP_F1"]),
     ("Cooling tower-2 basin (06-LS-602)", "cooling 2 ct2 ct-2", ("sw", ["CT2_HL", "CT2_LL"]), "06-P-604 stops at LL; fan only with the pump.", ["OP_P10", "OP_F2"]),
@@ -220,7 +291,8 @@ NOTRUN_STEPS = ["The PLC gave the START command but no RUN feedback came back.",
                 "Check the run-feedback auxiliary contact and its wiring to the PLC input.",
                 "For VFD motors: check the drive is ready (no fault, enable present)."]
 
-_HI = {"pump": "पंप", "tank": "टैंक", "trip": "ट्रिप", "level": "लेवल", "alarm": "अलार्म", "empty": "खाली", "full": "भरा"}
+_HI = {"pump": "पंप", "tank": "टैंक", "trip": "ट्रिप", "level": "लेवल", "alarm": "अलार्म", "empty": "खाली", "full": "भरा",
+       "pressure": "प्रेशर", "temperature": "टेम्परेचर", "temp": "तापमान", "set point": "सेट पॉइंट", "ph": "पीएच"}
 
 
 def _words(q):
@@ -319,11 +391,11 @@ def _equipment_answer(live, eid):
     elif st in ("STOPPED", "CLOSED"):
         steps = []
         if e.get("auto") is False:
-            why = f"{st.lower()} - in **Manual** (runs only when started from the HMI)"
+            why = f"{st.lower()} - in **Manual** (runs only when started from the panel)"
         elif e.get("pair") and e.get("standby_selected") is not None and (("standby" in (e.get("name") or "").lower()) != bool(e["standby_selected"])):
             why = f"{st.lower()} - **not the selected** pump of its main / standby pair"
         else:
-            why = f"{st.lower()} in Auto - held off **by the PLC rule** below"
+            why = f"{st.lower()} in Auto - held off **by the control rule** below"
     else:
         why, steps = f"**{st.lower()}** normally", []
     out = [f"**{pid}** {e.get('name')}: {why} ({mode})."]
@@ -343,14 +415,15 @@ def _tank_answer(live, t):
         if tg and isinstance(tg.get("value"), (int, float)):
             lo, hi = tg.get("eng_min") or 0, tg.get("eng_max") or 100
             p = (tg["value"] - lo) / (hi - lo) * 100 if hi != lo else 0
-            lv = {k: (aux.get(f"{src[1]}_{k}_SP") or {}).get("value") for k in ("HH", "H", "L", "LL")}
+            lvt = _levels_mm(tg, aux)                       # HMI % set points converted to mm for the comparison
+            lv = {k: mm for k, (mm, _t) in lvt.items()}
             where = ""
-            if all(v is not None for v in lv.values()):
+            if lv:
                 v = tg["value"]
                 where = (" - **above HH**" if v >= lv["HH"] else " - high (H-HH)" if v >= lv["H"] else " - normal" if v > lv["L"]
                          else " - low (LL-L)" if v > lv["LL"] else " - **at / below LL**")
             head = f"**{name}**: {tg['value']:.0f} {tg.get('unit') or ''} ({p:.0f}%){where}."
-            sp = ("- Set points: " + " · ".join(f"{k} {v:g}" for k, v in lv.items())) if all(v is not None for v in lv.values()) else ""
+            sp = ("- Set points: " + " · ".join(f"{k} {txt}" for k, (_mm, txt) in lvt.items())) if lvt else ""
         else:
             head, sp = f"**{name}**: no level value.", ""
     else:
@@ -391,6 +464,162 @@ def _tank_report(live):
     return rows
 
 
+PROCESS_GROUPS = {"Temperature": ("temperature", "temp", "garam", "tapman"), "Pressure": ("pressure", "dabav", "dabaav"),
+                  "Analysis": ("ph",)}
+
+
+def _process_groups(q):
+    """Which process values a question is about: temperature / pressure / pH, or all of them for
+    'process values', 'set point', 'within', 'limit'."""
+    want = [g for g, ws in PROCESS_GROUPS.items() if any(re.search(rf"\b{w}s?\b", q) for w in ws)]
+    if not want and re.search(r"\b(process values?|set ?points?|within|limits?|readings?)\b", q) and not re.search(r"\b(tank|level)\b", q):
+        want = list(PROCESS_GROUPS)
+    return want
+
+
+def _process_answer(live, groups):
+    """Each temperature / pressure / pH value against its alarm set point: within, close (>= 90 %), above."""
+    aux = live.get("aux") or {}
+    rows, above, close, nodata = [], [], [], []
+    for t in live.get("tags") or []:
+        if t.get("group") not in groups:
+            continue
+        v, d, u = t.get("value"), t.get("decimals", 1), t.get("unit") or ""
+        spa, bit = aux.get(f"{t['id']}_ALM_SP"), aux.get(f"{t['id']}_ALM")
+        sp = None if not spa or spa.get("value") is None or spa.get("quality") == "NODATA" else spa["value"]
+        alarm_on = bool(bit) and bit.get("value") is not None and _on(bit["value"])
+        name = t.get("name") or t["id"]
+        if not isinstance(v, (int, float)) or t.get("quality") in ("NODATA", "BAD", "CONFIG_ERROR"):
+            nodata.append(name)
+            rows.append(f"- {name}: **no data**")
+            continue
+        if sp is None:
+            rows.append(f"- {name}: **{_fmt(v, d)} {u}** (no alarm set point)" + (" - **alarm active**" if alarm_on else ""))
+            continue
+        if t.get("group") == "Analysis":              # pH: alarm direction not known - show value, set point and alarm bit
+            state = "**alarm active**" if alarm_on else "no alarm"
+        elif v >= sp:
+            state = "**ABOVE set point**"
+            above.append(name)
+        elif sp > 0 and v >= 0.9 * sp:
+            state = f"close to the set point ({v / sp * 100:.0f} %)"
+            close.append(name)
+        else:
+            state = "within"
+        if alarm_on and "alarm" not in state:
+            state += " - **alarm active**"
+        rows.append(f"- {name}: **{_fmt(v, d)} {u}** / set point {_fmt(sp, d)} {u} - {state}")
+    what = " and ".join({"Temperature": "temperatures", "Pressure": "pressures", "Analysis": "pH values"}[g] for g in groups)
+    if not rows:
+        return f"No {what} values on this dashboard."
+    head = (f"**{len(above)} above the alarm set point:** {', '.join(above)}." if above else
+            f"**All {what} are within their alarm set points.**" if not nodata else
+            f"**No {what} above the alarm set point** ({len(nodata)} without data).")
+    if close:
+        head += f" Close to it: {', '.join(close)}."
+    return head + "\n" + "\n".join(rows)
+
+
+def _pid_of(e):
+    return EQUIP.get(e["id"], (e.get("tag_no"),))[0] or e.get("tag_no") or e["id"]
+
+
+def _run_hours_answer(live):
+    eq = sorted(live.get("equipment") or [], key=lambda e: -(e.get("run_hours") or 0))
+    if not eq:
+        return "No equipment data."
+    rows = [f"| {_pid_of(e)} | {e.get('name')} | {_fmt(e.get('run_hours'))} h | {e.get('starts', '-')} | {e.get('status', '-')} |" for e in eq]
+    top = eq[0]
+    return (f"**Run hours** - highest: **{_pid_of(top)}** {top.get('name')} with **{_fmt(top.get('run_hours'))} h**.\n"
+            "| Machine | Name | Run hours | Starts | Now |\n|---|---|---|---|---|\n" + "\n".join(rows))
+
+
+def _mode_answer(live, want_manual_only):
+    eq = [e for e in live.get("equipment") or [] if e.get("auto") is not None]
+    man = [e for e in eq if e["auto"] is False]
+    out = [f"**{len(man)} of {len(eq)} machines in Manual**" + (":" if man else " - everything is in Auto.")]
+    out += [f"- **{_pid_of(e)}** {e.get('name')} - Manual ({(e.get('status') or '-').lower()})" for e in man]
+    if not want_manual_only:
+        out += [f"- {_pid_of(e)} {e.get('name')} - Auto ({(e.get('status') or '-').lower()})" for e in eq if e["auto"]]
+    out.append("_Auto / Manual is switched on the panel._")
+    return "\n".join(out)
+
+
+def _setpoint_list(live):
+    aux = live.get("aux") or {}
+    out = ["**Set points now:**", "", "**Alarm set points (temperature / pressure / pH):**"]
+    for t in live.get("tags") or []:
+        a = aux.get(f"{t['id']}_ALM_SP")
+        if a and a.get("value") is not None:
+            d = (aux.get(f"{t['id']}_ALM_DLY") or {}).get("value")
+            out.append(f"- {t.get('name')}: **{_fmt(a['value'], t.get('decimals', 1))} {t.get('unit') or ''}**"
+                       + (f", delay {_fmt(d, 0)} s" if d is not None else ""))
+    for t in live.get("tags") or []:
+        lv = _levels_mm(t, aux)
+        if lv:
+            out += ["", f"**{t.get('name')} level set points:** " + " · ".join(f"{k} {txt}" for k, (_mm, txt) in lv.items())]
+    sv = [a for a in aux.values() if a.get("group") == "Set values" and a.get("value") is not None]
+    if sv:
+        out += ["", "**Process set values:**"] + [f"- {a.get('name')}: **{_fmt(a['value'], a.get('decimals', 1))} {a.get('unit') or ''}**" for a in sv]
+    out.append("_Change them on the **Set points** page (operator / admin)._")
+    return "\n".join(out)
+
+
+def _match_instrument(q):
+    """'PT-01', 'pt01', 't-2', 'lt 01', 'ph' -> tag ids (PT_01 ...). PT-01 must not also match T-01."""
+    hits = []
+    for m in re.finditer(r"(?<![a-z])(pt|lt|ph|t)[\s_-]?0?(\d)(?!\d)", q):
+        hits.append(f"{m.group(1).upper()}_0{m.group(2)}")
+    if not hits and re.search(r"(?<![a-z])ph(?![a-z])", q):
+        hits.append("PH_01")
+    return list(dict.fromkeys(hits))
+
+
+def _instrument_answer(live, tid):
+    t = _tag(live, tid)
+    if not t:
+        return f"**{tid.replace('_', '-')}**: not on this dashboard."
+    aux = live.get("aux") or {}
+    v, d, u = t.get("value"), t.get("decimals", 1), t.get("unit") or ""
+    at = _alarm_txt(t.get("alarm"))
+    out = [f"**{t.get('name')}** = **{_fmt(v, d)} {u}**" + (f" - **ALARM {at}**" if at else "") + "."]
+    if t.get("eng_min") is not None and t.get("eng_max") is not None:
+        out.append(f"- Range {t['eng_min']:g} - {t['eng_max']:g} {u}")
+    sp = (aux.get(f"{tid}_ALM_SP") or {}).get("value")
+    if sp is not None:
+        state = ("**above the alarm set point**" if isinstance(v, (int, float)) and v >= sp and t.get("group") != "Analysis"
+                 else "below the alarm set point" if isinstance(v, (int, float)) and t.get("group") != "Analysis" else "")
+        out.append(f"- Alarm set point {_fmt(sp, d)} {u}" + (f" - {state}" if state else ""))
+    dly = (aux.get(f"{tid}_ALM_DLY") or {}).get("value")
+    if dly is not None:
+        out.append(f"- Alarm delay {_fmt(dly, 0)} s (running {_fmt((aux.get(f'{tid}_ALM_ACT') or {}).get('value'), 0)} s)")
+    lv = _levels_mm(t, aux)
+    if lv:
+        out.append("- Level set points: " + " · ".join(f"{k} {txt}" for k, (_mm, txt) in lv.items()))
+    if t.get("quality") not in ("GOOD", "SIMULATED"):
+        out.append(f"- Data quality: **{t.get('quality')}** - check the instrument / cable")
+    return "\n".join(out)
+
+
+HELP = ("I can answer from the live plant data: **alarms** and how to fix them, **tank levels**, any **pump / valve / fan** "
+        "(e.g. *why is 01-P-101 stopped?*), any **instrument** (*PT-01*, *T-02*, *pH*), **set points**, **run hours**, "
+        "**Auto / Manual**, **alarm history (24 h)** and the **full plant status**.\n"
+        "_Basic mode: an admin can add an Anthropic API key in Settings › Plant Assistant to let me answer any question in detail._")
+
+
+def _history_answer(live):
+    ra = live.get("recent_alarms")
+    if ra is None:
+        return "Alarm history is not available here - see the **Alarms** page."
+    if not ra:
+        return "**No alarms in the last 24 hours.**"
+    out = [f"**{len(ra)} alarm(s) in the last 24 h** (newest first):"]
+    out += [f"- {_now_txt(a.get('raised_at'))}: {a.get('message')} - {'cleared' if a.get('cleared_at') else '**still active**'}" for a in ra[:12]]
+    if len(ra) > 12:
+        out.append(f"- ... and {len(ra) - 12} more (Alarms page)")
+    return "\n".join(out)
+
+
 def offline_answer(question: str, live: dict) -> str:
     q = _words(question)
     demo = (live.get("status") or {}).get("state") == "demo"
@@ -398,6 +627,29 @@ def offline_answer(question: str, live: dict) -> str:
     al = live.get("alarms") or []
     eq = live.get("equipment") or []
     parts = []
+
+    if re.search(r"\b(help|what can you|kya puch|what to ask)\b", q) or q.strip() in ("hi", "hello", "namaste", "?"):
+        return HELP
+    if re.search(r"run ?(ning)? ?hours?|ghante|रन आवर|चलने के घंटे", q):
+        return head + _run_hours_answer(live)
+    if re.search(r"\b(history|today|last 24|yesterday|aaj|kal|happened)\b|आज|हिस्ट्री", q):
+        return head + _history_answer(live)
+    if re.search(r"\bmanual\b|\bauto\b|selector|मैनुअल|ऑटो", q) and not _match_equipment(q):
+        return head + _mode_answer(live, "manual" in q or "मैनुअल" in q)
+    if re.search(r"\b(set values?|all set ?points?|set ?points? list|list of set ?points?|show set ?points?)\b", q):
+        return head + _setpoint_list(live)
+    if re.search(r"\b(full|complete|overall|whole|entire)\b.*\b(status|details?|report|plant)\b|sab ?kuch|poora|पूरा|सारी", q):
+        status = offline_answer("plant summary", live)
+        proc = _process_answer(live, list(PROCESS_GROUPS))
+        return status + "\n\n" + proc + "\n\n" + _mode_answer(live, True)
+
+    inst = [] if _match_equipment(q) else _match_instrument(q)
+    if inst and not _match_tank(q):
+        return head + "\n\n".join(_instrument_answer(live, t) for t in inst[:3])
+
+    groups = _process_groups(q)                          # temperatures / pressures / pH vs their set points
+    if groups and not _match_equipment(q):
+        return head + _process_answer(live, groups)
 
     eqs = _match_equipment(q)
     tanks = [] if eqs else _match_tank(q)
@@ -418,7 +670,7 @@ def offline_answer(question: str, live: dict) -> str:
             parts.append(f"**{len(al)} active alarm(s):**")
             for a in al[:6]:
                 m = (a.get("message") or "").lower()
-                hint = ("check MPCB / overload / VFD fault, reset, restart from HMI" if "trip" in m else
+                hint = ("check MPCB / overload / VFD fault, reset, restart from the panel" if "trip" in m else
                         "start given, no run feedback - check MCC Auto/Remote, contactor, feedback contact" if "not run" in m else
                         "check the instrument / switch")
                 prev = next((n.get("note") for n in (a.get("previous_notes") or []) if n.get("note")), "")
@@ -498,6 +750,72 @@ class Assistant:
         client, cfg = self._get_client()
         return {"ai": client is not None, "model": (cfg.get("model") or DEFAULT_MODEL) if client else None}
 
+    # -- admin settings (the key is write-only: never returned to the browser) ----------------
+    def admin_settings(self):
+        cfg = self._config()
+        try:
+            import anthropic  # noqa: F401
+            sdk = True
+        except ImportError:
+            sdk = False
+        env = bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
+        return {"enabled": cfg.get("enabled", True) is not False, "model": cfg.get("model") or DEFAULT_MODEL,
+                "effort": cfg.get("effort") or "medium", "key_set": bool((cfg.get("api_key") or "").strip()),
+                "env_key": env, "sdk": sdk, "models": MODELS, "efforts": EFFORTS,
+                "active": self.status()["ai"]}
+
+    def save_admin_settings(self, b: dict):
+        cfg = self._config()
+        if "enabled" in b:
+            cfg["enabled"] = bool(b["enabled"])
+        if b.get("model"):
+            if b["model"] not in MODELS:
+                raise ValueError("Unknown model")
+            cfg["model"] = b["model"]
+        if b.get("effort"):
+            if b["effort"] not in EFFORTS:
+                raise ValueError("Unknown effort level")
+            cfg["effort"] = b["effort"]
+        if b.get("clear_key"):
+            cfg["api_key"] = ""
+        elif isinstance(b.get("api_key"), str) and b["api_key"].strip():
+            key = b["api_key"].strip()
+            if len(key) < 20 or len(key) > 400 or any(c.isspace() for c in key):
+                raise ValueError("That does not look like an Anthropic API key")
+            cfg["api_key"] = key
+        path = os.path.join(self.data_dir, "ai_config.json")
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+        os.replace(tmp, path)
+        with self._lock:
+            self._client = None                      # rebuilt with the new key on the next question
+        return self.admin_settings()
+
+    def test_connection(self):
+        """Checks the key and model access without spending tokens (models.retrieve)."""
+        client, cfg = self._get_client()
+        if client is None:
+            s = self.admin_settings()
+            why = ("the assistant is switched off" if not s["enabled"] else "the Anthropic SDK is not installed" if not s["sdk"]
+                   else "no API key is saved")
+            return {"ok": False, "error": f"Not connected: {why}."}
+        import anthropic
+        model = cfg.get("model") or DEFAULT_MODEL
+        try:
+            m = client.models.retrieve(model)
+        except anthropic.AuthenticationError:
+            return {"ok": False, "error": "The API key is not valid."}
+        except anthropic.PermissionDeniedError:
+            return {"ok": False, "error": f"The key has no access to {model}."}
+        except anthropic.NotFoundError:
+            return {"ok": False, "error": f"Model {model} not found for this key."}
+        except anthropic.APIConnectionError:
+            return {"ok": False, "error": "No internet connection to api.anthropic.com from this PC."}
+        except anthropic.APIStatusError as e:
+            return {"ok": False, "error": f"AI service error ({e.status_code})."}
+        return {"ok": True, "model": getattr(m, "id", model), "name": getattr(m, "display_name", model)}
+
     def rate_ok(self, session: str) -> bool:
         n, win = RATE_LIMIT
         now = time.time()
@@ -546,13 +864,13 @@ class Assistant:
                    "cache_control": {"type": "ephemeral"}}]     # stable prefix - cached across questions
         messages = self.clean_history(history) + [
             {"role": "user", "content": f"{snapshot_text(live)}\n\nQUESTION: {question}"}]   # volatile part last
+        kw = {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"} if model not in NO_FALLBACK else {}
         try:
             resp = client.beta.messages.create(
-                model=model, max_tokens=4000, system=system, messages=messages,
-                output_config={"effort": cfg.get("effort") or "medium"},
-                betas=["server-side-fallback-2026-07-01"], fallbacks="default")
+                model=model, max_tokens=8000, system=system, messages=messages,
+                output_config={"effort": cfg.get("effort") or "medium"}, **kw)
         except anthropic.AuthenticationError:
-            return {"ok": False, "error": "The AI key is not valid - check backend/data/ai_config.json."}
+            return {"ok": False, "error": "The AI key is not valid - an admin can check it in Settings › Plant Assistant."}
         except anthropic.PermissionDeniedError:
             return {"ok": False, "error": "The AI key has no permission for this model."}
         except anthropic.RateLimitError:

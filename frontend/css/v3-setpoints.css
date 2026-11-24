@@ -1,0 +1,95 @@
+/* v3-setpoints - v3 brief 14-11-2026: Set points page (SC03) + IO list (SC05). Spacing on the 4 px grid. */
+
+/* =========================================================================================
+   SC03 Set points
+   ========================================================================================= */
+.sp-card { scroll-margin-top: 16px; }
+.sp-card + .sp-card { margin-top: 24px; }
+.sp-card .card-head { display: flex; align-items: center; gap: 12px; flex-wrap: nowrap; }
+.sp-card .card-head h2 { margin: 0; min-width: 0; }
+.sp-card .card-head .v3-info { margin-left: auto; width: 44px; height: 44px; min-width: 44px; }   /* info icon on the right */
+.sp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 16px; }
+.sp-bar .v3-search { min-height: 48px; width: min(520px, 100%); }
+.sp-bar .v3-search svg { width: 20px; height: 20px; }
+.sp-bar .v3-search input { min-height: 46px; font-size: 17px; }
+
+/* tables: one left alignment for every header and cell (forced in v3-base.css) - nothing here re-aligns */
+.sp-t { width: 100%; border-collapse: collapse; }
+.sp-t th { font-size: 13px; font-weight: 600; color: #52525b; padding: 12px; vertical-align: bottom; white-space: nowrap; background: #f7f7f8; }
+.sp-t td { font-size: 16px; padding: 12px; vertical-align: middle; white-space: nowrap; }
+.sp-t td:first-child { white-space: normal; min-width: 200px; }
+.sp-t td:first-child b { font-size: 16px; }
+.sp-nm { display: block; font-size: 14px; color: #52525b; line-height: 1.2; margin-top: 2px; }   /* a 2-line name reads as one item */
+.sp-oor { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--st-alarm-bg, #fef2f2); border: 1px solid var(--st-alarm, #b91c1c);
+  color: var(--st-alarm, #b91c1c); font-size: 12px; font-weight: 700; line-height: 1.5; cursor: help; }
+/* edit pop-up: value outside the range - red box with the two ways out */
+.sp-range-err { margin: 12px 0 4px; padding: 12px 16px; border: 1px solid var(--st-alarm, #b91c1c); border-left-width: 4px; border-radius: 8px;
+  background: var(--st-alarm-bg, #fef2f2); color: #7f1d1d; font-size: 15px; line-height: 1.4; }
+.sp-range-err p { margin: 0 0 12px; }
+.sp-range-err b { color: var(--st-alarm, #b91c1c); }
+.sp-range-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.sp-range-btns .btn { min-height: 40px; }
+.sp-t td.num, .sp-t .sp-val { font-variant-numeric: tabular-nums; }
+.sp-val b, .sp-t .sp-val b { color: var(--fx-ink, #18181b); font-weight: 700; }        /* set point numbers black */
+.sp-val + .v3-pen, .sp-val + .sp-lock { margin-left: 8px; }
+/* in tables the pencil (or lock) sits at the right edge of its column, so every pencil lines up whatever the value length */
+.sp-t td > .sp-val + .v3-pen, .sp-t td > .sp-val + .sp-lock { float: right; margin-left: 16px; }
+.sp-t td > .sp-val:has(+ .v3-pen, + .sp-lock) { display: inline-block; line-height: 36px; }
+.sp-t .v3-pen { width: 36px; height: 36px; }
+.sp-lock { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; vertical-align: middle; color: #71717a; cursor: help; }
+.sp-lock svg { width: 16px; height: 16px; }
+.sp-th { display: inline-flex; align-items: center; gap: 4px; }
+/* the (i) beside a column heading takes no extra height, so every heading sits on the same line (client 18-11-2026) */
+.sp-th .v3-info { margin: -8px 0; width: 28px; height: 28px; min-width: 28px; }
+.sp-t thead th { vertical-align: middle; }
+.sp-alm .lv-warn, .sp-alm .lv-alarm { font-weight: 800; }
+
+.sp-lvs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 24px; }
+/* two tank tables side by side only when each fits without a sideways scrollbar */
+@media (max-width: 1700px) { .sp-lvs { grid-template-columns: 1fr; } }
+.sp-lv { scroll-margin-top: 16px; min-width: 0; border: 1px solid #e3e4dd; border-radius: 12px; padding: 16px; overflow: visible; }
+.sp-lv[hidden] { display: none; }
+.sp-lv-h { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 8px; }
+.sp-lv-h h3 { margin: 0; font-size: 18px; font-weight: 700; }
+.sp-lv-h .num { font-size: 16px; }
+.sp-lv .sp-t td:first-child { min-width: 0; }
+.sp-src { margin-top: 8px; font-size: 14px; color: #52525b; }
+.sp-flash { animation: spFlash 1.8s ease-out; }
+@keyframes spFlash { 0%, 40% { box-shadow: 0 0 0 3px var(--fx-lime-ink, #3e6b00); } 100% { box-shadow: 0 0 0 3px transparent; } }
+
+/* edit pop-up content */
+.v3-pop .sp-cur { margin: 0 0 8px; }
+.v3-pop .sp-warn { font-size: 14px; line-height: 1.45; padding: 8px 12px; margin: 8px 0; }
+
+@media (max-width: 760px) {
+  .sp-card, .sp-lv { scroll-margin-top: 72px; }          /* below the phone top bar */
+}
+@media (prefers-reduced-motion: reduce) { .sp-flash { animation: none; } }
+
+/* =========================================================================================
+   SC05 IO list: tabs + search + export stay at the top while the list scrolls; larger text
+   ========================================================================================= */
+.io-card { --io-top: 0px; }
+.io-card .io-head { position: sticky; top: var(--io-top, 0px); z-index: 100; display: flex; flex-direction: column; align-items: stretch; gap: 12px;
+  margin: 0 0 16px; padding: 12px 0; background: #fff; border-bottom: 1px solid var(--v3-sep, #e4e4e7); }
+.io-card .io-head h2 { margin: 0; }
+.io-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.io-bar .seg button { font-size: 16px; min-height: 44px; padding: 8px 16px; }
+.io-bar .io-search { margin-left: auto; min-width: min(320px, 100%); min-height: 44px; font-size: 16px; padding: 8px 16px; }
+.io-exp { display: inline-flex; gap: 8px; }
+.io-exp .btn { min-height: 44px; font-size: 15px; }
+.io-card .io-sum { margin: 0; font-size: 15px; }
+.io-card .io-grp h3 { font-size: 16px; margin: 0 0 8px; }
+.io-card .io-t th { font-size: 13px; padding: 8px 12px; }
+.io-card .io-t td { font-size: 16px; padding: 10px 12px; }
+.io-card .io-st { font-size: 14px; min-height: 28px; }
+.io-card .io-scsrc { font-size: 12px; }
+.io-card .io-fixed.io-dig { min-width: 640px; }
+.io-card .io-fixed.io-ai { min-width: 920px; }
+@media (max-width: 760px) {
+  .io-bar .io-search { margin-left: 0; width: 100%; }
+  .io-card .io-head { padding: 8px 0; }
+}
+@media print {
+  .io-card .io-head { position: static; border: 0; }
+}
