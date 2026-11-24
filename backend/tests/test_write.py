@@ -134,6 +134,35 @@ class TestWrite(unittest.TestCase):
             fake_ah500.stop(srv)
             shutil.rmtree(tmp, ignore_errors=True)
 
+    def test_demo_set_points_survive_restart(self):
+        """Demo mode: a set point / selector written from the dashboard is still there after a restart."""
+        import shutil
+        import tempfile
+        from app.config_store import ConfigStore
+        from app.engine import Engine
+        from app.historian import Historian
+        tmp = tempfile.mkdtemp()
+        try:
+            cfg = os.path.join(tmp, "config")
+            os.makedirs(cfg)
+            for f in ("tags.json", "equipment.json"):
+                shutil.copy(os.path.join(os.path.dirname(HERE), "config", f), cfg)
+            store = ConfigStore(cfg)
+            store.save_settings({"source": {"mode": "simulation"}})
+            hist = Historian(os.path.join(tmp, "h.sqlite3"))
+            try:
+                eng = Engine(store, hist)
+                self.assertEqual(eng.write_value("T_01_ALM_SP", 17.0)["value"], 17.0)
+                eng.write_value("SEL_AM_SLUDGE", True)
+                t01 = store.tag_map()["T_01_ALM_SP"]
+                again = Engine(ConfigStore(cfg), hist)                              # dashboard restarted
+                self.assertEqual(again._sim_analog(t01, 0.0, 0.0), 17.0)            # not the 170 default
+                self.assertIs(again._sim_override.get("SEL_AM_SLUDGE"), True)
+            finally:
+                hist.close()
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
 
 if __name__ == "__main__":
     unittest.main()

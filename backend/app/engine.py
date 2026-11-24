@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import collections
 import hashlib
+import json
 import math
+import os
 import random
 import threading
 import time
@@ -62,12 +64,35 @@ class Engine:
         self._last_runtime_save = time.time()
         self._last_purge = 0.0
         self._sim_trip = {}
-        self._sim_override = {}          # demo mode: values "written" from the dashboard
+        # demo mode: values "written" from the dashboard (set points, delays, selectors). Kept in
+        # config/sim_values.json so they survive a dashboard restart, like the PLC's retained registers.
+        self._sim_file = os.path.join(store.dir, "sim_values.json")
+        self._sim_override = self._sim_load()
         self.iot = IotLink()
         self.backfill = plc_buffer.Backfiller(historian)   # history the PLC kept while no dashboard PC was on
         self._api_next = 0.0                               # next gateway API read (gateway_api mode)
         for a in historian.open_alarms():
             self._open_alarms[(a["tag"], a["kind"])] = a
+
+    # -- demo values kept across restarts -----------------------------------------
+    def _sim_load(self):
+        try:
+            with open(self._sim_file, encoding="utf-8") as f:
+                d = json.load(f)
+            return {str(k): v for k, v in d.items() if isinstance(v, (bool, int, float))} if isinstance(d, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def _sim_set(self, tag_id, value):
+        with self._lock:
+            self._sim_override[tag_id] = value
+            try:
+                tmp = self._sim_file + ".tmp"
+                with open(tmp, "w", encoding="utf-8") as f:
+                    json.dump(self._sim_override, f, indent=1, sort_keys=True)
+                os.replace(tmp, self._sim_file)
+            except OSError:
+                pass                      # value still applies until the next restart
 
     # -- lifecycle --------------------------------------------------------------
     def start(self):
@@ -705,7 +730,7 @@ class Engine:
             if not lim[0] <= raw <= lim[1]:
                 raise ValueError("Value out of range for the PLC register")
         if self.mode == "simulation":
-            self._sim_override[tag_id] = value
+            self._sim_set(tag_id, value)
             st = self.states.get(tag_id)
             if st:
                 st.value, st.quality, st.ts = value, Q_SIM, time.time()
@@ -735,7 +760,7 @@ class Engine:
         if self.mode == "gateway_api":
             raise ValueError("Writing is not available through the gateway API (read-only data source)")
         if self.mode == "simulation":
-            self._sim_override[t["id"]] = value
+            self._sim_set(t["id"], value)
             st = self.states.get(t["id"])
             if st:
                 st.value, st.quality, st.ts = value, Q_SIM, time.time()
