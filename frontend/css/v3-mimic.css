@@ -173,6 +173,17 @@ html.mm-fs-lock, html.mm-fs-lock body { overflow: hidden; }
 #mimicCard .mm-guide, #mimicCard .mm-legend { font-size: 14px; gap: 8px 16px; }
 #mimicCard .mm-vlg { padding-top: 8px; border-top: 1px solid #e4e4e7; }
 
+/* legend folded behind a bar with a down arrow (24-11-2026); click to show / hide */
+.mm-key { margin-top: 10px; }
+.mm-key > summary { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border: 1px solid #e4e4e7; border-radius: 10px;
+  background: #fafaf8; font-size: 14px; font-weight: 600; color: var(--ink-2, #55554f); cursor: pointer; list-style: none; user-select: none; }
+.mm-key > summary::-webkit-details-marker { display: none; }
+.mm-key > summary:hover { background: #f4f4f1; }
+.mm-key > summary:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 2px; }
+.mm-key-chev { width: 20px; height: 20px; margin-left: auto; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
+.mm-key[open] > .mm-key-chev, .mm-key[open] > summary .mm-key-chev { transform: rotate(180deg); }
+.mm-key > .mm-guide { margin-top: 10px; }
+
 @media (max-width: 760px) {
   #mimicCard .mm-head { flex-wrap: wrap; }
   .mm-tools { margin-left: 0; }

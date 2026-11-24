@@ -1769,7 +1769,13 @@
   }
   // the cue ("cmd", "?", "!") gets its own room so it never runs into the legend words
   const vIcon = (k, cue = "") => `<svg class="lg-v v-${k}${cue.length > 1 ? " lg-v-w" : ""}" viewBox="0 0 ${cue.length > 1 ? 58 : 40} 18" aria-hidden="true"><path d="M2 2 L22 16 L22 2 L2 16 Z"/>${cue ? `<text x="27" y="13">${cue}</text>` : ""}</svg>`;
+  // legend folded under a "How to read · colours & symbols" bar (closed by default; open state remembered)
+  let mmKeyOpen = false;
+  try { mmKeyOpen = localStorage.getItem("md-mimic-key") === "1"; } catch (_) {}
   function legend() {
+    return `<details class="mm-key"${mmKeyOpen ? " open" : ""}><summary><span>How to read · colours &amp; symbols</span><svg class="mm-key-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>${legendBody()}</details>`;
+  }
+  function legendBody() {
     return `<div class="mm-guide"><b>How to read:</b>
       <span><i class="g-run"></i>Green machine = running</span><span><i class="g-stop"></i>Grey = stopped</span>
       <span><i class="g-trip"></i>Red, blinking = tripped (fault)</span><span><i class="g-flow"></i>Moving dashes = flow: the pump is running and the valves on the line are confirmed open</span>
@@ -2180,6 +2186,8 @@
         const svg = mmSvg();
         MMV.vw = +svg.dataset.vw; MMV.vh = +svg.dataset.vh; MMV.fs = +svg.dataset.fs || 1;
         $("mimicLegend").innerHTML = legend();
+        const key = $("mimicLegend").querySelector(".mm-key");
+        if (key) key.addEventListener("toggle", () => { mmKeyOpen = key.open; try { localStorage.setItem("md-mimic-key", key.open ? "1" : "0"); } catch (_) {} });
         bindSheet(box, (id) => { setSheet(id); renderMimic(); }, "mimicPop");
         mmFit();                                         // whole sheet in view first
       }
