@@ -255,7 +255,7 @@
       $("alarmPopBg").classList.add("hidden");
       popShownIds = "";
       if (!r.notes_saved) toast("Alarm acknowledged");
-      if (view === "alarms") { renderActive($("activeTable")); loadHistory(); }
+      if (view === "alarms") { renderActive($("activeTable")); loadHistory(true); }
     } catch (e) { toast(e.message, true); }
     finally { acking = false; $("alarmPopAck").disabled = false; }
   };
@@ -922,12 +922,13 @@
       live.alarms.forEach((a) => { if (a.id === id) a.acked_at = now; });
       toast("Alarm acknowledged");
       renderActive($("activeTable"));
-      loadHistory();
+      loadHistory(true);                                 // stay on the same history page
     } catch (e) { toast(e.message, true); btn.disabled = false; }
   }
   // alarm history: range picker (presets + one calendar icon), search box, CSV / PDF of the rows shown
   let histWin = { minutes: 72 * 60 };
-  function renderHistory() {
+  let histPager = null;                                  // shared pager (25 rows a page), same as Reports
+  function renderHistory(keepPage = false) {
     const rows = histRows;
     const cal = MD.v3.CAL;
     // acknowledged and cleared are separate: an alarm can be cleared and never acknowledged, or acknowledged and still active
@@ -940,13 +941,15 @@
         <td class="al-n">${realNote(a) ? esc(realNote(a)) : '<span class="muted">-</span>'}</td></tr>`).join("")
         : `<tr class="al-none"><td colspan="8" class="empty">No alarms in this period</td></tr>`) + "</tbody>";
     histSearch.run();
+    if (!histPager) histPager = MD.v3.pager($("histTable"), { group: "alarms", after: $("histTable").closest(".table-wrap") });
+    histPager.go(keepPage ? histPager.page : 1);
     histCountTxt();
   }
   function histCountTxt() {
     const shown = [...$("histTable").querySelectorAll("tbody tr:not(.al-none)")].filter((tr) => !tr.hidden).length;
     $("histCount").textContent = histRows.length ? (shown === histRows.length ? `${shown}` : `${shown} of ${histRows.length}`) : "";
   }
-  async function loadHistory() {
+  async function loadHistory(keepPage = false) {
     try {
       const n = nowS();
       const custom = histWin.from != null;
@@ -954,10 +957,12 @@
       const r = await api(`/api/alarms?state=history&hours=${hours}&limit=1000`);
       histRows = custom ? r.alarms.filter((a) => a.raised_at >= histWin.from && a.raised_at <= histWin.to) : r.alarms;
       if (!custom) setApplied($("histRange"), n - histWin.minutes * 60, n);
-      renderHistory();
+      renderHistory(keepPage);
     } catch (e) { toast(e.message, true); }
   }
-  const histSearch = MD.v3.tableSearch($("histSearch"), $("histTable"), { placeholder: "Search alarm, device or note…", onSearch: () => histCountTxt() });
+  // searching goes back to page 1 and pages only the matching rows
+  const histSearch = MD.v3.tableSearch($("histSearch"), $("histTable"), { placeholder: "Search alarm, device or note…",
+    onSearch: () => { if (histPager) histPager.go(1); histCountTxt(); } });
   makePicker($("histRange"), [["24 hours", "24h"], ["3 days", "3d"], ["7 days", "7d"], ["30 days", "30d"], ["Custom", "custom"]], "3d", (w) => {
     histWin = w;
     loadHistory();

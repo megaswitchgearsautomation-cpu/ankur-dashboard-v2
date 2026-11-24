@@ -77,6 +77,31 @@ body.client table td.num, body.client table .num { font-variant-numeric: tabular
 .v3-search input { border: 0; outline: 0; background: transparent; min-height: 40px; font-size: 16px; width: 100%; min-width: 0; }
 .v3-search:focus-within { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 1px; }
 
+/* ---------- pager under a long table (MD.v3.pager: Reports, Alarm history) ---------- */
+tr.pg-off { display: none; }
+.rp-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 12px 0 4px; padding: 10px 12px; border: 1px solid var(--fx-line, #ecece8);
+  border-radius: 12px; background: #fff; font-size: 14px; color: var(--fx-ink-2, #55554f); font-variant-numeric: tabular-nums; }
+.rp-pager[hidden] { display: none; }
+.rp-pager .pg-at { display: inline-flex; align-items: center; gap: 8px; }
+.rp-pager .pg-at input { width: 54px; height: 36px; box-sizing: border-box; padding: 0 8px; border: 1px solid #d4d4d0; border-radius: 8px; text-align: center; font: inherit; color: var(--fx-ink, #151515); }
+.rp-pager .pg-n { padding-left: 12px; border-left: 1px solid var(--fx-line, #ecece8); }
+.rp-pager .pg-btns { display: inline-flex; align-items: center; gap: 6px; margin: 0 auto; }
+.rp-pager .pg-btns button { min-width: 36px; height: 36px; padding: 0 8px; border: 1px solid #d4d4d0; border-radius: 8px; background: #fff; color: var(--fx-ink, #151515);
+  font: inherit; font-weight: 600; cursor: pointer; }
+.rp-pager .pg-btns button:hover:not([disabled]):not(.on) { background: #f4f4f1; }
+.rp-pager .pg-btns button.on { background: var(--fx-lime-ink, #3e6b00); border-color: var(--fx-lime-ink, #3e6b00); color: #fff; }
+.rp-pager .pg-btns button[disabled] { opacity: .4; cursor: default; }
+.rp-pager .pg-btns button:focus-visible, .rp-pager input:focus-visible, .rp-pager select:focus-visible { outline: 2px solid var(--fx-lime-ink, #3e6b00); outline-offset: 2px; }
+.rp-pager .gap { padding: 0 2px; color: var(--fx-ink-3, #9a9a93); }
+.rp-pager .pg-rows { display: inline-flex; align-items: center; gap: 8px; }
+.rp-pager .pg-rows select { height: 36px; padding: 0 8px; border: 1px solid #d4d4d0; border-radius: 8px; background: #fff; font: inherit; color: var(--fx-ink, #151515); }
+@media (max-width: 760px) { .rp-pager .pg-btns { margin: 0; order: 3; flex-basis: 100%; flex-wrap: wrap; } }
+/* PDF = every row, no pager */
+@media print {
+  tr.pg-off { display: table-row !important; }
+  .rp-pager { display: none !important; }
+}
+
 /* ---------- edit (pencil) icon button right beside a value ---------- */
 .v3-pen { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; margin-left: 8px; vertical-align: middle;
   border: 1px solid #d4d4d8; border-radius: 8px; background: #fff; color: #3f3f46; cursor: pointer; }

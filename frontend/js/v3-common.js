@@ -298,6 +298,54 @@
     return { run, get value() { return inp.value; } };
   }
 
+  // ---------- pager under a long table (Reports, Alarm history, ...) ----------
+  // pager(table, {group, after}) - Page [n] of N · a–b of total · « ‹ 1 2 3 … › » · Rows [25/50/100].
+  // Rows hidden by a search (tr.hidden) are skipped; rows on other pages get .pg-off (shown again when printing,
+  // and still included in CSV exports). Tables of the same group share the rows-per-page choice.
+  // Hidden while the table has 25 rows or fewer. Returns {go(page)}; call go(1) after re-rendering / searching.
+  const pgSizes = {};
+  const pgTables = [];
+  function pager(table, opts = {}) {
+    const group = opts.group || "default";
+    if (!pgSizes[group]) pgSizes[group] = 25;
+    const host = document.createElement("div");
+    host.className = "rp-pager no-print";
+    host.hidden = true;
+    (opts.after || table.closest(".rp-scroll") || table).after(host);
+    let page = 1;
+    const body = () => table.tBodies[0];
+    const rowsOf = () => (body() ? [...body().rows].filter((r) => !r.hidden && !r.classList.contains("al-none")) : []);
+    const go = (p) => {
+      const size = pgSizes[group];
+      const rows = rowsOf(), total = rows.length, pages = Math.max(1, Math.ceil(total / size));
+      page = Math.min(Math.max(1, p), pages);
+      if (body()) [...body().rows].forEach((r) => r.classList.remove("pg-off"));
+      rows.forEach((r, i) => r.classList.toggle("pg-off", Math.floor(i / size) + 1 !== page));
+      if (total <= 25) { host.hidden = true; host.innerHTML = ""; return; }     // short table: no pager
+      host.hidden = false;
+      const nums = [];
+      for (let k = 1; k <= pages; k++) if (k <= 3 || k > pages - 3 || Math.abs(k - page) <= 1) nums.push(k);
+      const btns = nums.map((k, i) => `${i && k - nums[i - 1] > 1 ? '<span class="gap">…</span>' : ""}<button type="button" data-p="${k}" class="${k === page ? "on" : ""}" aria-label="Page ${k}"${k === page ? ' aria-current="page"' : ""}>${k}</button>`).join("");
+      const a = (page - 1) * size + 1, b = Math.min(total, page * size);
+      host.innerHTML = `<span class="pg-at">Page <input type="number" min="1" max="${pages}" value="${page}" aria-label="Page number"> of ${pages}</span>
+        <span class="pg-n">${a}–${b} of ${total}</span>
+        <span class="pg-btns"><button type="button" data-p="1" aria-label="First page" ${page === 1 ? "disabled" : ""}>«</button><button type="button" data-p="${page - 1}" aria-label="Previous page" ${page === 1 ? "disabled" : ""}>‹</button>
+          ${btns}<button type="button" data-p="${page + 1}" aria-label="Next page" ${page === pages ? "disabled" : ""}>›</button><button type="button" data-p="${pages}" aria-label="Last page" ${page === pages ? "disabled" : ""}>»</button></span>
+        <label class="pg-rows">Rows <select aria-label="Rows per page">${[25, 50, 100].map((n) => `<option ${n === size ? "selected" : ""}>${n}</option>`).join("")}</select></label>`;
+      host.querySelectorAll("[data-p]").forEach((x) => (x.onclick = () => { go(+x.dataset.p); host.scrollIntoView({ block: "nearest" }); }));
+      const inp = host.querySelector("input");
+      inp.onchange = () => go(+inp.value || 1);
+      host.querySelector("select").onchange = (e) => {
+        pgSizes[group] = +e.target.value;
+        pgTables.filter((t) => t.group === group && t.table.isConnected).forEach((t) => t.go(1));
+      };
+    };
+    for (let i = pgTables.length - 1; i >= 0; i--) if (!pgTables[i].table.isConnected) pgTables.splice(i, 1);
+    pgTables.push({ table, group, go });
+    go(1);
+    return { go, host, get page() { return page; } };
+  }
+
   // ---------- warning band for a live value vs its alarm set point ----------
   // dir "high" (alarm at/above SP) or "low" (alarm at/below SP). Returns "ok" | "warn" | "alarm" | "" (no data)
   function level(value, sp, dir = "high") {
@@ -360,5 +408,5 @@
     try { await MD.api("/api/client/prefs", { method: "PUT", body: { prefs: p } }); } catch (e) { MD.toast("Could not save your layout: " + e.message, true); }
   }
 
-  MD.v3 = { CAL, INFO, PEN, SEARCH, historyStart, retentionStart, rangePicker, calendar, info, popup, closeTip, tableSearch, level, exportCsv, tableRows, printPdf, prefs, savePrefs };
+  MD.v3 = { CAL, INFO, PEN, SEARCH, historyStart, retentionStart, rangePicker, calendar, info, popup, closeTip, tableSearch, pager, level, exportCsv, tableRows, printPdf, prefs, savePrefs };
 })();

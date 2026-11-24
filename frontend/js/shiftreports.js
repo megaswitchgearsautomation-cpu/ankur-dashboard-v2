@@ -318,41 +318,9 @@
   }
   let rpTab = "summary";                                // remembered while the page is open (next report opens the same tab)
 
-  // pager under a long report table: Page [n] of N · a–b of total · « ‹ 1 2 3 … › » · Rows [25]. Rows hidden by the
-  // search are skipped; rows on other pages get .pg-off (shown again when printing).
-  let pgSize = 25;
+  // pager under a long report table: shared MD.v3.pager (same one as Alarm history); all report tables share Rows
   function pager(table) {
-    const host = document.createElement("div");
-    host.className = "rp-pager no-print";
-    (table.closest(".rp-scroll") || table).after(host);
-    let page = 1;
-    const rowsOf = () => [...table.tBodies[0].rows].filter((r) => !r.hidden);
-    const go = (p) => {
-      const rows = rowsOf(), total = rows.length, pages = Math.max(1, Math.ceil(total / pgSize));
-      page = Math.min(Math.max(1, p), pages);
-      [...table.tBodies[0].rows].forEach((r) => r.classList.remove("pg-off"));
-      rows.forEach((r, i) => r.classList.toggle("pg-off", Math.floor(i / pgSize) + 1 !== page));
-      if (total <= 25) { host.hidden = true; return; }      // short table: no pager
-      host.hidden = false;
-      const nums = [];
-      for (let k = 1; k <= pages; k++) if (k <= 3 || k > pages - 3 || Math.abs(k - page) <= 1) nums.push(k);
-      const btns = nums.map((k, i) => `${i && k - nums[i - 1] > 1 ? '<span class="gap">…</span>' : ""}<button type="button" data-p="${k}" class="${k === page ? "on" : ""}" aria-label="Page ${k}"${k === page ? ' aria-current="page"' : ""}>${k}</button>`).join("");
-      const a = (page - 1) * pgSize + 1, b = Math.min(total, page * pgSize);
-      host.innerHTML = `<span class="pg-at">Page <input type="number" min="1" max="${pages}" value="${page}" aria-label="Page number"> of ${pages}</span>
-        <span class="pg-n">${a}–${b} of ${total}</span>
-        <span class="pg-btns"><button type="button" data-p="1" aria-label="First page" ${page === 1 ? "disabled" : ""}>«</button><button type="button" data-p="${page - 1}" aria-label="Previous page" ${page === 1 ? "disabled" : ""}>‹</button>
-          ${btns}<button type="button" data-p="${page + 1}" aria-label="Next page" ${page === pages ? "disabled" : ""}>›</button><button type="button" data-p="${pages}" aria-label="Last page" ${page === pages ? "disabled" : ""}>»</button></span>
-        <label class="pg-rows">Rows <select aria-label="Rows per page">${[25, 50, 100].map((n) => `<option ${n === pgSize ? "selected" : ""}>${n}</option>`).join("")}</select></label>`;
-      host.querySelectorAll("[data-p]").forEach((x) => (x.onclick = () => { go(+x.dataset.p); host.scrollIntoView({ block: "nearest" }); }));
-      const inp = host.querySelector("input");
-      inp.onchange = () => go(+inp.value || 1);
-      host.querySelector("select").onchange = (e) => {
-        pgSize = +e.target.value;                        // same rows-per-page for every table of the report
-        document.querySelectorAll("#rpDoc table.rp-pg").forEach((t) => t._pg && t._pg.go(1));
-      };
-    };
-    table._pg = { go };
-    go(1);
+    table._pg = MD.v3.pager(table, { group: "report" });
   }
 
   // ======================================================================================
