@@ -142,7 +142,7 @@ body[data-role="viewer"] .v3-pen { display: none !important; }      /* viewers: 
   .dc-body > .dc-main, .dc-body > .dc-eqs, .dc-body.no-main > .dc-eqs { grid-column: auto; border-left: 0; padding-left: 0; border-top: 1px solid var(--v3-sep, #e4e4e7); padding-top: 16px; }
   .dc-body:not(.no-main) > .dc-main { padding-bottom: 0; margin-bottom: 0; }   /* one column: no vertical divider to extend */
   .dc-h { flex-wrap: wrap; }
-  .dc-chip { order: 5; flex-basis: 100%; padding: 0 0 0 56px; }
+  .dc-chip { order: 20; flex-basis: 100%; padding: 0 0 0 56px; }   /* status on its own line, below the header row */
 }
 
 .dc-lbl { display: block; font-size: 14px; font-weight: 600; line-height: 1.4; color: #52525b; }
@@ -196,7 +196,8 @@ body[data-role="viewer"] .v3-pen { display: none !important; }      /* viewers: 
 .v3-info.v3-info-auto { flex: none; margin-left: 6px; vertical-align: middle; }
 h2 > .v3-info.v3-info-auto, h3 > .v3-info.v3-info-auto, .ps-k > .v3-info.v3-info-auto { width: 24px; height: 24px; min-width: 24px; margin-top: -3px; }
 h2 > .v3-info.v3-info-auto svg, h3 > .v3-info.v3-info-auto svg, .ps-k > .v3-info.v3-info-auto svg { width: 18px; height: 18px; }
-.dc-h > .v3-info.v3-info-auto { align-self: flex-start; margin: 2px 0 0 0; }
+/* process cards: (i) is the last item on the right, after the move up / down arrows (client 24-11-2026) */
+.dc-h > .v3-info.v3-info-auto { order: 10; align-self: flex-start; margin: 8px 0 0 0; }
 .eq-legend > .v3-info.v3-info-auto { float: right; margin: -2px 0 0 8px; }
 /* tank switch status in the right-hand column, under Set point (client 18-11-2026) */
 .dc-swst { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--v3-sep, #e4e4e7); }
